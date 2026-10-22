@@ -1,0 +1,39 @@
+QR ASET GUDANG v3 - LANGKAH PASANG
+===================================
+
+Isi zip:
+  backend/Code.gs   kode server (Google Apps Script)
+  site/             isi website (upload ke Netlify)
+
+A. SERVER (Google Sheet)
+  1. Buka Google Sheet gudang. Menu Extensions > Apps Script.
+  2. Hapus semua kode lama. Tempel seluruh isi backend/Code.gs. Klik Save.
+  3. Pilih fungsi "setup" di bagian atas, klik Run. Izinkan akses bila diminta.
+  4. Setup membuat PIN 6 angka baru. PIN muncul di kotak pesan dan ada di sheet "Pengaturan" (baris PIN).
+     Catat PIN ini. Bagikan hanya ke penjaga gudang.
+  5. (Hanya jika data lama v2 mau dikosongkan) Pilih fungsi "resetDataLama", klik Run, jawab Yes.
+     Data lama tidak dihapus. Sheet Mesin, Pengambilan, Arsip, Maintenance, Log Perubahan
+     diganti nama menjadi "Lama ..." dan dibuat sheet baru yang kosong.
+  6. Deploy > Manage deployments > ikon pensil (Edit) > Version: New version > Deploy.
+     JANGAN pilih "New deployment". Alamat Web app harus tetap sama.
+
+  7. Memasukkan daftar mesin awal dari lembar penjaga (SATU KALI):
+     Di Apps Script klik + (Tambah file) > Script, beri nama ImporAwal, tempel isi backend/ImporAwal.gs, Save.
+     Pilih fungsi imporAwal, klik Run. Hasil: 98 unit dalam 56 jenis.
+     Jika Jenis atau Unit sudah berisi data, impor dibatalkan otomatis (tidak ada yang dobel).
+
+B. WEBSITE (Netlify)
+  1. Buka site Netlify gudang-aset-projectwakatobi > Deploys.
+  2. Tarik folder "site" ke kotak upload (atau upload lewat GitHub bila sudah siap).
+  3. Buka website di HP. Masukkan PIN 6 angka.
+  4. Pertama kali mengubah data, aplikasi minta "Siapa Anda?". Pilih nama. Nama ini masuk ke log.
+
+C. PERIKSA
+  - Menu (garis tiga) > Log perubahan harus kosong atau berisi catatan terbaru.
+  - Tekan "Mesin baru" untuk mencoba menambah satu mesin. Lalu cetak label QR dari menu.
+
+CATATAN
+  - PIN salah 5 kali: login dikunci 15 menit.
+  - Ganti PIN: jalankan fungsi "buatPinBaru". Semua HP harus login ulang.
+  - Isi QR sekarang hanya kode unit, contoh BOR-014. Stiker QR lama (berisi alamat website + kode) tetap terbaca.
+  - Data Excel dari penjaga belum dimasukkan. Itu langkah berikutnya, setelah Anda siap.

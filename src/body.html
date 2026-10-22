@@ -1,0 +1,49 @@
+</style>
+</head>
+<body>
+<header class="top"><div class="in" id="hdr"></div></header>
+<div class="syncbar" id="sync" hidden></div>
+<main class="wrap" id="app"></main>
+<button class="fab" id="fab" data-action="tambah" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Mesin baru</button>
+<nav class="bnav" id="bnav" aria-label="Navigasi utama"><div class="in">
+  <a href="#" data-action="root" data-view="mesin" id="nvMesin"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>Mesin</a>
+  <div class="mid"><button class="scanfab" data-action="scan" aria-label="Scan QR"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/><path d="M8 12h8"/></svg></button></div>
+  <a href="#" data-action="root" data-view="hari" id="nvHari"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>Hari Ini<span class="badge" id="hariBadge" hidden></span></a>
+</div></nav>
+
+<div id="drawer" hidden></div>
+
+<div id="scan" hidden>
+  <video id="vid" playsinline muted autoplay></video>
+  <div class="dim"></div>
+  <div class="stop">
+    <button data-action="scanclose"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>Tutup</button>
+    <div class="mode" role="tablist" aria-label="Mode scan">
+      <button data-action="scanmode" data-mode="ambil" aria-selected="true">Ambil</button>
+      <button data-action="scanmode" data-mode="kembali" aria-selected="false">Kembali</button>
+      <button data-action="scanmode" data-mode="lihat" aria-selected="false">Lihat</button>
+    </div>
+    <button data-action="torch" id="torchBtn" hidden>Lampu</button>
+  </div>
+  <div class="mid"><div class="frame" id="frame"></div><p class="hint" id="hint"></p></div>
+  <section class="sheet" id="sheet" aria-label="Daftar scan"></section>
+</div>
+<div id="picker" hidden></div>
+<div id="pin" hidden>
+  <form class="box" id="pinForm">
+    <picture><source media="(prefers-color-scheme: dark)" srcset="logo-gelap.png"><img class="brand" src="logo-terang.png" alt="Wakatobi Project Villa" width="240" height="167"></picture>
+    <h2>Masukkan PIN</h2>
+    <p class="muted" style="margin:0">PIN 6 angka. Tanyakan ke pengelola gudang.</p>
+    <input id="pinInput" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" aria-label="PIN">
+    <p class="note bad" id="pinErr" hidden></p>
+    <button class="btn" type="submit" id="pinBtn">Masuk</button>
+  </form>
+</div>
+<div id="printArea"></div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="config.js"></script>
+<script src="lib/jsQR.js"></script>
+<script src="lib/qrcode.js"></script>
+<script src="lib/xlsx.full.min.js"></script>
+<script>

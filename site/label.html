@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cetak Label QR</title>
+<style>
+:root{--bg:#F1F0EC;--surface:#fff;--ink:#1B2226;--muted:#5C686E;--line:#D8D7D0;--accent:#1F5F8B}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;padding:16px}
+.bar{max-width:760px;margin:0 auto 16px;display:flex;flex-direction:column;gap:10px}
+.bar h1{margin:0;font-size:24px}
+.bar .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+label{font-size:14px;color:var(--muted);display:block;margin-bottom:4px}
+select,input,button{font:inherit;min-height:46px;padding:8px 12px;border:1.5px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);width:100%}
+button.go{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+a{color:var(--accent)}
+.msg{color:var(--muted);font-size:14px;margin:0}
+.sheet{display:flex;flex-wrap:wrap;gap:0;justify-content:flex-start;max-width:21cm;margin:0 auto;background:#fff;padding:.5cm}
+.lab{border:1px dashed #999;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;break-inside:avoid;overflow:hidden;color:#000;background:#fff}
+.lab svg{display:block}
+.lab b{font-family:Arial,Helvetica,sans-serif;letter-spacing:.02em}
+.lab small{display:block;font-family:Arial,Helvetica,sans-serif;line-height:1.15;padding:0 .15cm;overflow:hidden}
+@page{size:A4;margin:0}
+@media print{
+  body{background:#fff;padding:0}
+  .bar{display:none}
+  .sheet{padding:.5cm;max-width:none;margin:0}
+}
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Cetak label QR</h1>
+  <p class="msg"><a href="index.html">← Kembali ke aplikasi</a></p>
+  <div class="row">
+    <div><label for="size">Ukuran label</label><select id="size"><option value="4">4 x 4 cm</option><option value="5" selected>5 x 5 cm</option><option value="6">6 x 6 cm</option></select></div>
+    <div><label for="cat">Kategori</label><select id="cat"><option value="">Semua kategori</option></select></div>
+    <div><label for="codes">Kode tertentu (pisahkan dengan koma)</label><input id="codes" type="text" placeholder="Contoh: BOR-001, GRD-002"></div>
+  </div>
+  <button class="go" id="print">Cetak</button>
+  <p class="msg" id="info">Memuat daftar mesin…</p>
+</div>
+<div class="sheet" id="sheet"></div>
+<script src="config.js"></script>
+<script src="lib/qrcode.js"></script>
+<script>
+const CFG = window.CONFIG || {}, API_URL = CFG.API_URL || '';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ls = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
+let jenis = [], units = [];
+const c0 = ls('qrg.c3', null); if (c0 && c0.jenis) { jenis = c0.jenis; units = c0.unit || []; }
+async function load() {
+  const tok = ls('qrg.tok', '');
+  if (API_URL && !API_URL.includes('PASTE') && tok) {
+    try {
+      const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'bootstrap', token: tok }) });
+      const j = await r.json(); if (j.ok) { jenis = j.jenis; units = j.unit; }
+    } catch (e) {}
+  }
+  units = units.filter(u => !u.off);
+  const qk = new URLSearchParams(location.search).get('kode'); if (qk) $('#codes').value = qk;
+  const cats = [...new Set(jenis.map(j => j.c).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'id'));
+  $('#cat').innerHTML = '<option value="">Semua kategori</option>' + cats.map(c => '<option>' + esc(c) + '</option>').join('');
+  draw();
+}
+/* isi QR hanya kode unit, contoh BOR-014. Kode kecil sehingga kotak QR besar dan mudah dibaca. */
+function svg(text, px) {
+  const qr = qrcode(0, 'H'); qr.addData(text); qr.make();
+  const n = qr.getModuleCount(), m = 2; let d = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) d += 'M' + (c + m) + ' ' + (r + m) + 'h1v1h-1z';
+  const v = n + 2 * m;
+  return '<svg width="' + px + '" height="' + px + '" viewBox="0 0 ' + v + ' ' + v + '" shape-rendering="crispEdges"><rect width="' + v + '" height="' + v + '" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>';
+}
+function draw() {
+  const size = Number($('#size').value), cat = $('#cat').value;
+  const codes = $('#codes').value.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  const J = Object.fromEntries(jenis.map(j => [j.id, j]));
+  const list = units.filter(u => J[u.j] && (!cat || J[u.j].c === cat) && (!codes.length || codes.includes(u.k)))
+    .sort((a, b) => a.k.localeCompare(b.k));
+  const cm = 37.795, qrPx = Math.round(size * 0.62 * cm);
+  $('#sheet').innerHTML = list.map(u => {
+    const j = J[u.j], sub = [j.b, j.m].filter(Boolean).join(' ');
+    return '<div class="lab" style="width:' + size + 'cm;height:' + size + 'cm;padding-top:' + (size * 0.05) + 'cm">' + svg(u.k, qrPx) +
+      '<b style="font-size:' + Math.round(size * 2.6) + 'pt;margin-top:.05cm">' + esc(u.k) + '</b>' +
+      '<small style="font-size:' + Math.max(6, Math.round(size * 1.5)) + 'pt"><strong>' + esc(j.n) + ' · Unit ' + esc(u.u) + '</strong></small>' +
+      (sub ? '<small style="font-size:' + Math.max(5, Math.round(size * 1.2)) + 'pt">' + esc(sub) + '</small>' : '') + '</div>';
+  }).join('');
+  $('#info').textContent = units.length ? list.length + ' label. Pilih ukuran kertas A4, skala 100%, tanpa margin saat mencetak.' :
+    'Daftar mesin belum ada. Buka aplikasi dulu dan masukkan PIN, lalu kembali ke halaman ini.';
+}
+['size', 'cat'].forEach(i => $('#' + i).addEventListener('change', draw));
+$('#codes').addEventListener('input', draw);
+$('#print').addEventListener('click', () => window.print());
+load();
+</script>
+</body>
+</html>
