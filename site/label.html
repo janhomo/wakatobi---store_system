@@ -34,9 +34,10 @@ a{color:var(--accent)}
   <h1>Cetak label QR</h1>
   <p class="msg"><a href="index.html">← Kembali ke aplikasi</a></p>
   <div class="row">
+    <div><label for="tipe">Jenis label</label><select id="tipe"><option value="mesin">Mesin</option><option value="tempat">Tempat (rak, lemari)</option><option value="material">Material</option></select></div>
     <div><label for="size">Ukuran label</label><select id="size"><option value="4">4 x 4 cm</option><option value="5" selected>5 x 5 cm</option><option value="6">6 x 6 cm</option></select></div>
     <div><label for="cat">Kategori</label><select id="cat"><option value="">Semua kategori</option></select></div>
-    <div><label for="codes">Kode tertentu (pisahkan dengan koma)</label><input id="codes" type="text" placeholder="Contoh: BOR-001, GRD-002"></div>
+    <div><label for="codes">Kode tertentu (pisahkan dengan koma)</label><input id="codes" type="text" placeholder="Contoh: BOR-001, LOK-001, MAT-003"></div>
   </div>
   <button class="go" id="print">Cetak</button>
   <p class="msg" id="info">Memuat daftar mesin…</p>
@@ -49,21 +50,25 @@ const CFG = window.CONFIG || {}, API_URL = CFG.API_URL || '';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ls = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
-let jenis = [], units = [];
-const c0 = ls('qrg.c3', null); if (c0 && c0.jenis) { jenis = c0.jenis; units = c0.unit || []; }
+let jenis = [], units = [], tempat = [], material = [];
+const c0 = ls('qrg.c3', null); if (c0 && c0.jenis) { jenis = c0.jenis; units = c0.unit || []; tempat = c0.tempat || []; material = c0.material || []; }
 async function load() {
   const tok = ls('qrg.tok', '');
   if (API_URL && !API_URL.includes('PASTE') && tok) {
     try {
       const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'bootstrap', token: tok }) });
-      const j = await r.json(); if (j.ok) { jenis = j.jenis; units = j.unit; }
+      const j = await r.json(); if (j.ok) { jenis = j.jenis; units = j.unit; tempat = j.tempat || []; material = j.material || []; }
     } catch (e) {}
   }
-  units = units.filter(u => !u.off);
-  const qk = new URLSearchParams(location.search).get('kode'); if (qk) $('#codes').value = qk;
-  const cats = [...new Set(jenis.map(j => j.c).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'id'));
-  $('#cat').innerHTML = '<option value="">Semua kategori</option>' + cats.map(c => '<option>' + esc(c) + '</option>').join('');
-  draw();
+  units = units.filter(u => !u.off); tempat = tempat.filter(t => !t.off); material = material.filter(m => !m.off);
+  const qk = new URLSearchParams(location.search).get('kode'); if (qk) { $('#codes').value = qk; $('#tipe').value = /^LOK-/i.test(qk) ? 'tempat' : /^MAT-/i.test(qk) ? 'material' : 'mesin'; }
+  fillCats(); draw();
+}
+function fillCats() {
+  const t = $('#tipe').value, cur = $('#cat').value;
+  const cats = [...new Set((t === 'material' ? material.map(m => m.c) : t === 'mesin' ? jenis.map(j => j.c) : []).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'id'));
+  $('#cat').innerHTML = '<option value="">Semua kategori</option>' + cats.map(c => '<option' + (c === cur ? ' selected' : '') + '>' + esc(c) + '</option>').join('');
+  $('#cat').disabled = t === 'tempat';
 }
 /* isi QR hanya kode unit, contoh BOR-014. Kode kecil sehingga kotak QR besar dan mudah dibaca. */
 function svg(text, px) {
@@ -73,24 +78,38 @@ function svg(text, px) {
   const v = n + 2 * m;
   return '<svg width="' + px + '" height="' + px + '" viewBox="0 0 ' + v + ' ' + v + '" shape-rendering="crispEdges"><rect width="' + v + '" height="' + v + '" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>';
 }
+function labHtml(size, qrPx, code, l1, l2, l3) {
+  return '<div class="lab" style="width:' + size + 'cm;height:' + size + 'cm;padding-top:' + (size * 0.05) + 'cm">' + svg(code, qrPx) +
+    '<b style="font-size:' + Math.round(size * 2.6) + 'pt;margin-top:.05cm">' + esc(code) + '</b>' +
+    '<small style="font-size:' + Math.max(6, Math.round(size * 1.5)) + 'pt"><strong>' + esc(l1) + '</strong></small>' +
+    (l2 ? '<small style="font-size:' + Math.max(5, Math.round(size * 1.2)) + 'pt">' + esc(l2) + '</small>' : '') +
+    (l3 ? '<small style="font-size:' + Math.max(5, Math.round(size * 1.2)) + 'pt">' + esc(l3) + '</small>' : '') + '</div>';
+}
 function draw() {
-  const size = Number($('#size').value), cat = $('#cat').value;
+  const size = Number($('#size').value), cat = $('#cat').value, tipe = $('#tipe').value;
   const codes = $('#codes').value.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
-  const J = Object.fromEntries(jenis.map(j => [j.id, j]));
-  const list = units.filter(u => J[u.j] && (!cat || J[u.j].c === cat) && (!codes.length || codes.includes(u.k)))
-    .sort((a, b) => a.k.localeCompare(b.k));
-  const cm = 37.795, qrPx = Math.round(size * 0.62 * cm);
-  $('#sheet').innerHTML = list.map(u => {
-    const j = J[u.j], sub = [j.b, j.m].filter(Boolean).join(' ');
-    return '<div class="lab" style="width:' + size + 'cm;height:' + size + 'cm;padding-top:' + (size * 0.05) + 'cm">' + svg(u.k, qrPx) +
-      '<b style="font-size:' + Math.round(size * 2.6) + 'pt;margin-top:.05cm">' + esc(u.k) + '</b>' +
-      '<small style="font-size:' + Math.max(6, Math.round(size * 1.5)) + 'pt"><strong>' + esc(j.n) + ' · Unit ' + esc(u.u) + '</strong></small>' +
-      (sub ? '<small style="font-size:' + Math.max(5, Math.round(size * 1.2)) + 'pt">' + esc(sub) + '</small>' : '') + '</div>';
-  }).join('');
-  $('#info').textContent = units.length ? list.length + ' label. Pilih ukuran kertas A4, skala 100%, tanpa margin saat mencetak.' :
-    'Daftar mesin belum ada. Buka aplikasi dulu dan masukkan PIN, lalu kembali ke halaman ini.';
+  const cm = 37.795, qrPx = Math.round(size * 0.62 * cm), want = c => !codes.length || codes.includes(c);
+  let html = '', n = 0, have = 0;
+  if (tipe === 'tempat') {
+    have = tempat.length;
+    const l = tempat.filter(t => want(t.id)).sort((a, b) => a.id.localeCompare(b.id)); n = l.length;
+    html = l.map(t => labHtml(size, qrPx, t.id, t.n, t.l, '')).join('');
+  } else if (tipe === 'material') {
+    have = material.length;
+    const l = material.filter(m => (!cat || m.c === cat) && want(m.id)).sort((a, b) => a.id.localeCompare(b.id)); n = l.length;
+    html = l.map(m => labHtml(size, qrPx, m.id, m.n, [m.b, m.s].filter(Boolean).join(' · '), '')).join('');
+  } else {
+    have = units.length;
+    const J = Object.fromEntries(jenis.map(j => [j.id, j]));
+    const l = units.filter(u => J[u.j] && (!cat || J[u.j].c === cat) && want(u.k)).sort((a, b) => a.k.localeCompare(b.k)); n = l.length;
+    html = l.map(u => { const j = J[u.j]; return labHtml(size, qrPx, u.k, j.n + ' · Unit ' + u.u, [j.b, j.m].filter(Boolean).join(' '), ''); }).join('');
+  }
+  $('#sheet').innerHTML = html;
+  $('#info').textContent = have ? n + ' label. Pilih ukuran kertas A4, skala 100%, tanpa margin saat mencetak.' :
+    'Daftar belum ada. Buka aplikasi dulu dan masukkan PIN, lalu kembali ke halaman ini.';
 }
 ['size', 'cat'].forEach(i => $('#' + i).addEventListener('change', draw));
+$('#tipe').addEventListener('change', () => { $('#codes').value = ''; fillCats(); draw(); });
 $('#codes').addEventListener('input', draw);
 $('#print').addEventListener('click', () => window.print());
 load();

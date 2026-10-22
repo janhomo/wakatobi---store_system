@@ -104,8 +104,8 @@ details summary{cursor:pointer; min-height:44px; display:flex; align-items:cente
 .jcard .pills{margin-top:5px}
 
 /* ---- detail jenis ---- */
-.hero{position:relative; height:150px; border-radius:12px; background:var(--thumb); color:var(--thumb-ink); display:flex; align-items:center; justify-content:center; margin-bottom:10px; overflow:hidden}
-.hero img{width:100%; height:100%; object-fit:cover}
+.hero{position:relative; height:220px; border-radius:12px; background:var(--thumb); color:var(--thumb-ink); display:flex; align-items:center; justify-content:center; margin-bottom:10px; overflow:hidden}
+.hero img{width:100%; height:100%; object-fit:contain}
 .utabs{display:flex; border-bottom:2px solid var(--line); margin-bottom:10px}
 .utabs button{flex:1; min-height:46px; background:none; border:0; border-bottom:3px solid transparent; margin-bottom:-2px; font-size:16px; font-weight:600; color:var(--muted)}
 .utabs button[aria-selected="true"]{color:var(--accent); border-bottom-color:var(--accent); font-weight:700}
@@ -282,3 +282,156 @@ details summary{cursor:pointer; min-height:44px; display:flex; align-items:cente
 #drawer .dh{flex-direction:column; align-items:flex-start; gap:10px}
 #drawer .dh img{width:168px; height:auto; display:block}
 #drawer .dh small{margin-top:0}
+
+/* ---- foto, profil, penyimpanan, material, panduan, impor (langkah 2 sampai 5) ---- */
+.thumb.sm{width:44px; height:44px; border-radius:8px}
+.thumb.big{width:72px; height:72px}
+.thumb.ico{width:56px; height:56px}
+.thumb.hph{width:100%; height:100%; border-radius:0; background:transparent}
+.hero .herobtn{position:absolute; right:10px; bottom:10px; min-height:40px; padding:0 14px; border-radius:20px; border:0; background:rgba(27,34,38,.82); color:#fff; display:flex; align-items:center; gap:6px; font-size:14px; font-weight:600}
+.jcard .nm .code{display:block; font-size:12px; color:var(--muted)}
+.namebar.plain{background:var(--surface); color:var(--ink); border:1.5px solid var(--line); font-weight:600}
+textarea.field.tall{min-height:160px}
+.two1{display:grid; grid-template-columns:1fr auto; gap:8px; margin-bottom:8px}
+.ulink{background:none; border:0; padding:0; color:var(--accent); font-weight:600; text-align:left; text-decoration:underline; text-underline-offset:3px; display:inline-flex; align-items:baseline; gap:8px; min-height:32px}
+.ucard .l1 .ulink{text-decoration:none; color:var(--ink)}
+.lnkbtn{background:none; border:0; padding:0; text-align:left; color:var(--ink); min-width:0}
+.warnt{color:var(--warn)!important}
+.neg{color:var(--bad); font-weight:700}
+.lowt{color:var(--warn); font-weight:700}
+
+/* profil mesin */
+.pid{margin:0 0 10px}
+.pid h1{margin:2px 0 6px; font-family:var(--f-display); font-weight:700; font-size:30px; letter-spacing:.02em; line-height:1.05; text-transform:uppercase; overflow-wrap:anywhere}
+.heldbox{border:2px solid var(--warn); background:var(--warn-bg); border-radius:12px; padding:10px 12px; margin-bottom:10px}
+.heldbox .lbl2{font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--warn)}
+.heldbox .who{margin:2px 0 8px}
+.two3{display:grid; grid-template-columns:2fr 1fr; gap:8px}
+.ubtn.rus{background:none; border:1.5px solid var(--bad); color:var(--bad)}
+.dl{margin:0; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:2px 14px}
+.drow{display:flex; gap:12px; justify-content:space-between; align-items:baseline; padding:10px 0; border-top:1px solid var(--line)}
+.drow:first-child{border-top:0}
+.drow dt{color:var(--muted); font-size:14px; flex-shrink:0}
+.drow dd{margin:0; text-align:right; font-weight:500; overflow-wrap:anywhere; min-width:0}
+.sv.late{color:var(--bad); font-weight:700}
+.sv.warn{color:var(--warn); font-weight:700}
+.pbar{position:fixed; left:0; right:0; bottom:0; z-index:26; padding:10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background:var(--bg); border-top:1px solid var(--line)}
+.pbar > *{max-width:640px; margin-left:auto; margin-right:auto}
+.pbar.two{display:flex; gap:10px}
+.pbar.two button{flex:1; min-height:56px; border-radius:12px; font-weight:700; font-size:17px; border:0}
+.pbar.two .no{flex:0 0 30%; background:none; border:1.5px solid var(--accent); color:var(--accent)}
+.pbar.two .yes{background:var(--accent); color:var(--accent-ink)}
+.pbar.two .yes[disabled]{background:var(--line); color:var(--muted)}
+.pbtn{width:100%; min-height:58px; border-radius:12px; border:0; background:var(--accent); color:var(--accent-ink); font-size:19px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:10px}
+.pbtn.ret{background:var(--ok); color:#fff}
+.pdis{display:block; text-align:center; padding:16px; border-radius:12px; border:1.5px solid var(--line); color:var(--muted); font-weight:600}
+.wrap:has(.pbar){padding-bottom:calc(110px + env(safe-area-inset-bottom, 0px))}
+
+/* penyimpanan */
+.stat3{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+.stat3 > div{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px; text-align:center}
+.stat3 b{display:block; font-family:var(--f-display); font-size:34px; line-height:1}
+.stat3 small{color:var(--muted); font-size:13px}
+.stat3 .lowc b{color:var(--warn)}
+.tbox{background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-bottom:6px}
+.tbox.scroll{max-height:30vh; overflow:auto}
+.trow{width:100%; display:flex; align-items:center; gap:10px; padding:8px 12px; border:0; border-top:1px solid var(--line); background:none; text-align:left; min-height:56px}
+.trow:first-child{border-top:0}
+.trow .nm{min-width:0; flex-grow:1; display:flex; flex-direction:column; overflow-wrap:anywhere}
+.trow .nm b{font-weight:600; font-size:16px}
+.rnd{width:44px; height:44px; border-radius:22px; border:1.5px solid var(--accent); background:none; color:var(--accent); font-size:24px; font-weight:700; line-height:1; flex-shrink:0; display:flex; align-items:center; justify-content:center}
+.rnd.big{width:56px; height:56px; border-radius:28px; font-size:30px}
+.qty{min-width:64px; text-align:center; line-height:1.1}
+.qty b{display:block; font-size:20px}
+.qty small{font-size:12px; color:var(--muted)}
+.qty.low b{color:var(--warn)}
+.selrow{width:100%; display:flex; align-items:center; gap:10px; padding:8px 12px; border:0; border-top:1px solid var(--line); background:none; text-align:left; min-height:60px}
+.selrow:first-child{border-top:0}
+.selrow.on{background:var(--accent-soft)}
+.selrow .nm{min-width:0; flex-grow:1; display:flex; flex-direction:column}
+.selrow .nm b{font-weight:600}
+.selrow .nm small{font-size:13px; color:var(--muted)}
+.selrow .cb{width:26px; height:26px; border-radius:7px; border:2px solid var(--line); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--accent-ink)}
+.selrow.on .cb{background:var(--accent); border-color:var(--accent)}
+
+/* material */
+.mlistw{display:flex; flex-direction:column; gap:8px}
+.mrow2{width:100%; display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:12px; background:var(--surface); border:1px solid var(--line); text-align:left}
+.mrow2:hover{border-color:var(--accent)}
+.mrow2 .nm{min-width:0; flex-grow:1}
+.mrow2 .nm b{display:block; font-size:17px; font-weight:600; overflow-wrap:anywhere}
+.mrow2 .nm small{display:block; font-size:13px; color:var(--muted)}
+.mrow2 .pills{margin-top:4px}
+.matbig{text-align:center; padding:14px 8px; background:var(--surface); border:1px solid var(--line); border-radius:12px}
+.matbig .qn{display:block; font-family:var(--f-display); font-weight:700; font-size:64px; line-height:1}
+.matbig .qn.low{color:var(--warn)}
+.matbig .qs{display:block; color:var(--muted); margin-bottom:8px}
+.slog{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
+.slog li{display:flex; gap:12px; align-items:center; padding:8px 12px; background:var(--surface); border:1px solid var(--line); border-radius:10px}
+.slog .sg{min-width:56px; font-family:var(--f-mono); font-weight:500; font-size:17px}
+.slog .sg.Keluar{color:var(--bad)}
+.slog .sg.Masuk{color:var(--ok)}
+.slog .tx{min-width:0; overflow-wrap:anywhere}
+
+/* lembar bawah: foto dan stok */
+.ovsheet{position:fixed; inset:0; z-index:65}
+.ovsheet .dbg{position:absolute; inset:0; width:100%; border:0; background:rgba(27,34,38,.6)}
+.fsheet{position:absolute; left:0; right:0; bottom:0; max-width:640px; margin:0 auto; max-height:92vh; overflow:auto; background:var(--surface); color:var(--ink); border-radius:22px 22px 0 0; padding:10px 16px calc(16px + env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; gap:12px}
+.fsheet .grab{width:44px; height:4px; border-radius:2px; background:var(--line); margin:0 auto; flex-shrink:0}
+.fsheet .sh-t{font-family:var(--f-display); font-weight:700; font-size:22px; letter-spacing:.03em; text-transform:uppercase}
+.fsheet .yn{margin-top:2px}
+.frow{display:flex; gap:12px; align-items:center}
+.bigbtn{min-height:92px; border-radius:14px; border:2px solid var(--line); background:var(--surface); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-weight:700; font-size:16px}
+.bigbtn.pri{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.cropwrap{display:flex; justify-content:center}
+.cropwrap canvas{border-radius:12px; background:#222; touch-action:none; cursor:grab; max-width:100%}
+.crctl{display:flex; align-items:center; gap:10px}
+.crctl input[type=range]{flex:1; min-height:44px}
+.x2{width:48px; height:48px; border-radius:24px; border:1.5px solid var(--line); background:none; color:var(--ink); display:flex; align-items:center; justify-content:center}
+.stepper{display:flex; align-items:center; gap:10px}
+.stepper .field{text-align:center; font-size:26px; font-weight:700; min-height:56px}
+.qchips{margin:0}
+.after{margin:0; padding:10px 12px; border-radius:10px; background:var(--accent-soft); font-size:16px}
+.after small{font-weight:400}
+
+/* panduan */
+.pdhead{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px}
+.pdhead b{display:block; font-family:var(--f-display); font-size:24px; text-transform:uppercase; letter-spacing:.03em}
+.pdwarn{display:flex; gap:10px; align-items:flex-start; margin-bottom:10px}
+.pdsec{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:10px}
+.pdsec h3{margin:0 0 6px; font-family:var(--f-display); font-size:19px; text-transform:uppercase; letter-spacing:.04em}
+.pdl{margin:0; padding-left:22px; display:flex; flex-direction:column; gap:6px}
+.vlist{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
+.vlist button{width:100%; text-align:left; padding:10px 12px; border-radius:10px; background:var(--surface); border:1px solid var(--line)}
+.vlist button[aria-current="true"]{border-color:var(--accent); background:var(--accent-soft)}
+
+/* tabel (layar lebar dan impor) */
+.tblwrap{overflow:auto; border:1px solid var(--line); border-radius:12px; background:var(--surface)}
+.tbl{width:100%; border-collapse:collapse; font-size:15px}
+.tbl th{position:sticky; top:0; text-align:left; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding:10px 12px; background:var(--surface); border-bottom:2px solid var(--line)}
+.tbl td{padding:8px 12px; border-top:1px solid var(--line); vertical-align:middle}
+.tbl tbody tr[data-action]{cursor:pointer}
+.tbl tbody tr[data-action]:hover{background:var(--accent-soft)}
+.tbl.small{font-size:13px}
+.tbl tr.badrow td{background:var(--bad-bg); color:var(--bad)}
+.impl{margin:8px 0 0; padding-left:18px; font-size:14px; color:var(--muted)}
+.impl.bad{color:var(--bad)}
+
+/* layar lebar: menu tetap di kiri */
+body.pinned{padding-left:264px}
+body.pinned #drawer{position:fixed; top:0; left:0; bottom:0; right:auto; width:264px; z-index:40}
+body.pinned #drawer .dbg{display:none}
+body.pinned #drawer aside{width:264px; box-shadow:none; border-right:1px solid var(--line)}
+body.pinned .hbtn[data-action="menu"]{display:none}
+body.pinned .top .in{max-width:1180px; padding-left:16px}
+body.pinned .wrap{max-width:1180px}
+body.pinned .bnav{display:none}
+body.pinned .fab{right:24px; bottom:24px}
+body.pinned .pbar{left:264px}
+body.pinned #toast{bottom:32px}
+.wrap.wide .jlist,.wrap.wide .tblwrap{max-width:none}
+.wrap.wide #jlist{display:block}
+
+.muted a,.note a{color:var(--accent)}
+.sh-row{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.sh-row .sh-t{min-width:0; overflow-wrap:anywhere}

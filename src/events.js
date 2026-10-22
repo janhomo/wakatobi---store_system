@@ -35,7 +35,7 @@ function gabungJenis() {
 }
 function saveTambah() {
   const f = S.form, print = this && this.print;
-  const unit = { u: clean(val('tu')), sn: clean(val('tsn')), sl: ksegVal('tk') || 'Normal', loc: clean(val('tloc')) || 'Gudang', cat: val('tcat').trim() };
+  const unit = { u: clean(val('tu')), sn: clean(val('tsn')), sl: ksegVal('tk') || 'Normal', loc: clean(val('tloc')), cat: val('tcat').trim() };
   const payload = { f: unit };
   if (f.step === 'baru') {
     const c = selVal('tkat', 'tkatNew'), n = clean(val('tnama'));
@@ -49,6 +49,8 @@ function saveTambah() {
     else go('jenis', { jid: j.jenisId, kode: j.kode, replace: true });
   });
 }
+
+function afterOv(fn) { if (S.ov.length) { S.pending = fn; history.go(-S.ov.length); } else fn(); }
 
 document.addEventListener('click', async e => {
   const t = e.target.closest('[data-action]'); if (!t) return;
@@ -75,7 +77,7 @@ document.addEventListener('click', async e => {
     case 'logout': S.tok = ''; lsSet('qrg.tok', ''); lsSet('qrg.hadTok', false); closeTop(); showPin(); break;
     case 'jenis': go('jenis', { jid: t.dataset.id }); break;
     case 'openunit': openUnit(t.dataset.k); break;
-    case 'jtab': S.tab = t.dataset.t; history.replaceState({ ...curState(), d: (history.state && history.state.d) || 0 }, '', URL_); $('#app').innerHTML = viewJenis(); if (S.tab === 'riwayat') loadRiwayatJenis(); break;
+    case 'jtab': S.tab = t.dataset.t; history.replaceState({ ...curState(), d: (history.state && history.state.d) || 0 }, '', URL_); $('#app').innerHTML = viewJenis(); if (S.tab === 'riwayat') loadRiwayatJenis(); if (S.tab === 'panduan') loadPanduan(); break;
     case 'filter': S.filter = t.dataset.f; renderJlist(); break;
     case 'uedit': go('unit', { kode: t.dataset.k, jid: U[t.dataset.k].j }); break;
     case 'jedit': go('jedit', { jid: curJid() }); break;
@@ -108,6 +110,69 @@ document.addEventListener('click', async e => {
       callEdit('renameMerek', { from, to }, r => r.changed ? 'Merek diubah di ' + r.changed + ' jenis.' : 'Tidak ada yang berubah.', () => render());
       break;
     }
+    /* foto */
+    case 'fotoedit': openFoto(t.dataset.id); break;
+    case 'fotoclose': closeTop(); break;
+    case 'fotocam': $('#fileCam').click(); break;
+    case 'fotogal': $('#fileGal').click(); break;
+    case 'fotorot': if (S.fotoEd && S.fotoEd.src) { S.fotoEd.rot = (S.fotoEd.rot + Number(t.dataset.d) + 4) % 4; S.fotoEd.ox = 0; S.fotoEd.oy = 0; makeWork(); drawCrop(); } break;
+    case 'fotoback': if (S.fotoEd) { S.fotoEd.step = 'pilih'; renderFoto(); } break;
+    case 'fotosave': fotoSave(); break;
+    case 'fotohapus': fotoHapus(); break;
+    /* profil mesin */
+    case 'ptab': S.tab = t.dataset.t; history.replaceState({ ...curState(), d: (history.state && history.state.d) || 0 }, '', URL_); $('#app').innerHTML = viewProfil(); renderLive(); if (S.tab === 'riw') loadRiwayatUnit(); break;
+    case 'opentab': go('jenis', { jid: t.dataset.id, tab: t.dataset.t }); break;
+    /* penyimpanan */
+    case 'opentempat': go('tempat', { tid: t.dataset.id }); break;
+    case 'tempatbaru': go('tempatform', {}); break;
+    case 'tempatedit': go('tempatform', { tid: t.dataset.id }); break;
+    case 'tempatsave': saveTempat(); break;
+    case 'tempatoff': callEdit('nonaktifTempat', { id: t.dataset.id }, 'Tempat dinonaktifkan.', () => go('tempatlist', { root: true })); break;
+    case 'tempataktif': callEdit('aktifTempat', { id: t.dataset.id }, 'Tempat diaktifkan kembali.', () => render()); break;
+    case 'toggleoff': S.showOffT = !S.showOffT; renderTempatList(); break;
+    case 'tambahke': go('tambahtempat', { tid: t.dataset.id, form: { tab: 'mesin', q: '', filt: 'belum', sel: [], selM: [] } }); break;
+    case 'atab': if (S.form) { S.form.tab = t.dataset.t; S.form.q = ''; S.form.filt = 'belum'; $('#app').innerHTML = viewTambahTempat(); renderTambahTempat(); } break;
+    case 'afilt': if (S.form) { S.form.filt = t.dataset.f; renderTambahTempat(); } break;
+    case 'selunit': case 'selmat': if (S.form) { const l = a === 'selunit' ? S.form.sel : S.form.selM, i = l.indexOf(t.dataset.k); if (i >= 0) l.splice(i, 1); else l.push(t.dataset.k); renderTambahTempat(); } break;
+    case 'ascan': openScan({ mode: 'tambah' }); break;
+    case 'asave': saveTambahTempat(); break;
+    case 'scanopenunit': go('profil', { kode: t.dataset.k, jid: U[t.dataset.k].j }); break;
+    case 'placeclose': if (S.scan) { S.scan.place = null; S.scan.paused = false; lastCode = ''; renderScan(); } break;
+    case 'placeopen': go('tempat', { tid: t.dataset.id }); break;
+    case 'pickplace': {
+      const inp = $('#' + t.dataset.for), lab = $('#' + t.dataset.for + '-l');
+      openPicker({ title: 'Tempat simpan', sub: 'Pilih rak, lemari, atau kontainer.', items: [{ v: '', l: 'Belum punya tempat' }, ...activePlaces().map(p => ({ v: p.id, l: p.n, s: p.l || p.id }))],
+        onPick: it => { if (inp) inp.value = it.v; if (lab) lab.textContent = it.v ? it.l : 'Belum punya tempat'; if (t.dataset.for === 'tloc' && S.form) S.form.loc = it.v; } });
+      break;
+    }
+    case 'pickitem': pickItem(t.dataset.i); break;
+    /* material dan stok */
+    case 'matbaru': go('matform', { form: { loc: '' } }); break;
+    case 'matedit': go('matform', { mid: S.mid }); break;
+    case 'matsave': saveMat(); break;
+    case 'matonoff': callEdit('statusMaterial', { id: S.mid, off: t.dataset.off === '1' }, t.dataset.off === '1' ? 'Material dinonaktifkan.' : 'Material diaktifkan kembali.'); break;
+    case 'openmat': go('mat', { mid: t.dataset.id }); break;
+    case 'mcat': S.mcat = t.dataset.c; renderMatList(); break;
+    case 'toggleoffm': S.showOffM = !S.showOffM; renderMatList(); break;
+    case 'stokopen': openStok(t.dataset.id, t.dataset.t); break;
+    case 'stokclose': closeTop(); break;
+    case 'stoktipe': if (S.stokEd) { const m = stokMat(); S.stokEd.tipe = t.dataset.t; S.stokEd.jumlah = t.dataset.t === 'Koreksi' && m ? String(m.q) : '1'; renderStok(); } break;
+    case 'stokstep': if (S.stokEd) { const j = Math.max(0, Math.round(((stokNum() || 0) + Number(t.dataset.d)) * 1000) / 1000); S.stokEd.jumlah = String(j); $('#stokJ').value = S.stokEd.jumlah; stokPreview(); } break;
+    case 'stokq': if (S.stokEd) { S.stokEd.jumlah = t.dataset.n; $('#stokJ').value = t.dataset.n; stokPreview(); } break;
+    case 'stoknama': openPicker({ title: 'Siapa?', sub: 'Nama pekerja yang mengambil atau menerima.', onPick: n => { if (S.stokEd) { S.stokEd.nama = n; renderStok(); } } }); break;
+    case 'stokgo': stokSubmit(); break;
+    /* panduan */
+    case 'pdedit': go('panduan', { jid: curJid() }); break;
+    case 'pdsave': savePanduan(); break;
+    case 'pdver': if (S.pd) { S.pd.vi = Number(t.dataset.i); const el = $('#live-pd'); if (el) el.innerHTML = livePanduan(); } break;
+    case 'pdmaint': pdMaint(); break;
+    /* impor excel */
+    case 'impcontoh': impContoh(); break;
+    case 'impreset': S.imp = null; impRender(); break;
+    case 'impgo': impGo(); break;
+    /* menu */
+    case 'dscan': afterOv(() => openScan({ mode: 'ambil' })); break;
+    case 'dtambah': go('tambah', { form: { step: 'pilih' } }); break;
     /* maintenance */
     case 'maintopen': $('#maintForm').hidden = false; t.hidden = true; $('#mCat').focus(); break;
     case 'maintcancel': $('#maintForm').hidden = true; $('#maintOpenBtn').hidden = false; break;
@@ -192,6 +257,12 @@ document.addEventListener('submit', async e => {
 document.addEventListener('input', e => {
   const id = e.target.id;
   if (id === 'q') { S.q = e.target.value; renderJlist(); }
+  else if (id === 'pq') { S.tq = e.target.value; renderTempatList(); }
+  else if (id === 'mq') { S.mqq = e.target.value; renderMatList(); }
+  else if (id === 'aq') { if (S.form) { S.form.q = e.target.value; renderTambahTempat(); } }
+  else if (id === 'stokJ') { if (S.stokEd) { S.stokEd.jumlah = e.target.value; stokPreview(); } }
+  else if (id === 'stokC') { if (S.stokEd) S.stokEd.cat = e.target.value; }
+  else if (id === 'cropZoom') { if (S.fotoEd) { S.fotoEd.zoom = Number(e.target.value); drawCrop(); } }
   else if (id === 'tq') { S.form.q = e.target.value; const q = norm(e.target.value); $('#tlist').innerHTML = tambahList(S.jenis.filter(j => !q || norm([j.n, j.b, j.m].join(' ')).includes(q)).sort((a, b) => byName(a.n, b.n) || byName(a.b, b.b))); }
   else if (id === 'pickq') { S.picker.q = e.target.value; fillPicker(); }
   else if (id === 'pinInput') e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
@@ -204,6 +275,8 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => {
   const id = e.target.id, v = e.target.value;
+  if (id === 'impFile') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) impLoad(f); return; }
+  if (id === 'fileCam' || id === 'fileGal') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) fotoPicked(f); return; }
   if (id === 'tkat') { $('#tkatBox').hidden = v !== '__new'; updateCodePrev(); }
   else if (id === 'jkat') $('#jkatBox').hidden = v !== '__new';
   else if (id === 'tmerek') $('#tmerekBox').hidden = v !== '__new';
@@ -216,26 +289,42 @@ document.addEventListener('keydown', e => {
 /* ---------- hash (stiker lama: #BOR-014) dan siklus aplikasi ---------- */
 function codeFromHash() {
   const h = decodeURIComponent((location.hash || '').slice(1)).toUpperCase();
-  return /^[A-Z]{3}-\d{3}$/.test(h) ? h : '';
+  return /^(?:[A-Z]{3}|LOK|MAT)-\d{3}$/.test(h) ? h : '';
 }
-window.addEventListener('hashchange', () => { const k = codeFromHash(); if (k) { history.replaceState(history.state, '', URL_); if (U[k]) openUnit(k); else toast(k + ' tidak ada di daftar.'); } });
+function openCode(k) {
+  if (isLok(k)) { if (T[k]) go('tempat', { tid: k }); else toast(k + ' tidak ada di daftar.'); }
+  else if (/^MAT-/.test(k)) { if (M[k]) go('mat', { mid: k }); else toast(k + ' tidak ada di daftar.'); }
+  else if (U[k]) openUnit(k); else toast(k + ' tidak ada di daftar.');
+}
+window.addEventListener('hashchange', () => { const k = codeFromHash(); if (k) { history.replaceState(history.state, '', URL_); openCode(k); } });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { if (S.scan) stopCamera(); }
   else { flush(); loadAll(true); if (S.scan && !S.scan.done) startCamera(); }
 });
 window.addEventListener('online', () => { flush(); loadAll(true); });
 
+/* ---------- layar lebar: menu samping tetap terlihat ---------- */
+function applyPinned(init) {
+  S.pinned = isWide(); document.body.classList.toggle('pinned', S.pinned);
+  const d = $('#drawer');
+  if (S.pinned) { if (S.ov.includes('drawer')) S.ov.splice(S.ov.indexOf('drawer'), 1); renderDrawer(); d.hidden = false; }
+  else if (!S.ov.includes('drawer')) d.hidden = true;
+  if (!init) renderChrome();
+}
+
 /* ---------- mulai ---------- */
 (function start() {
   const c = lsGet('qrg.c3', null);
   if (c && c.jenis) applyData(c);
   const k = codeFromHash();
-  if (k) { S.view = 'jenis'; S.kode = k; }
+  if (k) { if (isLok(k)) { S.view = 'tempat'; S.tid = k; } else if (/^MAT-/.test(k)) { S.view = 'mat'; S.mid = k; } else { S.view = 'profil'; S.kode = k; } }
+  applyPinned(true);
   history.replaceState({ ...curState(), d: 0 }, '', URL_);
   render();
   if (!S.tok && API_URL && !API_URL.includes('PASTE')) showPin(); else loadAll();
   flush();
-  setInterval(() => { if (document.hidden || Q.busy) return; if (['jenis', 'hari', 'riwayat'].includes(S.view) || S.scan) loadAll(true); }, 20000);
+  setInterval(() => { if (document.hidden || Q.busy) return; if (['jenis', 'profil', 'hari', 'riwayat', 'tempat', 'tempatlist', 'material', 'mat'].includes(S.view) || S.scan) loadAll(true); }, 20000);
+  window.matchMedia('(min-width: 1000px)').addEventListener('change', () => { applyPinned(); render(); });
   setInterval(flush, 25000);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();

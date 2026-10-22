@@ -134,6 +134,7 @@ function imporAwal() {
   });
   ju.getRange(2, 1, jrows.length, 6).setValues(jrows);
   uu.getRange(2, 1, urows.length, 11).setValues(urows);
+  if (sheet_('Tempat')) migrasiTempat_();
   log_('', 'Impor awal', urows.length + ' unit dalam ' + jrows.length + ' jenis dari lembar catat penjaga', 'Impor awal');
   pesanImpor_('Selesai. ' + urows.length + ' unit dalam ' + jrows.length + ' jenis dimasukkan. Buka website dan muat ulang.');
 }

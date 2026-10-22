@@ -39,7 +39,20 @@ const IC = {
   refresh: '<path d="M20 11a8 8 0 00-14-4M4 5v4h4M4 13a8 8 0 0014 4M20 19v-4h-4"/>',
   logout: '<path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
-  chev: '<path d="M9 5l7 7-7 7"/>'
+  chev: '<path d="M9 5l7 7-7 7"/>',
+  box: '<path d="M4 8l8-4 8 4v9l-8 4-8-4zM4 8l8 4 8-4M12 12v9"/>',
+  cam: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  img: '<rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4 4 3 3-2 4 3"/>',
+  search: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
+  check: '<path d="M5 12l5 5 9-10"/>',
+  rotl: '<path d="M4 9a8 8 0 1114 6M4 4v5h5"/>',
+  rotr: '<path d="M20 9a8 8 0 10-14 6M20 4v5h-5"/>',
+  upload: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
+  print: '<path d="M7 9V4h10v5M7 17H5a1 1 0 01-1-1v-5a2 2 0 012-2h12a2 2 0 012 2v5a1 1 0 01-1 1h-2"/><rect x="7" y="14" width="10" height="6"/>',
+  layers: '<path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/>',
+  book: '<path d="M5 4h10a3 3 0 013 3v13H8a3 3 0 01-3-3zM5 17a3 3 0 013-3h10"/>',
+  minus: '<path d="M5 12h14"/>',
+  alert: '<path d="M12 4l9 16H3zM12 10v4M12 17h.01"/>'
 };
 const ic = (n, s = 24) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
 
@@ -47,14 +60,14 @@ const ic = (n, s = 24) => '<svg width="' + s + '" height="' + s + '" viewBox="0 
 const KONDISI = ['Normal', 'Servis', 'Rusak', 'Rusak total', 'Belum dicek'];
 const MJENIS = ['Servis rutin', 'Ganti sparepart', 'Perbaikan', 'Kalibrasi', 'Pengecekan', 'Lainnya'];
 const S = {
-  view: 'mesin', jid: null, kode: null, tab: 'unit', filter: '', q: '',
-  jenis: [], units: [], kategori: [], pekerja: [], maintServer: [], pengServer: [], pengDate: null, belumServer: [], cfg: { jamPulang: '17:00' },
+  view: 'mesin', jid: null, kode: null, tid: null, mid: null, tab: 'unit', filter: '', q: '',
+  jenis: [], units: [], kategori: [], tempat: [], material: [], pekerja: [], maintServer: [], pengServer: [], pengDate: null, belumServer: [], cfg: { jamPulang: '17:00' },
   loaded: false, loadError: null, tok: lsGet('qrg.tok', ''), me: lsGet('qrg.me', ''),
   ov: [], pending: null, form: null, confirmDel: null,
   rwDate: null, rw: { list: null, error: false }, riw: { key: null, list: null, error: false }, logs: { list: null, error: false },
   scan: null, picker: null, justAdded: null, focus: null
 };
-let J = {}, U = {}, JU = {};
+let J = {}, U = {}, JU = {}, T = {}, M = {};
 
 function statusOf(label) {
   const l = norm(label);
@@ -64,7 +77,9 @@ function statusOf(label) {
   return 'warn';
 }
 function buildMaps() {
-  J = {}; U = {}; JU = {};
+  J = {}; U = {}; JU = {}; T = {}; M = {};
+  S.tempat.forEach(t => { T[t.id] = t; });
+  S.material.forEach(m => { M[m.id] = m; });
   S.jenis.forEach(j => { J[j.id] = j; JU[j.id] = []; });
   S.units.forEach(u => { U[u.k] = u; if (JU[u.j]) JU[u.j].push(u); });
   Object.values(JU).forEach(l => l.sort((a, b) => (Number(a.u) || 0) - (Number(b.u) || 0) || a.k.localeCompare(b.k)));
@@ -73,11 +88,12 @@ function setUnits(list) {
   S.units = list.map(u => ({ ...u, off: !!u.off, cond: clean(u.sl) || 'Belum dicek', s: u.off ? 'unk' : statusOf(u.sl), sl: u.off ? 'Nonaktif' : (clean(u.sl) || 'Belum dicek') }));
 }
 function applyData(d) {
-  S.jenis = d.jenis || []; S.kategori = d.kategori || [];
+  S.jenis = d.jenis || []; S.kategori = d.kategori || []; S.tempat = d.tempat || []; S.material = d.material || [];
   setUnits(d.unit || []);
   buildMaps();
   S.pekerja = d.pekerja || []; S.maintServer = d.maintenance || d.maint || []; S.belumServer = d.belum || []; S.cfg = d.cfg || S.cfg;
   S.loaded = true;
+  if (typeof syncFoto === 'function') syncFoto();
 }
 const deptOf = nama => { const p = S.pekerja.find(p => norm(p.n) === norm(nama)); return p ? p.d : ''; };
 const jenisOf = u => J[u.j] || { id: u.j, n: u.k, b: '', m: '', c: '' };
@@ -88,6 +104,49 @@ const unitTitle = u => jenisOf(u).n + ' · Unit ' + u.u;
 function patchUnit(kode, kondisi) {
   const u = U[kode]; if (!u) return;
   u.cond = kondisi; u.sl = u.off ? 'Nonaktif' : kondisi; u.s = u.off ? 'unk' : statusOf(kondisi);
+}
+
+/* ---------- tempat penyimpanan ---------- */
+const isLok = v => /^LOK-\d{3}$/.test(String(v || ''));
+const placeOf = u => (u && isLok(u.loc) ? T[u.loc] : null);
+const hasPlace = u => !!placeOf(u);
+const placeName = u => { const t = placeOf(u); return t ? t.n : ''; };
+const placeText = u => { const t = placeOf(u); return t ? t.n + (t.l ? ' · ' + t.l : '') : 'Belum punya tempat'; };
+const activePlaces = () => S.tempat.filter(t => !t.off).sort((a, b) => byName(a.n, b.n));
+function placeSummary(tid) {
+  const held = heldMap();
+  const us = S.units.filter(u => !u.off && u.loc === tid);
+  const mats = allMaterial().filter(m => !m.off && m.loc === tid);
+  return { units: us, out: us.filter(u => held.has(u.k)).length, mats, low: mats.filter(isLow).length };
+}
+
+/* ---------- material dan stok (dengan catatan stok yang menunggu terkirim) ---------- */
+function stokApply(q, p) {
+  const j = Number(String(p.jumlah).replace(',', '.')) || 0;
+  return p.tipe === 'Keluar' ? Math.round((q - j) * 1000) / 1000 : p.tipe === 'Masuk' ? Math.round((q + j) * 1000) / 1000 : j;
+}
+function allMaterial() {
+  const pend = Q.items.filter(i => i.action === 'stok');
+  return S.material.map(m => {
+    let q = m.q; pend.forEach(i => { if (i.payload.mat === m.id) q = stokApply(q, i.payload); });
+    return pend.length && q !== m.q ? { ...m, q, pending: true } : m;
+  });
+}
+const isLow = m => m.lo > 0 && m.q <= m.lo;
+const fmtQty = n => { const r = Math.round(n * 1000) / 1000; return r.toLocaleString('id-ID', { maximumFractionDigits: 3 }); };
+
+/* ---------- servis berikutnya: dari catatan maintenance, atau interval panduan ---------- */
+function addMonths(ymdStr, n) { const d = parseYmd(ymdStr); const day = d.getDate(); d.setMonth(d.getMonth() + n); if (d.getDate() < day) d.setDate(0); return ymd(d); }
+function nextService(k) {
+  const u = U[k]; if (!u) return '';
+  const l = maintFor(k); if (!l.length) return '';
+  if (l[0].next) return l[0].next;
+  const j = J[u.j]; return j && j.pi > 0 ? addMonths(l[0].tgl, j.pi) : '';
+}
+function serviceText(k) {
+  const n = nextService(k); if (!n) return { t: 'Belum ada jadwal', c: '' };
+  const d = daysFromToday(n);
+  return d < 0 ? { t: 'Terlewat ' + (-d) + ' hari', c: 'late' } : d === 0 ? { t: 'Hari ini', c: 'warn' } : { t: d + ' hari lagi', c: d <= 7 ? 'warn' : '' };
 }
 
 /* ---------- API dan login ---------- */
@@ -132,7 +191,10 @@ async function flush() {
   try {
     while (Q.items.length) {
       const it = Q.items[0];
-      try { await api(it.action, it.payload); sent = true; }
+      try {
+        await api(it.action, it.payload); sent = true;
+        if (it.action === 'stok' && M[it.payload.mat]) { M[it.payload.mat].q = stokApply(M[it.payload.mat].q, it.payload); if (S.view === 'mat' && S.mid === it.payload.mat) setTimeout(loadStokLog, 0); }
+      }
       catch (e) {
         if (e.code === 'network' || e.code === 'config') break;
         if (e.code === 'pin') { showPin('Masuk lagi dengan PIN.'); break; }
@@ -186,7 +248,7 @@ async function loadAll(silent) {
     const j = await api('bootstrap', { tgl });
     S.pengServer = j.pengambilan || []; S.pengDate = tgl;
     applyData(j); S.loadError = null;
-    lsSet('qrg.c3', { jenis: j.jenis, unit: j.unit, kategori: j.kategori, pekerja: j.pekerja, maintenance: j.maintenance, belum: j.belum, cfg: j.cfg });
+    lsSet('qrg.c3', { jenis: j.jenis, unit: j.unit, kategori: j.kategori, tempat: j.tempat, material: j.material, pekerja: j.pekerja, maintenance: j.maintenance, belum: j.belum, cfg: j.cfg });
   } catch (e) {
     if (e.code === 'pin') { showPin(S.tok === '' && lsGet('qrg.hadTok', false) ? 'Masuk lagi dengan PIN.' : ''); return; }
     S.loadError = e.code;
@@ -197,11 +259,11 @@ async function loadAll(silent) {
 
 /* ---------- navigasi dengan riwayat browser (tombol Back Android) ---------- */
 const URL_ = location.pathname + location.search;
-function curState() { return { v: S.view, jid: S.jid, kode: S.kode, tab: S.tab, ovn: S.ov.length }; }
-function resetTransient() { S.confirmDel = null; S.form = null; S.justAdded = null; }
+function curState() { return { v: S.view, jid: S.jid, kode: S.kode, tid: S.tid, mid: S.mid, tab: S.tab, ovn: S.ov.length }; }
+function resetTransient() { S.confirmDel = null; S.form = null; S.justAdded = null; if (S.view !== 'panduan') S.pd = null; }
 function go(view, o = {}) {
   if (S.ov.length) { S.pending = () => go(view, o); history.go(-S.ov.length); return; }
-  S.view = view; S.jid = o.jid || null; S.kode = o.kode || null; S.tab = o.tab || 'unit'; S.focus = null;
+  S.view = view; S.jid = o.jid || null; S.kode = o.kode || null; S.tid = o.tid || null; S.mid = o.mid || null; S.tab = o.tab || 'unit'; S.focus = null;
   resetTransient(); S.form = o.form || null; S.justAdded = o.justAdded || null;
   if (view === 'riwayat') S.rwDate = null;
   const st = curState();
@@ -221,29 +283,35 @@ function pushOv(name) {
 }
 function closeTop() { if (S.ov.length) history.back(); }
 function closeOv(name) {
-  if (name === 'scan') { stopCamera(); $('#scan').hidden = true; S.scan = null; }
+  if (name === 'scan') { stopCamera(); $('#scan').hidden = true; S.scan = null; if (S.view === 'tambahtempat') render(); }
   else if (name === 'picker') { $('#picker').hidden = true; S.picker = null; }
-  else if (name === 'drawer') { $('#drawer').hidden = true; }
+  else if (name === 'drawer') { if (!S.pinned) $('#drawer').hidden = true; }
+  else if (name === 'foto') { $('#fotoSheet').hidden = true; S.fotoEd = null; }
+  else if (name === 'stok') { $('#stokSheet').hidden = true; S.stokEd = null; }
 }
 window.addEventListener('popstate', e => {
   const st = e.state || { v: 'mesin', d: 0, ovn: 0 };
   const target = st.ovn || 0;
   while (S.ov.length > target) closeOv(S.ov.pop());
-  if (st.v !== S.view || (st.jid || null) !== S.jid || (st.kode || null) !== S.kode || (st.tab || 'unit') !== S.tab) {
-    S.view = st.v; S.jid = st.jid || null; S.kode = st.kode || null; S.tab = st.tab || 'unit'; resetTransient();
+  if (st.v !== S.view || (st.jid || null) !== S.jid || (st.kode || null) !== S.kode || (st.tid || null) !== S.tid || (st.mid || null) !== S.mid || (st.tab || 'unit') !== S.tab) {
+    S.view = st.v; S.jid = st.jid || null; S.kode = st.kode || null; S.tid = st.tid || null; S.mid = st.mid || null; S.tab = st.tab || 'unit'; resetTransient();
     if (S.view === 'riwayat') S.rwDate = null;
     render(); onEnter();
   } else refresh();
   const p = S.pending; S.pending = null; if (p) p();
 });
 function onEnter() {
+  if (S.view === 'profil' && S.tab === 'riw') loadRiwayatUnit();
+  if (S.view === 'mat') loadStokLog();
+  if (S.view === 'panduan' && !(S.pd && S.pd.list)) loadPanduan();
+  if (S.view === 'jenis' && S.tab === 'panduan') loadPanduan();
   if (S.view === 'riwayat') loadRingkasan();
   if (S.view === 'log') loadLogs();
   if (S.view === 'jenis' && S.tab === 'riwayat') loadRiwayatJenis();
   if (S.view === 'jenis' && (S.focus || S.kode)) setTimeout(() => { const el = $('.ucard.focus'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' }); }, 30);
   if (S.pengDate !== currentDate()) loadAll(true);
 }
-function openUnit(k) { const u = U[k]; if (u) go('jenis', { jid: u.j, kode: k }); }
+function openUnit(k) { const u = U[k]; if (u) go('profil', { kode: k, jid: u.j }); }
 const curJid = () => S.jid || (S.kode && U[S.kode] ? U[S.kode].j : null);
 
 /* ---------- util UI ---------- */

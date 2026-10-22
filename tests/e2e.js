@@ -27,10 +27,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
 // ---- data awal
+srv({ action: 'addTempat', nama: 'Gudang Karpenter' });
 const bor = srv({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 'Bor', b: 'Bosch', m: 'GBH 2-28' }, f: { sl: 'Normal' } });
 srv({ action: 'addUnit', jenisId: bor.jenisId, f: { sl: 'Normal' } });
 srv({ action: 'addUnit', jenisId: bor.jenisId, f: { sl: 'Normal', sn: 'SN-77' } });
-const grd = srv({ action: 'addUnit', jenis: { c: 'Gurinda/Mesin Potong', n: 'Gurinda tangan', b: 'Makita', m: '9553' }, f: { sl: 'Normal', loc: 'Gudang Karpenter' } });
+const grd = srv({ action: 'addUnit', jenis: { c: 'Gurinda/Mesin Potong', n: 'Gurinda tangan', b: 'Makita', m: '9553' }, f: { sl: 'Normal', loc: 'LOK-001' } });
 srv({ action: 'addUnit', jenisId: grd.jenisId, f: { sl: 'Rusak', cat: 'Kabel putus' } });
 srv({ action: 'addUnit', jenis: { c: 'Mesin Karpenter', n: 'Gergaji circular', b: 'Makita', m: '5008' }, f: { sl: 'Normal' } });
 srv({ action: 'savePekerja', pekerja: [{ n: 'Budi', d: 'Karpenter' }, { n: 'Andi', d: 'Pembesian' }, { n: 'Citra', d: 'Listrik' }] });
@@ -103,7 +104,12 @@ const jenisId = bor.jenisId;
   await page.click('[data-action="uedit"][data-k="BOR-002"]');
   await page.waitForSelector('#uu');
   check('unit edit: code shown, not editable', (await txt(page, '#app')).includes('BOR-002') && (await page.locator('input[value="BOR-002"]').count()) === 0);
-  await page.click('#uk [data-v="Servis"]'); await page.fill('#uloc', 'Gudang Utara'); await page.fill('#ucat', 'Karbon brush aus');
+  await page.click('#uk [data-v="Servis"]');
+  await page.click('[data-action="pickplace"]'); await page.waitForSelector('#picker:not([hidden]) [data-action="pickitem"]');
+  check('place chooser lists "Belum punya tempat" + Gudang Karpenter', (await txt(page, '#picker')).includes('Belum punya tempat') && (await txt(page, '#picker')).includes('Gudang Karpenter'), await txt(page, '#picker'));
+  await page.click('#picker [data-action="pickitem"]:has-text("Gudang Karpenter")'); await page.waitForSelector('#picker', { state: 'hidden' });
+  check('place label updated on the form', (await txt(page, '#uloc-l')).includes('Gudang Karpenter'), await txt(page, '#uloc-l'));
+  await page.fill('#ucat', 'Karbon brush aus');
   await page.click('[data-action="usave"]');
   await page.waitForSelector('#picker:not([hidden])');
   check('first save asks "Siapa Anda?"', (await txt(page, '#picker')).includes('Siapa Anda'));
@@ -111,7 +117,7 @@ const jenisId = bor.jenisId;
   await page.waitForSelector('.ucard');
   await page.waitForTimeout(300);
   const ur = unitRow('BOR-002');
-  check('unit saved in sheet (Servis, tempat, catatan)', ur[3] === 'Servis' && ur[4] === 'Gudang Utara' && ur[8] === 'Karbon brush aus', JSON.stringify(ur));
+  check('unit saved in sheet (Servis, tempat, catatan)', ur[3] === 'Servis' && ur[4] === 'LOK-001' && ur[8] === 'Karbon brush aus', JSON.stringify(ur));
   check('log has who/old>new', rows('Log Perubahan').some(r => r[1] === 'BOR-002' && r[2] === 'Ubah unit' && r[4] === 'Budi' && String(r[3]).includes('Normal > Servis')), JSON.stringify(rows('Log Perubahan').slice(-2)));
   check('back on jenis detail with servis pill + note', (await txt(page, '#u-BOR-002')).includes('Servis') && (await txt(page, '#u-BOR-002')).includes('Karbon brush aus'), await txt(page, '#u-BOR-002'));
   check('own name remembered', await page.evaluate(() => JSON.parse(localStorage.getItem('qrg.me'))) === 'Budi');
@@ -286,11 +292,11 @@ const jenisId = bor.jenisId;
   await page.click('[data-action="retrusak"]'); await page.waitForTimeout(600);
   check('Rusak from Hari Ini: row + unit flagged', rows('Pengambilan').find(r => r[3] === 'BOR-003')[8] === 'Rusak' && unitRow('BOR-003')[3] === 'Rusak');
   // buka unit dari Hari Ini
-  await page.click('[data-action="openunit"][data-k="BOR-003"]'); await page.waitForSelector('.ucard.focus');
-  check('link from Hari Ini opens jenis detail focusing unit', await page.isVisible('#u-BOR-003.focus'));
+  await page.click('[data-action="openunit"][data-k="BOR-003"]'); await page.waitForSelector('.pid');
+  check('link from Hari Ini opens the unit profile', (await txt(page, '#hdr')).includes('BOR-003') && (await txt(page, '.pid')).includes('Bor · Unit 3'), await txt(page, '#hdr'));
 
   // ===== 13. menu samping
-  await page.click('#nvMesin'); await page.waitForSelector('[data-action="menu"]');
+  await page.goBack(); await page.waitForSelector('#nvMesin'); await page.click('#nvMesin'); await page.waitForSelector('[data-action="menu"]');
   await page.click('[data-action="menu"]'); await page.waitForSelector('#drawer:not([hidden]) aside');
   const dr = await txt(page, '#drawer');
   check('drawer: Mesin, Hari Ini, Riwayat, Merek, Pekerja, Log, label, name, keluar', ['Mesin', 'Hari Ini', 'Riwayat', 'Merek', 'Pekerja', 'Log perubahan', 'Cetak label QR', 'Nama saya: Budi', 'Keluar'].every(s => dr.includes(s)), dr);
@@ -329,8 +335,8 @@ const jenisId = bor.jenisId;
 
   // ===== 17. hash lama #KODE dan muat ulang
   await page.goto('http://localhost:8124/#BOR-002');
-  await page.waitForSelector('.ucard.focus');
-  check('opening #BOR-002 shows its jenis with BOR-002 focused', await page.isVisible('#u-BOR-002.focus') && (await txt(page, '#hdr')).includes('Bor'));
+  await page.waitForSelector('.pid');
+  check('opening #BOR-002 shows its profile', (await txt(page, '#hdr')).includes('BOR-002') && (await txt(page, '.pid')).includes('Bor · Unit 2'), await txt(page, '#hdr'));
   check('reload keeps login (token), no PIN screen', await page.isHidden('#pin'));
 
   // ===== 18. token tidak berlaku lagi → minta PIN

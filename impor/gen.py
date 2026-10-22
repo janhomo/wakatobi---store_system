@@ -1,5 +1,5 @@
 import re, json, collections
-src = open('sumber_excel.py').read()
+src = open('/tmp/claude-0/-home-claude/eda91aa1-27da-5de8-9165-aabef528fe76/scratchpad/data/build.py').read()
 src = src.split("assert len(rows) == 98")[0]
 ns = {}
 exec(src.split("wb = Workbook()")[0], ns)   # hanya bagian data

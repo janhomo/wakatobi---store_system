@@ -41,7 +41,7 @@ async function detect(v) {
 async function scanLoop() {
   if (!scanning) return;
   const v = $('#vid'), now = performance.now();
-  if (S.scan && !S.scan.paused && !S.scan.done && v.readyState >= 2 && now - lastTry > 110 && $('#picker').hidden) {
+  if (S.scan && !S.scan.paused && !S.scan.done && v.readyState >= 2 && now - lastTry > 110 && $('#picker').hidden && $('#stokSheet').hidden) {
     lastTry = now;
     let text = null; try { text = await detect(v); } catch (e) {}
     if (text && S.scan) onCode(text);
@@ -75,8 +75,22 @@ function onCode(text) {
   if (code === lastCode && now - lastAt < 2500) return;
   lastCode = code; lastAt = now;
   const sc = S.scan;
+  if (sc.mode === 'tambah') {
+    const f = S.form;
+    if (!U[code] || U[code].off) { setFb({ type: 'bad', text: 'QR ini bukan mesin yang aktif.' }); beep(false); return; }
+    if (f && !f.sel.includes(code)) f.sel.push(code);
+    beep(true); setFb({ type: 'ok', text: code + ' dipilih. ' + (f ? f.sel.length : 0) + ' mesin terpilih.' }); return;
+  }
+  if (isLok(code)) {
+    if (!T[code]) { setFb({ type: 'bad', text: code + ' tidak ada di daftar tempat.' }); beep(false); return; }
+    beep(true); sc.place = code; sc.paused = true; sc.fb = null; renderScan(); return;
+  }
+  if (/^MAT-\d{3}$/.test(code)) {
+    if (!M[code]) { setFb({ type: 'bad', text: code + ' tidak ada di daftar material.' }); beep(false); return; }
+    beep(true); openStok(code, 'Keluar'); return;
+  }
   if (sc.mode === 'lihat') {
-    if (U[code]) { beep(true); const k = code; go('jenis', { jid: U[k].j, kode: k }); }
+    if (U[code]) { beep(true); const k = code; go('profil', { kode: k, jid: U[k].j }); }
     else { setFb({ type: 'bad', text: 'QR ini bukan mesin gudang.' }); beep(false); }
     return;
   }
@@ -112,7 +126,7 @@ function scanKembali(code) {
   return { type: 'ok', text: code + ' kembali dari ' + item.nama };
 }
 
-const MODE_TITLE = { ambil: 'Daftar ambil', kembali: 'Daftar kembali', lihat: 'Lihat mesin' };
+const MODE_TITLE = { ambil: 'Daftar ambil', kembali: 'Daftar kembali', lihat: 'Lihat mesin', tambah: 'Pilih mesin' };
 function bitemHtml(b, i) {
   const u = U[b.kode], j = jenisOf(u), sc = S.scan;
   let h = '<div class="bitem' + (i === sc.basket.length - 1 && sc.paused ? ' new' : '') + '"><div class="r1"><span class="thumb">' + ic('tool', 26) + '</span><div class="inf"><b>' + esc(j.n) + ' · Unit ' + esc(u.u) + '</b>' +
@@ -131,8 +145,16 @@ function renderScan() {
   const sc = S.scan; if (!sc) return;
   document.querySelectorAll('#scan .mode button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === sc.mode)));
   $('#frame').className = 'frame' + (sc.fb && sc.fb.type !== 'info' ? ' ' + sc.fb.type : '');
-  $('#hint').textContent = sc.done ? '' : sc.paused ? 'Daftar siap. Tekan Tambah mesin untuk scan lagi.' : sc.mode === 'lihat' ? 'Arahkan kamera ke QR. Detail mesin akan terbuka.' : 'Arahkan kamera ke QR mesin.';
+  $('#hint').textContent = sc.place ? '' : sc.mode === 'tambah' ? 'Arahkan kamera ke QR mesin.' : sc.done ? '' : sc.paused ? 'Daftar siap. Tekan Tambah mesin untuk scan lagi.' : sc.mode === 'lihat' ? 'Arahkan kamera ke QR. Detail mesin akan terbuka.' : 'Arahkan kamera ke QR mesin.';
   const sh = $('#sheet');
+  $('#scan .mode').hidden = sc.mode === 'tambah';
+  if (sc.place) { sh.innerHTML = placePopup(sc.place); return; }
+  if (sc.mode === 'tambah') {
+    const n = S.form ? S.form.sel.length : 0;
+    sh.innerHTML = '<div class="grab"></div><div class="sh-h"><span class="t">Pilih mesin</span><span class="n">' + n + '</span></div>' + (sc.fb ? '<div class="fb ' + sc.fb.type + '">' + esc(sc.fb.text) + '</div>' : '<p class="muted" style="margin:0;font-size:15px">Scan QR mesin satu per satu. Yang di-scan ikut terpilih.</p>') +
+      '<div class="yn"><button class="yes" data-action="scanclose">Selesai</button></div>';
+    return;
+  }
   if (sc.done) {
     const d = sc.done;
     sh.innerHTML = '<div class="grab"></div><div class="donebox"><b>' + (d.mode === 'ambil' ? 'Tercatat diambil: ' : 'Tercatat kembali: ') + d.rec.length + ' mesin</b><ul>' +
@@ -205,6 +227,22 @@ function scanUndo() {
 /* tombol Ambil / Kembalikan pada kartu unit */
 function openScanPreset(mode, kode) { openScan({ mode, preset: [kode] }); }
 
+
+/* popup isi tempat (hasil scan QR tempat LOK-xxx) */
+function placePopup(tid) {
+  const t = T[tid]; if (!t) return '';
+  const sm = placeSummary(tid), held = heldMap();
+  const urow = u => { const h = held.get(u.k); return '<button class="trow" data-action="scanopenunit" data-k="' + esc(u.k) + '"><span class="nm"><span class="code">' + esc(u.k) + '</span><b>' + esc(unitTitle(u)) + '</b></span>' +
+    (h ? '<span class="pill out">Di luar · ' + esc(h.nama) + '</span>' : u.s === 'ok' ? '<span class="pill ok">Di tempat</span>' : '<span class="pill ' + u.s + '">' + esc(u.sl) + '</span>') + '</button>'; };
+  const mrow = m => '<div class="trow mat"><button class="nm lnkbtn" data-action="openmat" data-id="' + esc(m.id) + '"><b>' + esc(m.n) + '</b></button>' +
+    '<button class="rnd" data-action="stokopen" data-id="' + esc(m.id) + '" data-t="Keluar" aria-label="Kurangi">−</button><span class="qty"><b>' + esc(fmtQty(m.q)) + '</b><small>' + esc(m.s) + '</small></span><button class="rnd" data-action="stokopen" data-id="' + esc(m.id) + '" data-t="Masuk" aria-label="Tambah">+</button></div>';
+  return '<div class="grab"></div><div class="sh-h"><span class="t">' + esc(t.n) + '</span><span class="n">' + sm.units.length + '</span></div><p class="muted" style="margin:-4px 0 0;font-size:14px"><span class="code">' + esc(t.id) + '</span>' + (t.l ? ' · ' + esc(t.l) : '') + ' · ' + sm.units.length + ' mesin · ' + sm.mats.length + ' material</p>' +
+    (sm.units.length ? '<div class="tbox scroll">' + sm.units.sort((a, b) => a.k.localeCompare(b.k)).map(urow).join('') + '</div>' : '') +
+    (sm.mats.length ? '<div class="tbox scroll">' + sm.mats.sort((a, b) => byName(a.n, b.n)).map(mrow).join('') + '</div>' : '') +
+    (!sm.units.length && !sm.mats.length ? '<p class="muted" style="margin:0">Tempat ini masih kosong.</p>' : '') +
+    '<div class="yn"><button class="no" data-action="placeclose">Scan lagi</button><button class="yes" data-action="placeopen" data-id="' + esc(t.id) + '">Buka semua</button></div>';
+}
+
 /* ---------- pemilih nama ---------- */
 function openPicker(o) {
   S.picker = { q: '', ...o };
@@ -214,13 +252,19 @@ function openPicker(o) {
 function renderPicker() {
   const pk = S.picker; if (!pk) return;
   $('#picker').innerHTML = '<h2>' + esc(pk.title || 'Pilih nama') + '</h2>' + (pk.sub ? '<p class="muted" style="margin:0">' + esc(pk.sub) + '</p>' : '') +
-    '<input id="pickq" class="field" type="search" placeholder="Cari nama atau departemen" autocomplete="off" aria-label="Cari nama pekerja" value="' + esc(pk.q) + '"><div class="pl" id="pickres"></div>' +
+    '<input id="pickq" class="field" type="search" placeholder="' + (pk.items ? 'Cari' : 'Cari nama atau departemen') + '" autocomplete="off" aria-label="Cari" value="' + esc(pk.q) + '"><div class="pl" id="pickres"></div>' +
     '<button class="btn ghost" data-action="pickclose">Tutup</button>';
   fillPicker();
 }
 function fillPicker() {
   const pk = S.picker, el = $('#pickres'); if (!pk || !el) return;
-  const q = norm(pk.q), rows = S.pekerja.filter(p => !q || norm(p.n + ' ' + p.d).includes(q));
+  const q = norm(pk.q);
+  if (pk.items) {
+    const its = pk.items.map((it, i) => ({ it, i })).filter(({ it }) => !q || norm(it.l + ' ' + (it.s || '')).includes(q));
+    el.innerHTML = its.length ? its.map(({ it, i }) => '<button class="row" data-action="pickitem" data-i="' + i + '">' + esc(it.l) + (it.s ? ' <small class="muted">' + esc(it.s) + '</small>' : '') + '</button>').join('') : '<p class="empty">Tidak ada yang cocok.</p>';
+    return;
+  }
+  const rows = S.pekerja.filter(p => !q || norm(p.n + ' ' + p.d).includes(q));
   let h = '';
   if (pk.same && !q) h += '<button class="row same" data-action="pickname" data-n="' + esc(pk.same) + '">Sama dengan mesin di atas · ' + esc(pk.same) + '</button>';
   const g = new Map(); rows.forEach(p => { const d = p.d || 'Tanpa departemen'; if (!g.has(d)) g.set(d, []); g.get(d).push(p); });
@@ -234,6 +278,12 @@ function fillPicker() {
 function pickName(n) {
   const pk = S.picker; if (!pk) return;
   const cb = pk.onPick; closeTop(); if (cb) cb(n);
+}
+function pickItem(i) {
+  const pk = S.picker; if (!pk || !pk.items) return;
+  const it = pk.items[Number(i)], cb = pk.onPick;
+  if (cb && it) S.pending = () => cb(it);
+  closeTop();
 }
 function ensureMe(cb) {
   if (S.me) return cb();

@@ -5,6 +5,16 @@ function hdrInfo() {
     case 'mesin': return { root: 1, title: 'Mesin', sub: S.loaded ? S.jenis.length + ' jenis · ' + S.units.filter(u => !u.off).length + ' unit' : 'Memuat…' };
     case 'hari': return { root: 1, title: 'Hari Ini', sub: fmtDate(today()) };
     case 'jenis': return { title: j ? j.n : 'Mesin', sub: j ? subText(j) : '', right: j ? { a: 'jedit', i: 'edit', l: 'Ubah jenis' } : null };
+    case 'profil': { const u = U[S.kode]; return { title: u ? u.k : 'Unit', sub: u ? unitTitle(u) : '', right: u ? { a: 'uedit', i: 'edit', l: 'Ubah unit', k: u.k } : null }; }
+    case 'tempatlist': return { root: 1, title: 'Penyimpanan', sub: S.loaded ? S.tempat.filter(t => !t.off).length + ' tempat' : 'Memuat…' };
+    case 'tempat': { const t = T[S.tid]; return { title: t ? t.n : 'Tempat', sub: t ? [t.l, t.id].filter(Boolean).join(' · ') : '' }; }
+    case 'tambahtempat': { const t = T[S.tid]; return { title: 'Tambah ke ' + (t ? t.n : 'tempat'), sub: 'Mesin dan material' }; }
+    case 'tempatform': return { title: S.tid ? 'Ubah tempat' : 'Tempat baru', sub: S.tid && T[S.tid] ? T[S.tid].id : 'Penyimpanan' };
+    case 'material': return { root: 1, title: 'Material', sub: S.loaded ? S.material.filter(m => !m.off).length + ' jenis' : 'Memuat…' };
+    case 'mat': { const m = M[S.mid]; return { title: m ? m.n : 'Material', sub: m ? m.id : '', right: m ? { a: 'matedit', i: 'edit', l: 'Ubah material' } : null }; }
+    case 'matform': return { title: S.mid ? 'Ubah material' : 'Material baru', sub: S.mid || 'Stok' };
+    case 'panduan': return { title: 'Ubah panduan', sub: j ? j.n : '' };
+    case 'impor': return { root: 1, title: 'Impor Excel', sub: 'Tambah banyak mesin' };
     case 'unit': { const u = U[S.kode]; return { title: u ? u.k : 'Unit', sub: u ? unitTitle(u) : '' }; }
     case 'jedit': return { title: 'Ubah jenis', sub: j ? j.n : '' };
     case 'tambah': return { title: 'Mesin baru', sub: 'Tambah unit' };
@@ -19,10 +29,13 @@ function renderChrome() {
   const h = hdrInfo(), hdr = $('#hdr'); if (!hdr) return;
   hdr.innerHTML = (h.root ? '<button class="hbtn" data-action="menu" aria-label="Buka menu">' + ic('menu', 26) + '</button>' : '<button class="hbtn" data-action="back" aria-label="Kembali">' + ic('back', 26) + '</button>') +
     '<div class="htitle"><b>' + esc(h.title) + '</b><small>' + esc(h.sub || '') + '</small></div>' +
-    (h.right ? '<button class="hbtn" data-action="' + h.right.a + '" aria-label="' + esc(h.right.l) + '">' + ic(h.right.i, 24) + '</button>' : '');
-  const showNav = ['mesin', 'jenis', 'hari'].includes(S.view);
-  $('#bnav').hidden = !showNav; $('#app').classList.toggle('nonav', !showNav);
-  $('#fab').hidden = S.view !== 'mesin' || !S.loaded;
+    (h.right ? '<button class="hbtn" data-action="' + h.right.a + '"' + (h.right.k ? ' data-k="' + esc(h.right.k) + '"' : '') + ' aria-label="' + esc(h.right.l) + '">' + ic(h.right.i, 24) + '</button>' : '');
+  const showNav = ['mesin', 'jenis', 'hari', 'tempatlist', 'material'].includes(S.view);
+  $('#bnav').hidden = !showNav || S.pinned; $('#app').classList.toggle('nonav', !showNav);
+  const fab = { mesin: ['tambah', 'Mesin baru'], tempatlist: ['tempatbaru', 'Tempat baru'], material: ['matbaru', 'Material baru'] }[S.view];
+  const fb = $('#fab'); fb.hidden = !fab || !S.loaded;
+  if (fab) { fb.dataset.action = fab[0]; fb.lastChild.textContent = fab[1]; }
+  $('#app').classList.toggle('wide', isWide() && ['mesin'].includes(S.view));
   const cur = S.view === 'hari' ? 'hari' : 'mesin';
   $('#nvMesin').setAttribute('aria-current', cur === 'mesin' ? 'page' : 'false');
   $('#nvHari').setAttribute('aria-current', cur === 'hari' ? 'page' : 'false');
@@ -40,12 +53,16 @@ function renderChrome() {
 /* ---------- menu samping ---------- */
 function renderDrawer() {
   const cur = S.view, open = openEntries().length;
-  const it = (v, i, l, extra) => '<button class="it" data-action="dgo" data-view="' + v + '"' + (cur === v ? ' aria-current="page"' : '') + '>' + ic(i, 24) + '<span>' + l + '</span>' + (extra || '') + '</button>';
+  const it = (v, i, l, extra) => '<button class="it" data-action="dgo" data-view="' + v + '"' + (cur === v || (v === 'tempatlist' && ['tempat', 'tambahtempat', 'tempatform'].includes(cur)) || (v === 'material' && ['mat', 'matform'].includes(cur)) ? ' aria-current="page"' : '') + '>' + ic(i, 24) + '<span>' + l + '</span>' + (extra || '') + '</button>';
   $('#drawer').innerHTML = '<button class="dbg" data-action="dclose" aria-label="Tutup menu"></button><aside role="dialog" aria-label="Menu">' +
     '<div class="dh"><img src="logo-gelap.png" alt="Wakatobi Project Villa" width="168" height="117"><small>QR Aset Gudang · Construction site</small></div>' +
     '<nav>' +
-    '<div class="sec">Utama</div>' + it('mesin', 'grid', 'Mesin') + it('hari', 'clock', 'Hari Ini', open ? '<span class="cnt">' + open + '</span>' : '') + it('riwayat', 'list', 'Riwayat') +
-    '<div class="sec">Data</div>' + it('merek', 'tag', 'Merek') + it('pekerja', 'users', 'Pekerja') + it('log', 'doc', 'Log perubahan') +
+    '<div class="sec">Utama</div>' + it('mesin', 'grid', 'Mesin') + it('tempatlist', 'box', 'Penyimpanan') + it('material', 'layers', 'Material') +
+    it('hari', 'clock', 'Hari Ini', open ? '<span class="cnt">' + open + '</span>' : '') + it('riwayat', 'list', 'Riwayat per tanggal') +
+    '<button class="it" data-action="dscan">' + ic('qr', 24) + '<span>Scan QR</span></button>' +
+    '<div class="sec">Admin</div>' + it('merek', 'tag', 'Merek') + it('pekerja', 'users', 'Pekerja') +
+    '<button class="it" data-action="dtambah">' + ic('plus', 24) + '<span>Tambah mesin baru</span></button>' +
+    it('impor', 'upload', 'Impor Excel') + it('log', 'doc', 'Log perubahan') +
     '<a class="it" href="label.html">' + ic('qr', 24) + '<span>Cetak label QR</span></a>' +
     '</nav><div class="foot">' +
     '<button class="it" data-action="dme">' + ic('user', 24) + '<span>Nama saya: ' + (S.me ? esc(S.me) : '<i>belum dipilih</i>') + '</span></button>' +
@@ -53,10 +70,11 @@ function renderDrawer() {
     '<button class="it bad" data-action="logout">' + ic('logout', 24) + '<span>Keluar</span></button>' +
     '</div></aside>';
 }
-function openDrawer() { if (S.ov.includes('drawer')) return; renderDrawer(); $('#drawer').hidden = false; pushOv('drawer'); }
+function openDrawer() { if (S.pinned || S.ov.includes('drawer')) return; renderDrawer(); $('#drawer').hidden = false; pushOv('drawer'); }
 
 /* ---------- render ---------- */
-const VIEWS = () => ({ mesin: viewMesin, jenis: viewJenis, unit: viewUnit, jedit: viewJedit, tambah: viewTambah, hari: viewHari, riwayat: viewRiwayat, pekerja: viewWorkers, log: viewLog, merek: viewMerek });
+const VIEWS = () => ({ mesin: viewMesin, jenis: viewJenis, profil: viewProfil, unit: viewUnit, jedit: viewJedit, tambah: viewTambah, hari: viewHari, riwayat: viewRiwayat, pekerja: viewWorkers, log: viewLog, merek: viewMerek,
+  tempatlist: viewTempatList, tempat: viewTempat, tambahtempat: viewTambahTempat, tempatform: viewTempatForm, material: viewMaterial, mat: viewMat, matform: viewMatForm, panduan: viewPanduanEdit, impor: viewImpor });
 function render() {
   const f = VIEWS()[S.view] || viewMesin;
   $('#app').innerHTML = f();
@@ -68,19 +86,27 @@ function renderLive() {
   else if (S.view === 'hari') set('live-hari', liveHari());
   else if (S.view === 'riwayat') set('live-rw', liveRw());
   else if (S.view === 'pekerja') set('live-names', liveNames());
-  else if (S.view === 'unit') set('live-maint', liveMaint());
+  else if (S.view === 'profil') { if (S.tab === 'maint') set('live-maint', liveMaint()); else if (S.tab === 'riw') set('live-riwu', liveRiwUnit()); }
+  else if (S.view === 'material') renderMatList();
+  else if (S.view === 'tempatlist') renderTempatList();
+  else if (S.view === 'tambahtempat') renderTambahTempat();
+  else if (S.view === 'mat') set('live-stoklog', liveStokLog());
   else if (S.view === 'log') set('live-log', liveLog());
 }
 /* dipanggil setelah data baru datang: form yang sedang diisi tidak boleh terhapus */
 function refresh() {
-  if (S.view === 'jenis') $('#app').innerHTML = viewJenis();
+  if (S.view === 'jenis') { $('#app').innerHTML = viewJenis(); if (S.tab === 'riwayat') loadRiwayatJenis(); }
+  else if (S.view === 'profil' && !['maint', 'riw'].includes(S.tab)) $('#app').innerHTML = viewProfil();
+  else if (['tempat', 'mat'].includes(S.view)) { $('#app').innerHTML = VIEWS()[S.view](); if (S.view === 'mat') renderLive(); }
   else renderLive();
+  if (S.stokEd) stokPreview();
   renderChrome();
   if (S.scan) renderScan();
 }
 
 /* ---------- Mesin: daftar per jenis ---------- */
-const FILTERS = [['', 'Semua'], ['tersedia', 'Tersedia'], ['luar', 'Di luar'], ['rusak', 'Rusak'], ['servis', 'Servis'], ['off', 'Nonaktif']];
+const FILTERS = [['', 'Semua'], ['tersedia', 'Tersedia'], ['luar', 'Di luar'], ['rusak', 'Rusak'], ['servis', 'Servis'], ['telat', 'Servis terlewat'], ['off', 'Nonaktif']];
+const isWide = () => window.matchMedia('(min-width: 1000px)').matches;
 function jstats(jid, held) {
   const st = { total: 0, ok: 0, out: 0, bad: 0, warn: 0, off: 0 };
   (JU[jid] || []).forEach(u => {
@@ -115,15 +141,16 @@ function viewMesin() {
 function renderJlist() {
   const el = $('#jlist'); if (!el) return;
   const held = heldMap(), q = norm(S.q), f = S.filter;
+  if (isWide()) { renderTable(el, held, q, f); return; }
   const rows = S.jenis.map(j => ({ j, st: jstats(j.id, held) })).filter(({ j, st }) => {
     if (q && !norm([j.n, j.b, j.m, j.c].join(' ') + ' ' + (JU[j.id] || []).map(u => u.k).join(' ')).includes(q)) return false;
-    return f === 'tersedia' ? st.ok > 0 : f === 'luar' ? st.out > 0 : f === 'rusak' ? st.bad > 0 : f === 'servis' ? st.warn > 0 : f === 'off' ? st.off > 0 : (st.total + st.off) > 0;
+    return f === 'tersedia' ? st.ok > 0 : f === 'luar' ? st.out > 0 : f === 'rusak' ? st.bad > 0 : f === 'servis' ? st.warn > 0 : f === 'telat' ? (JU[j.id] || []).some(u => !u.off && nextService(u.k) && daysFromToday(nextService(u.k)) < 0) : f === 'off' ? st.off > 0 : (st.total + st.off) > 0;
   }).sort((a, b) => byName(a.j.n, b.j.n) || byName(a.j.b, b.j.b) || byName(a.j.m, b.j.m));
   const c = { ok: 0, bad: 0, warn: 0, out: 0 };
   S.jenis.forEach(j => { const s = jstats(j.id, held); c.ok += s.ok; c.bad += s.bad; c.warn += s.warn; c.out += s.out; });
   const st = $('#stats'); if (st) st.textContent = c.ok + ' tersedia · ' + c.out + ' di luar · ' + c.bad + ' rusak · ' + c.warn + ' servis';
   document.querySelectorAll('#fchips .fchip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === f)));
-  el.innerHTML = rows.length ? rows.map(({ j, st }) => '<button class="jcard" data-action="jenis" data-id="' + esc(j.id) + '"><span class="thumb">' + ic('tool', 30) + '</span>' +
+  el.innerHTML = rows.length ? rows.map(({ j, st }) => '<button class="jcard" data-action="jenis" data-id="' + esc(j.id) + '">' + thumbHtml(j.id, 30) +
     '<span class="nm"><b>' + esc(j.n) + '</b><small>' + (esc(subText(j)) || '&nbsp;') + '</small><span class="pills">' + pillsOf(st) + '</span></span></button>').join('')
     : '<p class="empty">Tidak ada mesin yang cocok.</p>';
 }
@@ -132,27 +159,31 @@ function renderJlist() {
 function unitCard(u, held) {
   const h = held.get(u.k);
   const where = u.off ? '<span class="pill unk">Nonaktif</span>' :
-    h ? '<span class="pill ' + (isLate(h) ? 'late' : 'out') + '">Di luar: ' + esc(h.nama) + (isLate(h) ? ' (terlambat)' : '') + '</span>' : '<span class="muted">Di ' + esc(u.loc || 'Gudang') + '</span>';
+    h ? '<span class="pill ' + (isLate(h) ? 'late' : 'out') + '">Di luar: ' + esc(h.nama) + (isLate(h) ? ' (terlambat)' : '') + '</span>' : '<span class="muted">' + (hasPlace(u) ? 'Di ' + esc(placeName(u)) : 'Belum punya tempat') + '</span>';
   let btn;
   if (u.off) btn = '<span class="ubtn off">Nonaktif</span>';
   else if (h) btn = '<button class="ubtn ret" data-action="uret" data-k="' + esc(u.k) + '">Kembalikan</button>';
   else if (u.s === 'bad') btn = '<span class="ubtn off">' + esc(u.sl) + '</span>';
   else btn = '<button class="ubtn" data-action="uambil" data-k="' + esc(u.k) + '">Ambil</button>';
   const extra = [u.sn ? 'Seri ' + esc(u.sn) : '', u.cat ? esc(u.cat) : ''].filter(Boolean).join(' · ');
-  return '<div class="ucard' + ((S.focus || S.kode) === u.k ? ' focus' : '') + '" id="u-' + esc(u.k) + '"><div class="l1"><span><span class="code">' + esc(u.k) + '</span><span class="unum">Unit ' + esc(u.u) + '</span></span><span class="pill ' + u.s + '">' + esc(u.off ? u.cond : u.sl) + '</span></div>' +
+  return '<div class="ucard' + ((S.focus || S.kode) === u.k ? ' focus' : '') + '" id="u-' + esc(u.k) + '"><div class="l1"><button class="ulink" data-action="openunit" data-k="' + esc(u.k) + '"><span class="code">' + esc(u.k) + '</span><span class="unum">Unit ' + esc(u.u) + '</span></button><span class="pill ' + u.s + '">' + esc(u.off ? u.cond : u.sl) + '</span></div>' +
     '<div class="l2">' + where + (extra ? '<br>' + extra : '') + '</div>' +
     '<div class="l3">' + btn + '<button class="ubtn edit" data-action="uedit" data-k="' + esc(u.k) + '" aria-label="Ubah ' + esc(u.k) + '">' + ic('edit', 22) + '</button></div></div>';
+}
+function heroHtml(jid) {
+  return '<div class="hero">' + thumbHtml(jid, 56, 'hph') + '<button class="herobtn" data-action="fotoedit" data-id="' + esc(jid) + '">' + ic('cam', 20) + 'Ganti foto</button></div>';
 }
 function viewJenis() {
   const jid = curJid(), j = J[jid];
   if (!j) return '<p class="empty">' + (S.loaded ? 'Kode atau jenis tidak ditemukan.' : 'Memuat data mesin…') + '</p>';
   const held = heldMap(), st = jstats(jid, held);
-  const tabs = [['unit', 'Unit (' + (JU[jid] || []).length + ')'], ['riwayat', 'Riwayat']].map(([k, l]) => '<button role="tab" data-action="jtab" data-t="' + k + '" aria-selected="' + (S.tab === k) + '">' + l + '</button>').join('');
+  const tabs = [['unit', 'Unit (' + (JU[jid] || []).length + ')'], ['panduan', 'Panduan'], ['riwayat', 'Riwayat']].map(([k, l]) => '<button role="tab" data-action="jtab" data-t="' + k + '" aria-selected="' + (S.tab === k) + '">' + l + '</button>').join('');
   let body;
   if (S.tab === 'riwayat') body = '<div id="live-riw">' + liveRiw() + '</div>';
+  else if (S.tab === 'panduan') body = '<div id="live-pd">' + livePanduan() + '</div>';
   else body = (JU[jid] || []).map(u => unitCard(u, held)).join('') +
     '<a class="dashed" href="#" data-action="tambahunit" data-id="' + esc(jid) + '">' + ic('plus', 20) + 'Tambah unit ' + esc(j.n) + '</a>';
-  return '<div class="hero">' + ic('tool', 56) + '</div>' +
+  return heroHtml(jid) +
     '<div class="pills" style="margin-bottom:10px"><span class="pill unk">' + esc(j.c || 'Tanpa kategori') + '</span>' + pillsOf(st) + '</div>' +
     '<div class="utabs" role="tablist">' + tabs + '</div>' + body;
 }
@@ -191,10 +222,11 @@ function merekSelect(id, cur) {
     list.map(m => '<option value="' + esc(m.name) + '"' + (norm(m.name) === norm(cur) ? ' selected' : '') + '>' + esc(m.name) + '</option>').join('') + '<option value="__new">Merek baru…</option></select>';
 }
 const selVal = (id, newId) => { const v = ($('#' + id) || {}).value || ''; return v === '__new' ? clean(($('#' + newId) || {}).value) : v; };
-function datalistTempat() {
-  const set = new Set(['Gudang', 'Gudang Karpenter', 'Construction site']);
-  S.units.forEach(u => { if (u.loc) set.add(u.loc); });
-  return '<datalist id="tempatList">' + [...set].sort(byName).map(t => '<option value="' + esc(t) + '">').join('') + '</datalist>';
+function placeField(id, cur) {
+  const t = isLok(cur) ? T[cur] : null;
+  const label = t ? t.n + (t.l ? ' · ' + t.l : '') : (isLok(cur) ? cur : 'Belum punya tempat');
+  return '<div><label class="lbl">Tempat simpan</label><button type="button" class="namebar plain" data-action="pickplace" data-for="' + id + '"><span class="g" id="' + id + '-l">' + esc(label) + '</span>' + ic('chev', 18) + '</button>' +
+    '<input type="hidden" id="' + id + '" value="' + esc(cur || '') + '"></div>';
 }
 
 /* ---------- Tambah mesin ---------- */
@@ -226,7 +258,7 @@ function viewTambah() {
     fld('tu', 'No. unit (boleh kosong)', '', { mode: 'numeric', ph: 'Otomatis: ' + (isNew ? 1 : nextUnitNo(f.jid)) }) +
     fld('tsn', 'No. seri pabrik (boleh kosong)', '') +
     '<div><label class="lbl">Kondisi</label>' + kseg('tk', 'Normal') + '</div>' +
-    fld('tloc', 'Tempat', 'Gudang', { list: 'tempatList' }) + datalistTempat() +
+    placeField('tloc', S.form.loc || '') +
     '<div><label class="lbl" for="tcat">Catatan</label><textarea id="tcat" class="field" placeholder="boleh kosong"></textarea></div>' +
     '<button class="btn" data-action="tsave">Simpan</button><button class="btn ghost" data-action="tsave" data-print="1">Simpan dan cetak label QR</button></div></section></div>';
 }
@@ -256,19 +288,11 @@ function viewUnit() {
     '<section class="card"><h3>Data unit</h3><div class="stack">' +
     fld('uu', 'No. unit', u.u, { mode: 'numeric' }) +
     '<div><label class="lbl">Kondisi</label>' + kseg('uk', u.off ? u.cond : u.cond) + '</div>' +
-    fld('uloc', 'Tempat', u.loc, { list: 'tempatList' }) + datalistTempat() +
+    placeField('uloc', u.loc) +
     fld('usn', 'No. seri pabrik', u.sn) +
     '<div class="two stk">' + fld('utb', 'Tanggal beli', u.tb, { type: 'date' }) + fld('ugs', 'Garansi sampai', u.gs, { type: 'date' }) + '</div>' +
     '<div><label class="lbl" for="ucat">Catatan</label><textarea id="ucat" class="field">' + esc(u.cat) + '</textarea></div>' +
     '<button class="btn" data-action="usave">Simpan perubahan</button></div></section>' +
-    '<section class="card"><h3>Maintenance</h3><div id="live-maint"></div>' +
-    '<button class="btn" style="width:100%;margin-top:14px" data-action="maintopen" id="maintOpenBtn">Catat maintenance</button>' +
-    '<form class="stack" id="maintForm" hidden style="margin-top:14px"><div class="two stk"><div><label class="lbl" for="mDate">Tanggal</label><input id="mDate" class="field" type="date" value="' + today() + '" required></div>' +
-    '<div><label class="lbl" for="mJenis">Jenis</label><select id="mJenis" class="field">' + MJENIS.map(x => '<option>' + x + '</option>').join('') + '</select></div></div>' +
-    '<div><label class="lbl" for="mOleh">Dikerjakan oleh</label><input id="mOleh" class="field" type="text" value="' + esc(lsGet('qrg.mOleh', S.me)) + '" autocomplete="off"></div>' +
-    '<div><label class="lbl" for="mCat">Catatan</label><textarea id="mCat" class="field" placeholder="Contoh: ganti karbon brush, oli gearbox"></textarea></div>' +
-    '<div><label class="lbl" for="mNext">Jadwal berikutnya (boleh kosong)</label><input id="mNext" class="field" type="date"></div>' +
-    '<div class="two"><button class="btn" type="submit">Simpan</button><button class="btn ghost" type="button" data-action="maintcancel">Batal</button></div></form></section>' +
     '<section class="card"><h3>' + (u.off ? 'Unit nonaktif' : 'Nonaktifkan unit') + '</h3><div class="stack">' +
     (u.off ? '<p class="muted" style="margin:0">Unit ini disembunyikan dari pengambilan. Riwayatnya tetap tersimpan.</p><button class="btn ghost" data-action="uon">Aktifkan kembali</button>'
       : '<p class="muted" style="margin:0;font-size:15px">Untuk mesin yang hilang, dijual, atau rusak total. Data dan riwayat <b>tidak dihapus</b>. Kodenya tidak dipakai ulang.</p>' +
@@ -439,4 +463,91 @@ function liveLog() {
   if (S.logs.error) return '<p class="empty">Log belum bisa dimuat. Cek sinyal.</p>';
   if (!S.logs.list.length) return '<p class="empty">Belum ada perubahan tercatat.</p>';
   return '<section class="card" style="padding:4px 16px">' + S.logs.list.map(r => '<div class="logrow"><b>' + esc(r.a) + '</b>' + (r.k ? ' · <span class="code">' + esc(r.k) + '</span>' : '') + '<br>' + esc(r.d) + '<div class="w">' + esc(r.o || '—') + ' · ' + esc(fmtDT(r.t)) + '</div></div>').join('') + '</section>';
+}
+
+
+/* ---------- tabel mesin untuk layar lebar ---------- */
+function unitMatch(u, q) {
+  const j = jenisOf(u);
+  return !q || norm([j.n, j.b, j.m, j.c, u.k, u.sn, placeName(u)].join(' ')).includes(q);
+}
+function renderTable(el, held, q, f) {
+  const hasDue = u => { const n = nextService(u.k); return n && daysFromToday(n) < 0; };
+  const rows = S.units.filter(u => {
+    if (!unitMatch(u, q)) return false;
+    if (f === 'off') return u.off;
+    if (u.off) return false;
+    return f === 'tersedia' ? !held.has(u.k) && u.s !== 'bad' : f === 'luar' ? held.has(u.k) : f === 'rusak' ? u.s === 'bad' : f === 'servis' ? u.s === 'warn' : f === 'telat' ? hasDue(u) : true;
+  }).sort((a, b) => byName(jenisOf(a).n, jenisOf(b).n) || byName(jenisOf(a).b, jenisOf(b).b) || (Number(a.u) || 0) - (Number(b.u) || 0));
+  const c = { ok: 0, bad: 0, warn: 0, out: 0 };
+  S.units.forEach(u => { if (u.off) return; const o = held.has(u.k); if (o) c.out++; if (u.s === 'bad') c.bad++; else if (u.s === 'warn') c.warn++; if (!o && u.s !== 'bad') c.ok++; });
+  const st = $('#stats'); if (st) st.textContent = c.ok + ' tersedia · ' + c.out + ' di luar · ' + c.bad + ' rusak · ' + c.warn + ' servis';
+  document.querySelectorAll('#fchips .fchip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === f)));
+  if (!rows.length) { el.innerHTML = '<p class="empty">Tidak ada mesin yang cocok.</p>'; return; }
+  el.innerHTML = '<div class="tblwrap"><table class="tbl"><thead><tr><th>Foto</th><th>Kode</th><th>Nama mesin</th><th>Lokasi</th><th>Status</th><th>Servis</th></tr></thead><tbody>' +
+    rows.map(u => {
+      const j = jenisOf(u), h = held.get(u.k), sv = serviceText(u.k);
+      const stat = u.off ? '<span class="pill unk">Nonaktif</span>' : h ? '<span class="pill ' + (isLate(h) ? 'late' : 'out') + '">Di luar · ' + esc(h.nama) + '</span>' :
+        u.s === 'ok' ? '<span class="pill ok">Di tempat</span>' : '<span class="pill ' + u.s + '">' + esc(u.sl) + '</span>';
+      return '<tr data-action="openunit" data-k="' + esc(u.k) + '"><td>' + thumbHtml(u.j, 22, 'sm') + '</td><td><button class="ulink" data-action="openunit" data-k="' + esc(u.k) + '"><span class="code">' + esc(u.k) + '</span></button></td>' +
+        '<td><b>' + esc(j.n) + '</b> <span class="muted">· Unit ' + esc(u.u) + '</span><br><small class="muted">' + esc(subText(j)) + '</small></td><td>' + (hasPlace(u) ? esc(placeName(u)) : '<span class="muted">—</span>') + '</td><td>' + stat + '</td>' +
+        '<td class="sv ' + sv.c + '">' + esc(sv.t) + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+}
+
+/* ---------- profil unit (hasil scan Lihat, atau ketuk kode unit) ---------- */
+function maintBlock() {
+  return '<section class="card"><h3>Maintenance</h3><div id="live-maint"></div>' +
+    '<button class="btn" style="width:100%;margin-top:14px" data-action="maintopen" id="maintOpenBtn">Catat maintenance</button>' +
+    '<form class="stack" id="maintForm" hidden style="margin-top:14px"><div class="two stk"><div><label class="lbl" for="mDate">Tanggal</label><input id="mDate" class="field" type="date" value="' + today() + '" required></div>' +
+    '<div><label class="lbl" for="mJenis">Jenis</label><select id="mJenis" class="field">' + MJENIS.map(x => '<option>' + x + '</option>').join('') + '</select></div></div>' +
+    '<div><label class="lbl" for="mOleh">Dikerjakan oleh</label><input id="mOleh" class="field" type="text" value="' + esc(lsGet('qrg.mOleh', S.me)) + '" autocomplete="off"></div>' +
+    '<div><label class="lbl" for="mCat">Catatan</label><textarea id="mCat" class="field" placeholder="Contoh: ganti karbon brush, oli gearbox"></textarea></div>' +
+    '<div><label class="lbl" for="mNext">Jadwal berikutnya (boleh kosong)</label><input id="mNext" class="field" type="date"></div>' +
+    '<div class="two"><button class="btn" type="submit">Simpan</button><button class="btn ghost" type="button" data-action="maintcancel">Batal</button></div></form></section>';
+}
+function viewProfil() {
+  const u = U[S.kode];
+  if (!u) return '<p class="empty">' + (S.loaded ? 'Unit tidak ditemukan.' : 'Memuat data mesin…') + '</p>';
+  const j = jenisOf(u), h = heldMap().get(u.k), tab = ['maint', 'riw'].includes(S.tab) ? S.tab : 'aset';
+  const tabs = [['aset', 'Aset'], ['maint', 'Maintenance'], ['riw', 'Riwayat']].map(([k, l]) => '<button role="tab" data-action="ptab" data-t="' + k + '" aria-selected="' + (tab === k) + '">' + l + '</button>').join('');
+  const sv = serviceText(u.k);
+  const row = (l, v) => '<div class="drow"><dt>' + l + '</dt><dd>' + v + '</dd></div>';
+  let body;
+  if (tab === 'maint') body = maintBlock();
+  else if (tab === 'riw') body = '<div id="live-riwu">' + liveRiwUnit() + '</div>';
+  else {
+    const gs = u.gs ? esc(fmtShort(u.gs)) + (daysFromToday(u.gs) < 0 ? ' <span class="pill late">Habis</span>' : ' <span class="pill ok">Berlaku</span>') : '—';
+    body = '<dl class="dl">' + row('Kategori', esc(j.c || '—')) + row('Merek · tipe', esc(subText(j)) || '—') +
+      row('Lokasi simpan', hasPlace(u) ? '<button class="ulink" data-action="opentempat" data-id="' + esc(u.loc) + '">' + esc(placeText(u)) + '</button>' : 'Belum punya tempat') +
+      row('Servis berikutnya', '<span class="sv ' + sv.c + '">' + esc(sv.t) + '</span>') + row('No. seri', esc(u.sn) || '—') +
+      row('Tanggal beli', u.tb ? esc(fmtShort(u.tb)) : '—') + row('Garansi sampai', gs) + (u.cat ? row('Catatan', esc(u.cat)) : '') + '</dl>' +
+      '<div class="two" style="margin-top:12px"><button class="btn ghost small" data-action="uedit" data-k="' + esc(u.k) + '">Ubah unit</button><a class="btn ghost small" href="label.html?kode=' + esc(u.k) + '">Cetak label QR</a></div>' +
+      '<p class="muted" style="font-size:13px;margin:10px 0 0">Panduan maintenance ada di <a href="#" data-action="opentab" data-id="' + esc(u.j) + '" data-t="panduan">halaman jenis ' + esc(j.n) + '</a>.</p>';
+  }
+  const heldBox = h ? '<div class="heldbox"><div class="lbl2">Sedang dibawa</div><div class="who"><b>' + esc(h.nama) + '</b> <span class="muted">· sejak ' + esc(fmtDT(h.ts)) + '</span></div>' +
+    '<div class="two3"><button class="ubtn ret" data-action="ret" data-id="' + esc(h.id) + '">Kembalikan</button><button class="ubtn rus" data-action="retrusak" data-id="' + esc(h.id) + '" data-k="' + esc(u.k) + '">Rusak</button></div></div>' : '';
+  let bar;
+  if (u.off) bar = '<span class="pdis">Unit nonaktif</span>';
+  else if (h) bar = '<button class="pbtn ret" data-action="uret" data-k="' + esc(u.k) + '">' + ic('check', 24) + 'Kembalikan mesin ini</button>';
+  else if (u.s === 'bad') bar = '<span class="pdis">' + esc(u.sl) + '. Tidak bisa diambil.</span>';
+  else bar = '<button class="pbtn" data-action="uambil" data-k="' + esc(u.k) + '">' + ic('check', 24) + 'Ambil mesin ini</button>';
+  return heroHtml(u.j) +
+    '<div class="pid"><span class="code">' + esc(u.k) + '</span><h1>' + esc(j.n) + ' · Unit ' + esc(u.u) + '</h1><div class="pills"><span class="pill ' + u.s + '">' + esc(u.sl) + '</span>' +
+    (h ? '<span class="pill ' + (isLate(h) ? 'late' : 'out') + '">Di luar · ' + esc(h.nama) + '</span>' : '') + '</div></div>' + heldBox +
+    '<div class="utabs" role="tablist">' + tabs + '</div>' + body + '<div class="pbar">' + bar + '</div>';
+}
+function liveRiwUnit() {
+  const key = S.kode;
+  if (!S.riwu || S.riwu.key !== key || S.riwu.list === null) return '<p class="muted">Memuat…</p>';
+  if (S.riwu.error) return '<p class="muted">Riwayat belum bisa dimuat. Cek sinyal.</p>';
+  if (!S.riwu.list.length) return '<p class="muted">Belum ada yang mengambil unit ini.</p>';
+  return '<ul class="chips">' + S.riwu.list.map(r => '<li><span><b>' + esc(r.nama) + '</b>' + (r.dept ? ' (' + esc(r.dept) + ')' : '') + '<br><small class="muted">Ambil ' + esc(fmtDT(r.ts)) + ' · ' + (r.kembali ? 'Kembali ' + esc(fmtDT(r.kembali)) + (r.kondisi ? ' (' + esc(r.kondisi) + ')' : '') : '<b>belum kembali</b>') + '</small></span></li>').join('') + '</ul>';
+}
+async function loadRiwayatUnit() {
+  const key = S.kode; if (!key) return;
+  S.riwu = { key, list: null, error: false }; const el = $('#live-riwu'); if (el) el.innerHTML = liveRiwUnit();
+  try { const j = await api('riwayat', { kode: key }); if (S.riwu.key === key) S.riwu.list = j.riwayat; }
+  catch (e) { if (S.riwu.key === key) { S.riwu.list = []; S.riwu.error = true; } }
+  const el2 = $('#live-riwu'); if (el2) el2.innerHTML = liveRiwUnit();
 }

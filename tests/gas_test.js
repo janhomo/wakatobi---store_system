@@ -41,7 +41,7 @@ ok('addUnit needs oleh', call({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 
 let a1 = adm({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 'Bor breaker kecil', b: 'Bosch', m: 'GBH 2-28 DFV' }, f: { sn: 'ABC1' } });
 ok('new jenis + first unit: BOR-001, J0001, unit 1', a1.ok && a1.kode === 'BOR-001' && a1.jenisId === 'J0001', a1);
 let b = boot();
-ok('jenis + unit listed; defaults Normal/Gudang', b.jenis.length === 1 && b.jenis[0].n === 'Bor breaker kecil' && b.jenis[0].b === 'Bosch' && b.unit.length === 1 && b.unit[0].u === 1 && b.unit[0].sl === 'Normal' && b.unit[0].loc === 'Gudang' && b.unit[0].sn === 'ABC1', b);
+ok('jenis + unit listed; defaults Normal/no place', b.jenis.length === 1 && b.jenis[0].n === 'Bor breaker kecil' && b.jenis[0].b === 'Bosch' && b.unit.length === 1 && b.unit[0].u === 1 && b.unit[0].sl === 'Normal' && b.unit[0].loc === '' && b.unit[0].sn === 'ABC1', b);
 let a2 = adm({ action: 'addUnit', jenisId: 'J0001', f: {} });
 ok('second unit auto numbered 2, BOR-002', a2.ok && a2.kode === 'BOR-002' && boot().unit.find(u => u.k === 'BOR-002').u === 2, a2);
 ok('explicit unit number 5 ok', adm({ action: 'addUnit', jenisId: 'J0001', f: { u: '5', sl: 'Servis' } }).kode === 'BOR-003');
@@ -65,9 +65,11 @@ ok('new category with prefix -> LST-001, Kategori row added, then LST-002 withou
 ok('jenis with empty merek/model allowed', boot().jenis.some(j => j.n === 'Stop Kontak' && j.b === '' && j.m === ''));
 
 // ---- ubah unit
-let e1 = adm({ action: 'editUnit', kode: 'BOR-002', f: { sl: 'Servis', loc: 'Gudang Karpenter', sn: 'XYZ', cat: 'kabel baik', tb: '2025-03-12', gs: '2027-03-12' } });
-ok('editUnit changes 6 fields, code stays', e1.ok && e1.changed === 6 && (() => { const u = boot().unit.find(x => x.k === 'BOR-002'); return u.sl === 'Servis' && u.loc === 'Gudang Karpenter' && u.sn === 'XYZ' && u.cat === 'kabel baik' && u.tb === '2025-03-12' && u.gs === '2027-03-12' && u.j === 'J0001' && u.u === 2; })(), e1);
-ok('no-op edit = 0 changes', adm({ action: 'editUnit', kode: 'BOR-002', f: { sl: 'Servis', loc: 'Gudang Karpenter' } }).changed === 0);
+const tK = adm({ action: 'addTempat', nama: 'Gudang Karpenter', lokasi: 'Site' });
+ok('addTempat gives LOK-001', tK.ok && tK.id === 'LOK-001', tK);
+let e1 = adm({ action: 'editUnit', kode: 'BOR-002', f: { sl: 'Servis', loc: 'LOK-001', sn: 'XYZ', cat: 'kabel baik', tb: '2025-03-12', gs: '2027-03-12' } });
+ok('editUnit changes 6 fields, code stays', e1.ok && e1.changed === 6 && (() => { const u = boot().unit.find(x => x.k === 'BOR-002'); return u.sl === 'Servis' && u.loc === 'LOK-001' && u.sn === 'XYZ' && u.cat === 'kabel baik' && u.tb === '2025-03-12' && u.gs === '2027-03-12' && u.j === 'J0001' && u.u === 2; })(), e1);
+ok('no-op edit = 0 changes', adm({ action: 'editUnit', kode: 'BOR-002', f: { sl: 'Servis', loc: 'LOK-001' } }).changed === 0);
 ok('edit unit number to a free number', adm({ action: 'editUnit', kode: 'BOR-002', f: { u: '3' } }).ok && boot().unit.find(x => x.k === 'BOR-002').u === 3);
 ok('edit unit number clash refused', adm({ action: 'editUnit', kode: 'BOR-002', f: { u: '1' } }).ok === false);
 ok('edit unknown unit refused', adm({ action: 'editUnit', kode: 'ZZZ-999', f: { sl: 'Normal' } }).ok === false);
@@ -140,7 +142,7 @@ ok('arsipkan moves to Arsip', (() => { const r = call({ action: 'arsipkan', tgl:
 // ---- maintenance, pekerja, log
 ok('maint add/invalid/list/delete', call({ action: 'addMaintenance', id: 'm1', kode: 'BOR-001', tgl: '2026-10-01', jenis: 'Servis rutin', oleh: 'Tono', cat: 'oli', next: '2026-11-01' }).ok && call({ action: 'addMaintenance', id: 'm2', kode: 'BOR-001', tgl: '1/2/26' }).ok === false && boot().maintenance.length === 1 && call({ action: 'deleteMaintenance', id: 'm1' }).ok && boot().maintenance.length === 0);
 ok('savePekerja objects sorted+dedupe', (() => { call({ action: 'savePekerja', pekerja: [{ n: 'Budi', d: 'Karpenter' }, { n: 'andi', d: 'Pembesian' }, { n: 'BUDI', d: 'X' }, { n: ' Citra ', d: '' }] }); const p = boot().pekerja; return p.length === 3 && p.some(x => x.n === 'Budi' && x.d === 'Karpenter'); })());
-ok('logList newest first with who', (() => { const lg = call({ action: 'logList' }).log; return lg.length > 10 && lg[0].t >= lg[lg.length - 1].t && lg.some(x => x.a === 'Ubah unit' && x.o === 'Pak Admin' && x.d.includes('Gudang Karpenter')) && lg.some(x => x.a === 'Gabung jenis') && lg.some(x => x.a === 'Ubah merek'); })());
+ok('logList newest first with who', (() => { const lg = call({ action: 'logList' }).log; return lg.length > 10 && lg[0].t >= lg[lg.length - 1].t && lg.some(x => x.a === 'Ubah unit' && x.o === 'Pak Admin' && x.d.includes('Gudang Karpenter (LOK-001)')) && lg.some(x => x.a === 'Gabung jenis') && lg.some(x => x.a === 'Ubah merek'); })());
 
 // ---- harga tidak bocor
 ss.getSheetByName('Unit').data[1][10] = 98765432;
