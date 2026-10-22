@@ -185,6 +185,7 @@ function viewJenis() {
     '<a class="dashed" href="#" data-action="tambahunit" data-id="' + esc(jid) + '">' + ic('plus', 20) + 'Tambah unit ' + esc(j.n) + '</a>';
   return heroHtml(jid) +
     '<div class="pills" style="margin-bottom:10px"><span class="pill unk">' + esc(j.c || 'Tanpa kategori') + '</span>' + pillsOf(st) + '</div>' +
+    '<button class="btn ghost small block" style="margin-bottom:10px" data-action="jedit">' + ic('edit', 20) + 'Ubah merek, tipe, dan nama</button>' +
     '<div class="utabs" role="tablist">' + tabs + '</div>' + body;
 }
 function liveRiw() {
@@ -284,7 +285,8 @@ function viewUnit() {
   const j = jenisOf(u), held = heldMap().get(u.k);
   return '<div class="stack">' +
     '<section class="card"><h3>' + esc(j.n) + ' · Unit ' + esc(u.u) + '</h3><div class="codeprev"><b>' + esc(u.k) + '</b><a class="btn small ghost" href="label.html?kode=' + esc(u.k) + '">Cetak label</a></div>' +
-    '<p class="muted" style="margin:10px 0 0;font-size:14px">Kode tidak bisa diubah karena sudah tercetak di label QR. ' + esc(subText(j)) + '</p></section>' +
+    '<p class="muted" style="margin:10px 0 0;font-size:14px">Kode tidak bisa diubah karena sudah tercetak di label QR. ' + esc(subText(j)) + '</p>' +
+    '<button class="btn ghost small block" style="margin-top:10px" data-action="jedit">' + ic('edit', 20) + 'Ubah merek, tipe, dan nama</button></section>' +
     '<section class="card"><h3>Data unit</h3><div class="stack">' +
     fld('uu', 'No. unit', u.u, { mode: 'numeric' }) +
     '<div><label class="lbl">Kondisi</label>' + kseg('uk', u.off ? u.cond : u.cond) + '</div>' +
@@ -518,7 +520,7 @@ function viewProfil() {
   else if (tab === 'riw') body = '<div id="live-riwu">' + liveRiwUnit() + '</div>';
   else {
     const gs = u.gs ? esc(fmtShort(u.gs)) + (daysFromToday(u.gs) < 0 ? ' <span class="pill late">Habis</span>' : ' <span class="pill ok">Berlaku</span>') : '—';
-    body = '<dl class="dl">' + row('Kategori', esc(j.c || '—')) + row('Merek · tipe', esc(subText(j)) || '—') +
+    body = '<dl class="dl">' + row('Kategori', esc(j.c || '—')) + row('Merek · tipe', (esc(subText(j)) || '—') + ' <button class="ulink" data-action="jedit">Ubah</button>') +
       row('Lokasi simpan', hasPlace(u) ? '<button class="ulink" data-action="opentempat" data-id="' + esc(u.loc) + '">' + esc(placeText(u)) + '</button>' : 'Belum punya tempat') +
       row('Servis berikutnya', '<span class="sv ' + sv.c + '">' + esc(sv.t) + '</span>') + row('No. seri', esc(u.sn) || '—') +
       row('Tanggal beli', u.tb ? esc(fmtShort(u.tb)) : '—') + row('Garansi sampai', gs) + (u.cat ? row('Catatan', esc(u.cat)) : '') + '</dl>' +

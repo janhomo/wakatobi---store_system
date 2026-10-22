@@ -235,6 +235,19 @@ const jenisId = bor.jenisId;
   await page.click('.tbl tbody tr >> nth=0'); await page.waitForSelector('.pid');
   await page.screenshot({ path: OUT + '/n_wide_profil.png' });
 
+  await page.setViewportSize({ width: 400, height: 860 });
+  // ===== tombol Ubah jenis terlihat
+  await page.goto('http://localhost:8125/#BOR-001'); await page.waitForSelector('.pid');
+  await page.click('.dl [data-action="jedit"]'); await page.waitForSelector('#jm');
+  check('profil: Ubah beside Merek · tipe opens jenis edit', (await txt(page, '#hdr')).includes('Ubah jenis'));
+  await page.goBack(); await page.waitForSelector('.pid'); await page.click('.pid ~ * [data-action="uedit"], [data-action="uedit"].btn'); await page.waitForSelector('#uu');
+  await page.click('.card [data-action="jedit"]'); await page.waitForSelector('#jm');
+  check('unit edit: labeled button opens jenis edit with merek field', await page.isVisible('#jmerek') && await page.isVisible('#jm'));
+  await page.goto('http://localhost:8125/'); await page.waitForSelector('#jlist .jcard');
+  await page.click('.jcard[data-id="' + jenisId + '"]'); await page.waitForSelector('.hero');
+  await page.screenshot({ path: OUT + '/n_jenis_btn.png' });
+  check('jenis page: labeled button visible', await page.isVisible('button[data-action="jedit"].btn'));
+
   // ===== LABEL tempat dan material
   const lab = await ctx.newPage();
   await lab.route('https://script.google.com/**', async route => { const out = env.doPost({ postData: { contents: route.request().postData() } }).getContent(); await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: out }); });
