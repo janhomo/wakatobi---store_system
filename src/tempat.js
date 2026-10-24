@@ -3,7 +3,7 @@ const placeIcon = () => '<span class="thumb ico">' + ic('box', 28) + '</span>';
 function viewTempatList() {
   if (!S.loaded && !S.tempat.length) return '<p class="empty">' + (S.loadError ? 'Data belum bisa dimuat. Cek sinyal lalu buka lagi.' : 'Memuat…') + '</p>';
   return '<input id="pq" class="field" type="search" placeholder="Cari tempat penyimpanan" value="' + esc(S.tq || '') + '" autocomplete="off" aria-label="Cari tempat" style="margin-bottom:10px">' +
-    '<p class="stats" id="tstats"></p><div class="jlist" id="tlist2"></div><div id="toff"></div>';
+    '<p class="stats" id="tstats"></p>' + '<div id="rakbtn"></div>' + '<div class="jlist" id="tlist2"></div><div id="toff"></div>';
 }
 function placeCard(t) {
   const sm = placeSummary(t.id), pills = [];
@@ -22,6 +22,7 @@ function renderTempatList() {
   $('#tstats').textContent = activePlaces().length + ' tempat · ' + placed + ' mesin tersimpan · ' + (act.length - placed) + ' mesin belum punya tempat';
   el.innerHTML = list.length ? list.map(placeCard).join('') :
     '<p class="empty">' + (activePlaces().length ? 'Tidak ada tempat yang cocok.' : 'Belum ada tempat. Tekan Tempat baru, misalnya Rak 1 atau Lemari Kunci.') + '</p>';
+  $('#rakbtn').innerHTML = S.tempat.some(t => norm(t.n) === 'rak 001') ? '' : '<a class="dashed" style="margin-bottom:10px" href="#" data-action="rakbuat">' + ic('plus', 20) + 'Buat Rak 001 sampai Rak 050</a>';
   const off = S.tempat.filter(t => t.off);
   $('#toff').innerHTML = off.length ? '<button class="btn ghost small block" style="margin-top:10px" data-action="toggleoff">' + (S.showOffT ? 'Sembunyikan' : 'Lihat') + ' tempat nonaktif (' + off.length + ')</button>' +
     (S.showOffT ? '<div class="jlist" style="margin-top:8px">' + off.map(placeCard).join('') + '</div>' : '') : '';
@@ -32,7 +33,8 @@ function viewTempat() {
   if (!t) return '<p class="empty">' + (S.loaded ? 'Tempat tidak ditemukan.' : 'Memuat…') + '</p>';
   const sm = placeSummary(t.id), held = heldMap();
   const mrow = u => { const j = jenisOf(u), h = held.get(u.k);
-    return '<button class="trow" data-action="openunit" data-k="' + esc(u.k) + '">' + thumbHtml(u.j, 22, 'sm') + '<span class="nm"><span class="code">' + esc(u.k) + '</span><b>' + esc(j.n) + (u.u ? ' · Unit ' + esc(u.u) : '') + '</b></span>' +
+    const ln = unitLine(u);
+    return '<button class="trow" data-action="openunit" data-k="' + esc(u.k) + '">' + thumbHtml(u.j, 22, 'sm') + '<span class="nm"><b>' + esc(ln.a) + '</b><small class="muted">' + esc(ln.b) + '</small></span>' +
       (h ? '<span class="pill ' + (isLate(h) ? 'late' : 'out') + '">Di luar · ' + esc(h.nama) + '</span>' : u.s === 'ok' ? '<span class="pill ok">Di tempat</span>' : '<span class="pill ' + u.s + '">' + esc(u.sl) + '</span>') + '</button>'; };
   const matrow = m => '<div class="trow mat"><span class="thumb sm">' + ic('layers', 22) + '</span><button class="nm lnkbtn" data-action="openmat" data-id="' + esc(m.id) + '"><b>' + esc(m.n) + '</b>' + (isLow(m) ? '<span class="pill warn">Menipis</span>' : '') + '</button>' +
     '<button class="rnd" data-action="stokopen" data-id="' + esc(m.id) + '" data-t="Keluar" aria-label="Kurangi ' + esc(m.n) + '">−</button><span class="qty"><b>' + esc(fmtQty(m.q)) + '</b><small>' + esc(m.s) + '</small></span>' +
@@ -40,7 +42,7 @@ function viewTempat() {
   return (t.off ? '<p class="note warn" style="margin-bottom:10px">Tempat ini nonaktif. <button class="btn small ghost" style="display:inline-flex;min-height:36px;margin-left:6px" data-action="tempataktif" data-id="' + esc(t.id) + '">Aktifkan kembali</button></p>' : '') +
     '<div class="stat3"><div><b>' + sm.units.length + '</b><small>Mesin</small></div><div><b>' + sm.mats.length + '</b><small>Jenis material</small></div><div class="' + (sm.low ? 'lowc' : '') + '"><b>' + sm.low + '</b><small>Menipis</small></div></div>' +
     '<div class="two" style="margin:10px 0"><a class="btn ghost small" href="label.html?kode=' + esc(t.id) + '">' + ic('print', 20) + 'Cetak QR tempat</a><button class="btn ghost small" data-action="tempatedit" data-id="' + esc(t.id) + '">' + ic('edit', 20) + 'Ubah nama</button></div>' +
-    '<h2 class="h2" style="margin-top:6px">Mesin</h2>' + (sm.units.length ? '<div class="tbox">' + sm.units.sort((a, b) => a.k.localeCompare(b.k)).map(mrow).join('') + '</div>' : '<p class="muted">Belum ada mesin di sini.</p>') +
+    '<h2 class="h2" style="margin-top:6px">Mesin</h2>' + (sm.units.length ? '<div class="tbox">' + sm.units.sort((a, b) => byName(jenisOf(a).n, jenisOf(b).n) || (Number(a.u) || 0) - (Number(b.u) || 0) || a.k.localeCompare(b.k)).map(mrow).join('') + '</div>' : '<p class="muted">Belum ada mesin di sini.</p>') +
     '<h2 class="h2">Material · stok</h2>' + (sm.mats.length ? '<div class="tbox">' + sm.mats.sort((a, b) => byName(a.n, b.n)).map(matrow).join('') + '</div>' : '<p class="muted">Belum ada material di sini.</p>') +
     '<div class="pbar"><button class="pbtn" data-action="tambahke" data-id="' + esc(t.id) + '">' + ic('plus', 22) + 'Tambah mesin atau material</button></div>';
 }

@@ -8,7 +8,7 @@ const t = []; const ok = (n, c, x) => t.push((c ? 'PASS ' : 'FAIL ') + n + (c ? 
 const rows = n => ss.getSheetByName(n).data.slice(1).filter(r => r && r[0]);
 const TOKEN = raw({ action: 'login', pin: PIN }).token;
 const call = body => raw({ token: TOKEN, ...body });
-const adm = body => call({ oleh: 'Pak Admin', ...body });
+const adm = body => call({ oleh: 'Abidin', ...body });
 const boot = () => call({ action: 'bootstrap' });
 
 ok('new sheets exist after setup', ['Foto', 'Tempat', 'Panduan', 'Material', 'Stok Log'].every(n => ss.getSheetByName(n)));
@@ -93,7 +93,7 @@ ok('panduan v1 saved, link gets https://', p1.ok && p1.v === 1 && call({ action:
 ok('same content again = no new version', adm({ action: 'panduanSimpan', jid: bor.jenisId, p: 'Cabut kabel.', a: 'Kuas, gemuk', l: '1. Matikan\n2. Buka penutup', i: '3', u: 'https://bosch.com/manual' }).changed === 0 && rows('Panduan').length === 1);
 const p2 = adm({ action: 'panduanSimpan', jid: bor.jenisId, p: 'Cabut kabel.', a: 'Kuas, gemuk, kunci 13', l: '1. Matikan\n2. Buka penutup\n3. Periksa karbon', i: '3', u: '' });
 ok('changed content = version 2, v1 kept', p2.v === 2 && rows('Panduan').length === 2 && call({ action: 'panduanGet', id: bor.jenisId }).panduan.map(x => x.v).join() === '2,1');
-ok('latest version keeps line breaks, who and when', (() => { const x = call({ action: 'panduanGet', id: bor.jenisId }).panduan[0]; return x.l.split('\n').length === 3 && x.o === 'Pak Admin' && /^\d{4}-/.test(x.t) && x.i === 3; })());
+ok('latest version keeps line breaks, who and when', (() => { const x = call({ action: 'panduanGet', id: bor.jenisId }).panduan[0]; return x.l.split('\n').length === 3 && x.o === 'Abidin' && /^\d{4}-/.test(x.t) && x.i === 3; })());
 ok('bootstrap jenis carries panduan version + interval', (() => { const j = boot().jenis.find(x => x.id === bor.jenisId); return j.pv === 2 && j.pi === 3; })());
 ok('jenis without panduan: pv 0', boot().jenis.find(x => x.id === grd.jenisId).pv === 0);
 ok('panduan for unknown jenis refused', adm({ action: 'panduanSimpan', jid: 'J9999', l: 'x' }).ok === false);
@@ -114,7 +114,7 @@ ok('Keluar 10: stock 90', s1.ok && s1.stok === 90 && boot().material.find(x => x
 ok('same op id sent again is not counted twice', adm({ action: 'stok', id: 's-1', mat: 'MAT-001', tipe: 'Keluar', jumlah: '10', nama: 'Budi Santoso' }).duplicate === true && boot().material.find(x => x.id === 'MAT-001').q === 90);
 ok('Masuk adds', adm({ action: 'stok', id: 's-2', mat: 'MAT-001', tipe: 'Masuk', jumlah: '5', nama: 'Andi' }).stok === 95);
 ok('decimals ok (comma)', adm({ action: 'stok', id: 's-3', mat: 'MAT-001', tipe: 'Keluar', jumlah: '2,5', nama: 'Andi' }).stok === 92.5);
-ok('Koreksi sets the exact number', adm({ action: 'stok', id: 's-4', mat: 'MAT-001', tipe: 'Koreksi', jumlah: '80', nama: 'Pak Admin', cat: 'hitung ulang' }).stok === 80);
+ok('Koreksi sets the exact number', adm({ action: 'stok', id: 's-4', mat: 'MAT-001', tipe: 'Koreksi', jumlah: '80', nama: 'Abidin', cat: 'hitung ulang' }).stok === 80);
 ok('cannot take more than stock; stock unchanged, nothing logged', (() => { const n = rows('Stok Log').length; const x = adm({ action: 'stok', id: 's-5', mat: 'MAT-001', tipe: 'Keluar', jumlah: '81', nama: 'Andi' }); return x.ok === false && /tidak cukup/.test(x.error) && boot().material.find(y => y.id === 'MAT-001').q === 80 && rows('Stok Log').length === n; })());
 ok('zero / text amount refused for Keluar', adm({ action: 'stok', id: 's-6', mat: 'MAT-001', tipe: 'Keluar', jumlah: '0', nama: 'A' }).ok === false && adm({ action: 'stok', id: 's-7', mat: 'MAT-001', tipe: 'Keluar', jumlah: 'abc', nama: 'A' }).ok === false);
 ok('stok needs the worker name', adm({ action: 'stok', id: 's-8', mat: 'MAT-001', tipe: 'Keluar', jumlah: '1', nama: '' }).ok === false);

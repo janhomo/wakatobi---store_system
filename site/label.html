@@ -22,10 +22,16 @@ a{color:var(--accent)}
 .lab b{font-family:Arial,Helvetica,sans-serif;letter-spacing:.02em}
 .lab small{display:block;font-family:Arial,Helvetica,sans-serif;line-height:1.15;padding:0 .15cm;overflow:hidden}
 @page{size:A4;margin:0}
+.sheet.roll{display:block;padding:0;max-width:none;background:none}
+.sheet.roll .lab{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;text-align:left;margin:0 0 6px;padding:1.5mm;gap:1.5mm;border:1px dashed #999;page-break-after:always;break-after:page}
+.sheet.roll .lab .tx{min-width:0;display:flex;flex-direction:column;gap:.4mm}
+.sheet.roll .lab small{padding:0}
 @media print{
   body{background:#fff;padding:0}
   .bar{display:none}
   .sheet{padding:.5cm;max-width:none;margin:0}
+  .sheet.roll{padding:0}
+  .sheet.roll .lab{margin:0;border:0}
 }
 </style>
 </head>
@@ -35,11 +41,17 @@ a{color:var(--accent)}
   <p class="msg"><a href="index.html">← Kembali ke aplikasi</a></p>
   <div class="row">
     <div><label for="tipe">Jenis label</label><select id="tipe"><option value="mesin">Mesin</option><option value="tempat">Tempat (rak, lemari)</option><option value="material">Material</option></select></div>
-    <div><label for="size">Ukuran label</label><select id="size"><option value="4">4 x 4 cm</option><option value="5" selected>5 x 5 cm</option><option value="6">6 x 6 cm</option></select></div>
+    <div><label for="kertas">Kertas</label><select id="kertas"><option value="a4">Lembar A4</option><option value="roll">Roll stiker (printer label)</option></select></div>
+    <div id="boxSize"><label for="size">Ukuran label</label><select id="size"><option value="4">4 x 4 cm</option><option value="5" selected>5 x 5 cm</option><option value="6">6 x 6 cm</option></select></div>
+    <div id="boxRoll" hidden><label for="rsize">Ukuran roll (lebar x tinggi)</label><select id="rsize"><option value="50x30" selected>50 x 30 mm</option><option value="40x30">40 x 30 mm</option><option value="60x40">60 x 40 mm</option><option value="70x50">70 x 50 mm</option></select></div>
     <div><label for="cat">Kategori</label><select id="cat"><option value="">Semua kategori</option></select></div>
     <div><label for="codes">Kode tertentu (pisahkan dengan koma)</label><input id="codes" type="text" placeholder="Contoh: BOR-001, LOK-001, MAT-003"></div>
+    <div><label for="from">Dari nomor (rentang)</label><input id="from" type="text" placeholder="Contoh: LOK-001 atau 1" autocomplete="off"></div>
+    <div><label for="to">Sampai nomor</label><input id="to" type="text" placeholder="Contoh: LOK-050 atau 50" autocomplete="off"></div>
+    <div><label for="copies">Jumlah salinan tiap label</label><input id="copies" type="number" min="1" max="20" value="1"></div>
   </div>
   <button class="go" id="print">Cetak</button>
+  <p class="msg" id="rollnote" hidden>Roll stiker: satu label per halaman. Di jendela cetak pilih printer label, ukuran kertas sama dengan ukuran roll, margin tidak ada (None), skala 100%.</p>
   <p class="msg" id="info">Memuat daftar mesin…</p>
 </div>
 <div class="sheet" id="sheet"></div>
@@ -85,31 +97,48 @@ function labHtml(size, qrPx, code, l1, l2, l3) {
     (l2 ? '<small style="font-size:' + Math.max(5, Math.round(size * 1.2)) + 'pt">' + esc(l2) + '</small>' : '') +
     (l3 ? '<small style="font-size:' + Math.max(5, Math.round(size * 1.2)) + 'pt">' + esc(l3) + '</small>' : '') + '</div>';
 }
+/* label roll: kotak QR di kiri, teks di kanan, satu label per halaman */
+function rollHtml(w, h, code, l1, l2) {
+  const q = h - 3, big = Math.max(8, Math.round(h * 0.34)), mid = Math.max(6, Math.round(h * 0.22)), sm = Math.max(5, Math.round(h * 0.18));
+  return '<div class="lab" style="width:' + w + 'mm;height:' + h + 'mm">' + svg(code, q + 'mm').replace('width="' + q + 'mm" height="' + q + 'mm"', 'width="' + q + 'mm" height="' + q + 'mm" style="flex-shrink:0"') +
+    '<div class="tx"><b style="font-size:' + big + 'pt">' + esc(code) + '</b><small style="font-size:' + mid + 'pt"><strong>' + esc(l1) + '</strong></small>' + (l2 ? '<small style="font-size:' + sm + 'pt">' + esc(l2) + '</small>' : '') + '</div></div>';
+}
+const numOf = v => { const m = /(\d+)\s*$/.exec(String(v || '')); return m ? Number(m[1]) : null; };
 function draw() {
+  const roll = $('#kertas').value === 'roll', [rw, rh] = $('#rsize').value.split('x').map(Number);
+  $('#boxSize').hidden = roll; $('#boxRoll').hidden = !roll; $('#rollnote').hidden = !roll;
+  $('#sheet').className = 'sheet' + (roll ? ' roll' : '');
+  let ps = $('#pagestyle'); if (!ps) { ps = document.createElement('style'); ps.id = 'pagestyle'; document.head.appendChild(ps); }
+  ps.textContent = roll ? '@page{size:' + rw + 'mm ' + rh + 'mm;margin:0}' : '@page{size:A4;margin:0}';
   const size = Number($('#size').value), cat = $('#cat').value, tipe = $('#tipe').value;
   const codes = $('#codes').value.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
-  const cm = 37.795, qrPx = Math.round(size * 0.62 * cm), want = c => !codes.length || codes.includes(c);
+  const nf = numOf($('#from').value), nt = numOf($('#to').value), copies = Math.max(1, Math.min(20, Number($('#copies').value) || 1));
+  const inRange = c => { const n = numOf(c); return (nf === null || (n !== null && n >= nf)) && (nt === null || (n !== null && n <= nt)); };
+  const cm = 37.795, qrPx = Math.round(size * 0.62 * cm), want = c => (!codes.length || codes.includes(c)) && inRange(c);
+  const mk = (code, l1, l2, l3) => { const one = roll ? rollHtml(rw, rh, code, l1, l2) : labHtml(size, qrPx, code, l1, l2, l3); return one.repeat(copies); };
   let html = '', n = 0, have = 0;
   if (tipe === 'tempat') {
     have = tempat.length;
     const l = tempat.filter(t => want(t.id)).sort((a, b) => a.id.localeCompare(b.id)); n = l.length;
-    html = l.map(t => labHtml(size, qrPx, t.id, t.n, t.l, '')).join('');
+    html = l.map(t => mk(t.id, t.n, t.l, '')).join('');
   } else if (tipe === 'material') {
     have = material.length;
     const l = material.filter(m => (!cat || m.c === cat) && want(m.id)).sort((a, b) => a.id.localeCompare(b.id)); n = l.length;
-    html = l.map(m => labHtml(size, qrPx, m.id, m.n, [m.b, m.s].filter(Boolean).join(' · '), '')).join('');
+    html = l.map(m => mk(m.id, m.n, [m.b, m.s].filter(Boolean).join(' · '), '')).join('');
   } else {
     have = units.length;
     const J = Object.fromEntries(jenis.map(j => [j.id, j]));
     const l = units.filter(u => J[u.j] && (!cat || J[u.j].c === cat) && want(u.k)).sort((a, b) => a.k.localeCompare(b.k)); n = l.length;
-    html = l.map(u => { const j = J[u.j]; return labHtml(size, qrPx, u.k, j.n + ' · Unit ' + u.u, [j.b, j.m].filter(Boolean).join(' '), ''); }).join('');
+    html = l.map(u => { const j = J[u.j]; return mk(u.k, j.n + ' · Unit ' + u.u, [j.b, j.m].filter(Boolean).join(' ') + (u.pm ? ' · ' + u.pm : ''), ''); }).join('');
   }
   $('#sheet').innerHTML = html;
-  $('#info').textContent = have ? n + ' label. Pilih ukuran kertas A4, skala 100%, tanpa margin saat mencetak.' :
+  $('#print').textContent = n ? 'Cetak ' + (n * copies) + ' label' : 'Cetak';
+  $('#info').textContent = have ? n * copies + ' label' + (roll ? ' (' + rw + ' x ' + rh + ' mm).' : '. Pilih ukuran kertas A4, skala 100%, tanpa margin saat mencetak.') :
     'Daftar belum ada. Buka aplikasi dulu dan masukkan PIN, lalu kembali ke halaman ini.';
 }
-['size', 'cat'].forEach(i => $('#' + i).addEventListener('change', draw));
-$('#tipe').addEventListener('change', () => { $('#codes').value = ''; fillCats(); draw(); });
+['size', 'cat', 'kertas', 'rsize'].forEach(i => $('#' + i).addEventListener('change', draw));
+['from', 'to', 'copies'].forEach(i => $('#' + i).addEventListener('input', draw));
+$('#tipe').addEventListener('change', () => { $('#codes').value = ''; $('#from').value = ''; $('#to').value = ''; fillCats(); draw(); });
 $('#codes').addEventListener('input', draw);
 $('#print').addEventListener('click', () => window.print());
 load();

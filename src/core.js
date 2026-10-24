@@ -52,16 +52,25 @@ const IC = {
   layers: '<path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/>',
   book: '<path d="M5 4h10a3 3 0 013 3v13H8a3 3 0 01-3-3zM5 17a3 3 0 013-3h10"/>',
   minus: '<path d="M5 12h14"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
   alert: '<path d="M12 4l9 16H3zM12 10v4M12 17h.01"/>'
 };
 const ic = (n, s = 24) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
+
+/* ---------- tampilan: Otomatis (ikut perangkat), Terang, Gelap ---------- */
+const THEMES = ['auto', 'light', 'dark'], THEME_L = { auto: 'Otomatis', light: 'Terang', dark: 'Gelap' };
+const getTheme = () => { const t = lsGet('qrg.theme', 'auto'); return THEMES.includes(t) ? t : 'auto'; };
+function setTheme(t) {
+  lsSet('qrg.theme', t);
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
+}
 
 /* ---------- state ---------- */
 const KONDISI = ['Normal', 'Servis', 'Rusak', 'Rusak total', 'Belum dicek'];
 const MJENIS = ['Servis rutin', 'Ganti sparepart', 'Perbaikan', 'Kalibrasi', 'Pengecekan', 'Lainnya'];
 const S = {
-  view: 'mesin', jid: null, kode: null, tid: null, mid: null, tab: 'unit', filter: '', q: '',
-  jenis: [], units: [], kategori: [], tempat: [], material: [], pekerja: [], maintServer: [], pengServer: [], pengDate: null, belumServer: [], cfg: { jamPulang: '17:00' },
+  view: 'mesin', nm: null, wj: null, jid: null, kode: null, tid: null, mid: null, tab: 'unit', filter: '', q: '',
+  jenis: [], units: [], kategori: [], tempat: [], material: [], pekerja: [], maintServer: [], pengServer: [], pengDate: null, belumServer: [], cfg: { jamPulang: '17:00', pengedit: ['Abidin', 'Vikar', 'La Ode Riyan Syaputra'] },
   loaded: false, loadError: null, tok: lsGet('qrg.tok', ''), me: lsGet('qrg.me', ''),
   ov: [], pending: null, form: null, confirmDel: null,
   rwDate: null, rw: { list: null, error: false }, riw: { key: null, list: null, error: false }, logs: { list: null, error: false },
@@ -91,10 +100,28 @@ function applyData(d) {
   S.jenis = d.jenis || []; S.kategori = d.kategori || []; S.tempat = d.tempat || []; S.material = d.material || [];
   setUnits(d.unit || []);
   buildMaps();
-  S.pekerja = d.pekerja || []; S.maintServer = d.maintenance || d.maint || []; S.belumServer = d.belum || []; S.cfg = d.cfg || S.cfg;
+  S.pekerja = d.pekerja || []; S.maintServer = d.maintenance || d.maint || []; S.belumServer = d.belum || []; S.cfg = { ...S.cfg, ...(d.cfg || {}) };
+  if (!S.cfg.pengedit || !S.cfg.pengedit.length) S.cfg.pengedit = ['Abidin', 'Vikar', 'La Ode Riyan Syaputra'];
   S.loaded = true;
   if (typeof syncFoto === 'function') syncFoto();
 }
+/* ---------- mesin dikelompokkan per nama: nama > merek/model > unit ---------- */
+const nameKey = j => norm(j.n);
+function nameGroups() {
+  const m = new Map();
+  S.jenis.forEach(j => {
+    const k = nameKey(j);
+    if (!m.has(k)) m.set(k, { key: k, name: j.n, cat: j.c, jenis: [] });
+    m.get(k).jenis.push(j);
+  });
+  m.forEach(g => g.jenis.sort((a, b) => byName(a.b, b.b) || byName(a.m, b.m)));
+  return m;
+}
+const nameGroup = k => nameGroups().get(k) || null;
+const nameUnits = g => g.jenis.reduce((a, j) => a.concat(JU[j.id] || []), []);
+const editors = () => S.cfg.pengedit;
+const isEditor = n => editors().some(e => norm(e) === norm(n));
+const deptList = () => [...new Set(S.pekerja.map(p => p.d).filter(Boolean))].sort(byName);
 const deptOf = nama => { const p = S.pekerja.find(p => norm(p.n) === norm(nama)); return p ? p.d : ''; };
 const jenisOf = u => J[u.j] || { id: u.j, n: u.k, b: '', m: '', c: '' };
 const mesinText = u => { const j = jenisOf(u); return j.n + ' (unit ' + u.u + ')'; };
@@ -149,6 +176,37 @@ function serviceText(k) {
   return d < 0 ? { t: 'Terlewat ' + (-d) + ' hari', c: 'late' } : d === 0 ? { t: 'Hari ini', c: 'warn' } : { t: d + ' hari lagi', c: d <= 7 ? 'warn' : '' };
 }
 
+/* ---------- indikator loading: tombol berputar, garis proses di bawah header, tulisan status ---------- */
+const Busy = { n: 0, btn: null, orig: '', msg: '', ok: false, edit: false };
+function busyRender() {
+  const pr = $('#prog'), sb = $('#savebar'); if (!pr || !sb) return;
+  pr.hidden = Busy.n === 0;
+  if (Busy.n > 0) { sb.hidden = false; sb.className = 'savebar'; sb.textContent = Busy.msg; }
+  else if (Busy.ok) { sb.hidden = false; sb.className = 'savebar ok'; sb.textContent = 'Tersimpan'; }
+  else sb.hidden = true;
+}
+function busyBegin(msg, withBtn) {
+  Busy.n++; Busy.ok = false; clearTimeout(Busy.t);
+  Busy.msg = msg || 'Menyimpan ke Sheet. Mohon tunggu, jangan tutup halaman.';
+  if (withBtn && !Busy.btn) {
+    const b = window.__btn;
+    if (b && b.isConnected && b.tagName === 'BUTTON') { Busy.btn = b; Busy.orig = b.innerHTML; b.disabled = true; b.classList.add('loading'); b.innerHTML = '<span class="spin"></span>Menyimpan…'; }
+  }
+  busyRender();
+}
+function busyEnd(ok) {
+  Busy.n = Math.max(0, Busy.n - 1);
+  if (Busy.n === 0) {
+    if (Busy.btn) { if (Busy.btn.isConnected) { Busy.btn.innerHTML = Busy.orig; Busy.btn.disabled = false; Busy.btn.classList.remove('loading'); } Busy.btn = null; }
+    if (ok) { Busy.ok = true; Busy.t = setTimeout(() => { Busy.ok = false; busyRender(); }, 2200); }
+  }
+  busyRender();
+}
+/* aksi yang menulis ke Sheet */
+const WRITE_ACTIONS = new Set(['addUnit', 'editUnit', 'editJenis', 'nonaktifUnit', 'aktifkanUnit', 'renameMerek', 'gabungJenis', 'addTempat', 'editTempat', 'nonaktifTempat', 'aktifTempat', 'setTempat',
+  'fotoSet', 'fotoHapus', 'panduanSimpan', 'addMaterial', 'editMaterial', 'statusMaterial', 'stok', 'imporUnit', 'savePekerja', 'arsipkan', 'addPengambilan', 'returnPengambilan', 'batalKembali',
+  'cancelPengambilan', 'addMaintenance', 'deleteMaintenance', 'buatRak', 'saranTolak', 'pulihKondisi']);
+
 /* ---------- API dan login ---------- */
 async function raw(action, payload = {}) {
   if (!API_URL || API_URL.includes('PASTE')) throw { code: 'config' };
@@ -158,11 +216,19 @@ async function raw(action, payload = {}) {
   try { return await res.json(); } catch (e) { throw { code: 'server' }; }
 }
 async function api(action, payload = {}) {
+  const w = WRITE_ACTIONS.has(action);
+  if (w) busyBegin(null, !Q.busy);
+  let ok = false;
+  try { return await api_(action, payload, () => { ok = true; }); }
+  finally { if (w) busyEnd(ok); }
+}
+async function api_(action, payload, done) {
   const j = await raw(action, { token: S.tok, ...payload });
   if (!j.ok) {
     if (j.error === 'pin') { S.tok = ''; lsSet('qrg.tok', ''); throw { code: 'pin' }; }
     throw { code: 'server', message: j.error };
   }
+  done();
   return j;
 }
 async function doLogin(pin) {
@@ -244,6 +310,7 @@ const currentDate = () => (S.view === 'riwayat' && S.rwDate ? S.rwDate : today()
 
 async function loadAll(silent) {
   const tgl = currentDate();
+  if (!silent) busyBegin('Memuat data dari Sheet…');
   try {
     const j = await api('bootstrap', { tgl });
     S.pengServer = j.pengambilan || []; S.pengDate = tgl;
@@ -252,18 +319,19 @@ async function loadAll(silent) {
   } catch (e) {
     if (e.code === 'pin') { showPin(S.tok === '' && lsGet('qrg.hadTok', false) ? 'Masuk lagi dengan PIN.' : ''); return; }
     S.loadError = e.code;
-  }
+  } finally { if (!silent) busyEnd(false); }
   lsSet('qrg.hadTok', true);
   refresh();
 }
 
 /* ---------- navigasi dengan riwayat browser (tombol Back Android) ---------- */
 const URL_ = location.pathname + location.search;
-function curState() { return { v: S.view, jid: S.jid, kode: S.kode, tid: S.tid, mid: S.mid, tab: S.tab, ovn: S.ov.length }; }
+function curState() { return { v: S.view, nm: S.nm, wj: S.wj, jid: S.jid, kode: S.kode, tid: S.tid, mid: S.mid, tab: S.tab, ovn: S.ov.length }; }
 function resetTransient() { S.confirmDel = null; S.form = null; S.justAdded = null; if (S.view !== 'panduan') S.pd = null; }
+function syncState() { try { history.replaceState({ ...curState(), d: (history.state && history.state.d) || 0 }, '', URL_); } catch (e) {} }
 function go(view, o = {}) {
   if (S.ov.length) { S.pending = () => go(view, o); history.go(-S.ov.length); return; }
-  S.view = view; S.jid = o.jid || null; S.kode = o.kode || null; S.tid = o.tid || null; S.mid = o.mid || null; S.tab = o.tab || 'unit'; S.focus = null;
+  S.view = view; S.nm = o.nm || null; S.jid = o.jid || null; S.kode = o.kode || null; S.tid = o.tid || null; S.mid = o.mid || null; S.tab = o.tab || 'unit'; S.focus = null;
   resetTransient(); S.form = o.form || null; S.justAdded = o.justAdded || null;
   if (view === 'riwayat') S.rwDate = null;
   const st = curState();
@@ -293,8 +361,8 @@ window.addEventListener('popstate', e => {
   const st = e.state || { v: 'mesin', d: 0, ovn: 0 };
   const target = st.ovn || 0;
   while (S.ov.length > target) closeOv(S.ov.pop());
-  if (st.v !== S.view || (st.jid || null) !== S.jid || (st.kode || null) !== S.kode || (st.tid || null) !== S.tid || (st.mid || null) !== S.mid || (st.tab || 'unit') !== S.tab) {
-    S.view = st.v; S.jid = st.jid || null; S.kode = st.kode || null; S.tid = st.tid || null; S.mid = st.mid || null; S.tab = st.tab || 'unit'; resetTransient();
+  if (st.v !== S.view || (st.nm || null) !== S.nm || (st.jid || null) !== S.jid || (st.kode || null) !== S.kode || (st.tid || null) !== S.tid || (st.mid || null) !== S.mid || (st.tab || 'unit') !== S.tab) {
+    S.view = st.v; S.nm = st.nm || null; S.wj = st.wj || null; S.jid = st.jid || null; S.kode = st.kode || null; S.tid = st.tid || null; S.mid = st.mid || null; S.tab = st.tab || 'unit'; resetTransient();
     if (S.view === 'riwayat') S.rwDate = null;
     render(); onEnter();
   } else refresh();
@@ -308,6 +376,7 @@ function onEnter() {
   if (S.view === 'riwayat') loadRingkasan();
   if (S.view === 'log') loadLogs();
   if (S.view === 'jenis' && S.tab === 'riwayat') loadRiwayatJenis();
+  if (S.view === 'jenis' && S.tab === 'panduan') loadPanduan();
   if (S.view === 'jenis' && (S.focus || S.kode)) setTimeout(() => { const el = $('.ucard.focus'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' }); }, 30);
   if (S.pengDate !== currentDate()) loadAll(true);
 }

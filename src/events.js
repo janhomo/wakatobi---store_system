@@ -7,18 +7,24 @@ function returnIds(ids, kondisi) { ids.forEach(id => enqueue('returnPengambilan'
 
 /* simpan perubahan data mesin: butuh sinyal, tercatat atas nama pengubah */
 async function callEdit(action, payload, doneText, after) {
+  if (Busy.edit) { toast('Sedang menyimpan. Mohon tunggu.'); return; }
   ensureMe(async () => {
+    Busy.edit = true; busyBegin(null, true);
+    let ok = false;
     try {
       const j = await api(action, { ...payload, oleh: S.me });
-      await loadAll(true);
+      busyBegin('Memuat data terbaru dari Sheet…');
+      try { await loadAll(true); } finally { busyEnd(false); }
+      ok = true;
       toast(typeof doneText === 'function' ? doneText(j) : doneText);
       after ? after(j) : back();
     } catch (e) { failed(e); }
+    finally { Busy.edit = false; busyEnd(ok); }
   });
 }
 function saveUnit() {
   const u = U[S.kode]; if (!u) return;
-  const f = { u: clean(val('uu')), sl: ksegVal('uk'), loc: clean(val('uloc')), sn: clean(val('usn')), tb: val('utb'), gs: val('ugs'), cat: val('ucat').trim() };
+  const f = { u: clean(val('uu')), sl: ksegVal('uk'), loc: clean(val('uloc')), pm: clean(val('upm')), sn: clean(val('usn')), tb: val('utb'), gs: val('ugs'), cat: val('ucat').trim() };
   if (!f.u) { toast('Isi nomor unit.'); return; }
   callEdit('editUnit', { kode: u.k, f }, j => j.changed ? 'Perubahan disimpan.' : 'Tidak ada yang berubah.');
 }
@@ -35,7 +41,7 @@ function gabungJenis() {
 }
 function saveTambah() {
   const f = S.form, print = this && this.print;
-  const unit = { u: clean(val('tu')), sn: clean(val('tsn')), sl: ksegVal('tk') || 'Normal', loc: clean(val('tloc')), cat: val('tcat').trim() };
+  const unit = { u: clean(val('tu')), sn: clean(val('tsn')), sl: ksegVal('tk') || 'Normal', loc: clean(val('tloc')), pm: clean(val('tpm')), cat: val('tcat').trim() };
   const payload = { f: unit };
   if (f.step === 'baru') {
     const c = selVal('tkat', 'tkatNew'), n = clean(val('tnama'));
@@ -54,8 +60,8 @@ function afterOv(fn) { if (S.ov.length) { S.pending = fn; history.go(-S.ov.lengt
 
 document.addEventListener('click', async e => {
   const t = e.target.closest('[data-action]'); if (!t) return;
-  const a = t.dataset.action;
-  if (['jenis', 'openunit', 'tambahunit', 'root'].includes(a) || (t.tagName === 'A' && t.getAttribute('href') === '#')) e.preventDefault();
+  const a = t.dataset.action; window.__btn = t;
+  if (['jenis', 'openunit', 'tambahunit', 'root', 'nama', 'tambahjenis', 'wjenis', 'rakbuat'].includes(a) || (t.tagName === 'A' && t.getAttribute('href') === '#')) e.preventDefault();
   /* tombol dua langkah: tekan sekali untuk memastikan */
   if (t.dataset.confirm) {
     if (t.dataset.armed !== '1') {
@@ -72,13 +78,25 @@ document.addEventListener('click', async e => {
     case 'dgo': go(t.dataset.view, { root: true }); break;
     case 'root': if (S.view === t.dataset.view) window.scrollTo(0, 0); else go(t.dataset.view, { root: true }); break;
     case 'back': back(); break;
-    case 'dme': openPicker({ title: 'Nama saya', sub: 'Dipakai di catatan perubahan.', onPick: n => { S.me = n; lsSet('qrg.me', n); renderChrome(); toast('Nama diganti: ' + n); } }); break;
+    case 'dme': pickEditor(() => toast('Nama diganti: ' + S.me), 'Nama saya'); break;
+    case 'dtheme': setTheme(t.dataset.t); renderDrawer(); toast('Tampilan: ' + THEME_L[getTheme()]); break;
     case 'dreload': closeTop(); toast('Memuat ulang…'); loadAll(); break;
     case 'logout': S.tok = ''; lsSet('qrg.tok', ''); lsSet('qrg.hadTok', false); closeTop(); showPin(); break;
+    case 'nama': go('nama', { nm: t.dataset.nm }); break;
+    case 'wnama': S.nm = t.dataset.nm; S.wj = null; S.tab = 'unit'; syncState(); renderJlist(); break;
+    case 'wjenis': S.wj = t.dataset.id; syncState(); renderDetail(); break;
+    case 'wtab': S.tab = t.dataset.t; syncState(); renderDetail(); break;
+    case 'tambahjenis': { const g = nameGroup(t.dataset.nm); go('tambah', { form: { step: 'baru', n: g ? g.name : '', c: g ? g.cat : '', from: 'nama' } }); break; }
     case 'jenis': go('jenis', { jid: t.dataset.id }); break;
     case 'openunit': openUnit(t.dataset.k); break;
     case 'jtab': S.tab = t.dataset.t; history.replaceState({ ...curState(), d: (history.state && history.state.d) || 0 }, '', URL_); $('#app').innerHTML = viewJenis(); if (S.tab === 'riwayat') loadRiwayatJenis(); if (S.tab === 'panduan') loadPanduan(); break;
     case 'filter': S.filter = t.dataset.f; renderJlist(); break;
+    case 'pickpm': {
+      const inp = $('#' + t.dataset.for), lab = $('#' + t.dataset.for + '-l');
+      openPicker({ title: 'Pemilik', sub: 'Departemen yang memiliki mesin ini. Boleh dikosongkan.', items: [{ v: '', l: 'Belum diisi' }, ...deptList().map(d => ({ v: d, l: d }))],
+        onPick: it => { if (inp) inp.value = it.v; if (lab) lab.textContent = it.v || 'Belum diisi'; } });
+      break;
+    }
     case 'uedit': go('unit', { kode: t.dataset.k, jid: U[t.dataset.k].j }); break;
     case 'jedit': go('jedit', { jid: curJid() }); break;
     case 'tambah': go('tambah', { form: { step: 'pilih' } }); break;
@@ -172,7 +190,11 @@ document.addEventListener('click', async e => {
     case 'impgo': impGo(); break;
     /* menu */
     case 'dscan': afterOv(() => openScan({ mode: 'ambil' })); break;
-    case 'dtambah': go('tambah', { form: { step: 'pilih' } }); break;
+    case 'srterima': saranTerima(t.dataset.id); break;
+    case 'srtolak': saranTolakSet(t.dataset.id); break;
+    case 'srbatal': saranTolakSet(t.dataset.id, true); break;
+    case 'srtoggle': S.showRj = !S.showRj; renderLive(); break;
+    case 'rakbuat': callEdit('buatRak', { dari: 1, sampai: 50 }, r => r.dibuat + ' rak dibuat, ' + r.dilewati + ' sudah ada.', () => renderLive()); break;
     /* maintenance */
     case 'maintopen': $('#maintForm').hidden = false; t.hidden = true; $('#mCat').focus(); break;
     case 'maintcancel': $('#maintForm').hidden = true; $('#maintOpenBtn').hidden = false; break;
@@ -256,7 +278,7 @@ document.addEventListener('submit', async e => {
 });
 document.addEventListener('input', e => {
   const id = e.target.id;
-  if (id === 'q') { S.q = e.target.value; renderJlist(); }
+  if (id === 'q') { S.q = e.target.value; renderJlist(true); }
   else if (id === 'pq') { S.tq = e.target.value; renderTempatList(); }
   else if (id === 'mq') { S.mqq = e.target.value; renderMatList(); }
   else if (id === 'aq') { if (S.form) { S.form.q = e.target.value; renderTambahTempat(); } }
@@ -323,7 +345,7 @@ function applyPinned(init) {
   render();
   if (!S.tok && API_URL && !API_URL.includes('PASTE')) showPin(); else loadAll();
   flush();
-  setInterval(() => { if (document.hidden || Q.busy) return; if (['jenis', 'profil', 'hari', 'riwayat', 'tempat', 'tempatlist', 'material', 'mat'].includes(S.view) || S.scan) loadAll(true); }, 20000);
+  setInterval(() => { if (document.hidden || Q.busy || Busy.n) return; if (['nama', 'jenis', 'profil', 'hari', 'riwayat', 'tempat', 'tempatlist', 'material', 'mat'].includes(S.view) || S.scan) loadAll(true); }, 20000);
   window.matchMedia('(min-width: 1000px)').addEventListener('change', () => { applyPinned(); render(); });
   setInterval(flush, 25000);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

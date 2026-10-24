@@ -1,12 +1,26 @@
-QR ASET GUDANG v3 (LENGKAP) - LANGKAH PASANG
+QR ASET GUDANG v4 - LANGKAH PASANG
 ============================================
 
 Isi:
   backend/Code.gs        kode server (Google Apps Script)
   backend/ImporAwal.gs   impor satu kali daftar mesin awal (sudah dijalankan di sheet Anda, tidak perlu lagi)
+  backend/MesinLembar.gs 21 mesin dari lembar catat gudang (jalankan isiMesinLembar satu kali)
   site/                  isi website (upload ke Netlify)
 
-Yang baru di versi ini:
+Yang baru di versi ini (v4):
+  - Mesin tiga tingkat: nama > merek/model > unit (tab Unit, Maintenance, Riwayat)
+  - Tombol + Mesin baru ada di daftar Mesin. Menu "Tambah mesin baru" dihapus
+  - Hanya Abidin, Vikar, dan La Ode Riyan Syaputra yang bisa mengubah data
+  - Kolom Pemilik (departemen) per unit, boleh kosong
+  - Loading di setiap simpan: tombol berputar, garis proses, tulisan status
+  - Scan QR hanya membaca di dalam kotak kecil
+  - Pilihan Tampilan: Otomatis, Terang, Gelap
+  - Laptop: tiga kolom (menu, daftar mesin, detail)
+  - Menu Saran (aturan sederhana, tanpa AI): tidak ada yang berubah sebelum Terima
+  - Rak 001 sampai Rak 050 dibuat otomatis, isi rak tampil satu baris per unit
+  - Label QR untuk printer roll stiker (50x30, 40x30, 60x40, 70x50 mm)
+
+Yang ada di versi sebelumnya:
   - Foto per jenis mesin (bisa digeser, diperbesar, diputar)
   - Penyimpanan: rak, lemari, kontainer, masing-masing punya QR (LOK-001, dst)
   - Panduan maintenance per jenis, ada versi (versi lama tidak hilang)
@@ -19,12 +33,17 @@ A. UPDATE SERVER (sheet yang sudah dipakai)
   1. Buka Google Sheet gudang. Menu Extensions > Apps Script.
   2. Buka file Code.gs. Hapus semua isinya. Tempel seluruh isi backend/Code.gs yang baru. Klik Save.
      Lakukan hal yang sama untuk file ImporAwal (tempel isi backend/ImporAwal.gs). Klik Save.
+  2b. Buat file baru di Apps Script (ikon +, Script) bernama MesinLembar. Tempel isi backend/MesinLembar.gs. Save.
   3. Pilih fungsi "setup", klik Run.
+     Setup menambah kolom Pemilik di sheet Unit (kolom L). Data lama tidak berubah.
      Ini membuat sheet baru: Foto, Tempat, Panduan, Material, Stok Log.
      Teks lama di kolom Tempat (contoh "Gudang Karpenter") otomatis menjadi tempat LOK-001, dst.
      Data lama tidak hilang. PIN tidak berubah.
   4. Kembali ke tab Google Sheet. Klik OK pada kotak pesan yang muncul.
      Kalau tidak diklik, Apps Script menunggu lalu gagal setelah 6 menit.
+  4b. Pilih fungsi "isiMesinLembar", klik Run. Ini memasukkan 21 mesin dari lembar catat (satu kali, aman diulang). Klik OK pada pesan.
+  4c. Rak 001 sampai Rak 050: buka aplikasi > Penyimpanan > tombol "Buat Rak 001 sampai Rak 050".
+      (Atau jalankan fungsi buatRak050 di Apps Script.) Kode LOK diambil berurutan setelah kode yang sudah ada.
   5. Deploy > Manage deployments > ikon pensil (Edit) > Version: New version > Deploy.
      JANGAN pilih "New deployment". Alamat Web app harus tetap sama.
   (Jangan jalankan resetDataLama lagi. Itu menghapus data aktif.)

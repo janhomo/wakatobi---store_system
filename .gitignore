@@ -1,3 +1,5 @@
 node_modules/
 tests/cam3.y4m
 out/
+tests/cam4.y4m
+tests/node_modules

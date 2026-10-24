@@ -21,11 +21,13 @@ var TZ = 'Asia/Makassar';
 var LOGIN_MAX = 5;      // salah PIN berturut-turut sebelum dikunci
 var LOCK_MENIT = 15;    // lama kunci
 var TOKEN_HARI = 90;    // masa berlaku login di satu HP
+// Hanya tiga orang ini yang boleh mengubah data (nama dipilih di aplikasi, dicek lagi di sini).
+var PENGEDIT = ['Abidin', 'Vikar', 'La Ode Riyan Syaputra'];
 var KONDISI_OK = ['Normal', 'Servis', 'Rusak', 'Rusak total', 'Belum dicek'];
 
 var HEADERS = {
   'Jenis': ['ID Jenis', 'Kategori', 'Nama Mesin/Alat', 'Merek', 'Model / Tipe', 'Status'],
-  'Unit': ['Kode', 'ID Jenis', 'No. Unit', 'Kondisi', 'Tempat', 'No. Seri', 'Tanggal Beli', 'Garansi Sampai', 'Catatan', 'Status', 'Harga'],
+  'Unit': ['Kode', 'ID Jenis', 'No. Unit', 'Kondisi', 'Tempat', 'No. Seri', 'Tanggal Beli', 'Garansi Sampai', 'Catatan', 'Status', 'Harga', 'Pemilik'],
   'Kategori': ['Kategori', 'Awalan'],
   'Pengambilan': ['ID', 'Tanggal', 'Nama', 'Kode Aset', 'Mesin', 'Model', 'Jam Ambil', 'Jam Kembali', 'Kondisi Kembali', 'Catatan', 'Departemen'],
   'Arsip': ['ID', 'Tanggal', 'Nama', 'Kode Aset', 'Mesin', 'Model', 'Jam Ambil', 'Jam Kembali', 'Kondisi Kembali', 'Catatan', 'Departemen', 'Diarsipkan'],
@@ -40,7 +42,7 @@ var HEADERS = {
   'Stok Log': ['ID', 'Waktu', 'ID Material', 'Jenis', 'Jumlah', 'Stok Sesudah', 'Oleh', 'Catatan']
 };
 var TEXT_COLS = {
-  'Unit': ['E:F', 'G:H', 'I:I'],
+  'Unit': ['E:F', 'G:H', 'I:I', 'L:L'],
   'Pengambilan': ['B:B', 'G:H'],
   'Arsip': ['B:B', 'G:H', 'L:L'],
   'Maintenance': ['C:C', 'G:H'],
@@ -176,14 +178,15 @@ function login_(req) {
 
 var BUTUH_NAMA = ['addUnit', 'editUnit', 'editJenis', 'nonaktifUnit', 'aktifkanUnit', 'renameMerek', 'gabungJenis',
   'addTempat', 'editTempat', 'nonaktifTempat', 'aktifTempat', 'setTempat', 'fotoSet', 'fotoHapus', 'panduanSimpan',
-  'addMaterial', 'editMaterial', 'statusMaterial', 'imporUnit'];
+  'addMaterial', 'editMaterial', 'statusMaterial', 'imporUnit', 'buatRak', 'saranTolak'];
 function route_(req) {
   if (BUTUH_NAMA.indexOf(req.action) >= 0 && !clean_(req.oleh)) return { ok: false, error: 'Pilih nama Anda dulu.' };
+  if (BUTUH_NAMA.indexOf(req.action) >= 0 && !PENGEDIT.some(function (n) { return same_(n, req.oleh); })) return { ok: false, error: 'Hanya Abidin, Vikar, dan La Ode Riyan Syaputra yang boleh mengubah data.' };
   switch (req.action) {
     case 'bootstrap':
       return { ok: true, jenis: listJenis_(), unit: listUnit_(), kategori: listKategori_(), pekerja: listPekerja_(), maintenance: listMaintenance_(),
                tempat: listTempat_(), material: listMaterial_(),
-               pengambilan: listPengambilan_(req.tgl), belum: listBelum_(), cfg: { jamPulang: getSetting_('JAM PULANG') || '17:00' }, serverDate: today_() };
+               pengambilan: listPengambilan_(req.tgl), belum: listBelum_(), cfg: { jamPulang: getSetting_('JAM PULANG') || '17:00', saranTolak: getSetting_('SARAN DITOLAK') || '', pengedit: PENGEDIT }, serverDate: today_() };
     case 'pengambilan': return { ok: true, pengambilan: listPengambilan_(req.tgl) };
     case 'ringkasan': return { ok: true, ringkasan: ringkasan_() };
     case 'riwayat': return { ok: true, riwayat: riwayat_([clean_(req.kode)]) };
@@ -220,6 +223,9 @@ function route_(req) {
     case 'stok': return stok_(req);
     case 'stokLog': return { ok: true, log: stokLog_(clean_(req.id)) };
     case 'imporUnit': return imporUnit_(req);
+    case 'buatRak': return buatRak_(req);
+    case 'pulihKondisi': return pulihKondisi_(req);
+    case 'saranTolak': return saranTolak_(req);
   }
   return { ok: false, error: 'aksi tidak dikenal' };
 }
@@ -277,7 +283,7 @@ function listJenis_() {
 function listUnit_() {
   // Harga (kolom 11) sengaja tidak dikirim ke aplikasi
   return filled_('Unit').map(function (r) {
-    return { k: str_(r[0]), j: str_(r[1]), u: numOrStr_(r[2]), sl: clean_(r[3]), loc: clean_(r[4]), sn: clean_(r[5]), tb: ds_(r[6]), gs: ds_(r[7]), cat: str_(r[8]), off: str_(r[9]).toLowerCase() === 'nonaktif' };
+    return { k: str_(r[0]), j: str_(r[1]), u: numOrStr_(r[2]), sl: clean_(r[3]), loc: clean_(r[4]), sn: clean_(r[5]), tb: ds_(r[6]), gs: ds_(r[7]), cat: str_(r[8]), pm: clean_(r[11]), off: str_(r[9]).toLowerCase() === 'nonaktif' };
   });
 }
 function listKategori_() { return filled_('Kategori').map(function (r) { return { c: clean_(r[0]), p: clean_(r[1]).toUpperCase() }; }); }
@@ -443,7 +449,7 @@ function parseUnitNo_(v) {
 function normUnit_(f) {
   f = f || {};
   var o = {};
-  ['u', 'sl', 'loc', 'sn', 'tb', 'gs'].forEach(function (k) { if (f[k] !== undefined && f[k] !== null) o[k] = clean_(f[k]); });
+  ['u', 'sl', 'loc', 'sn', 'tb', 'gs', 'pm'].forEach(function (k) { if (f[k] !== undefined && f[k] !== null) o[k] = clean_(f[k]); });
   if (f.cat !== undefined && f.cat !== null) o.cat = str_(f.cat).trim();
   return o;
 }
@@ -453,6 +459,12 @@ function checkUnit_(o) {
   if (o.tb && !ISO_.test(o.tb)) return 'Tanggal beli tidak valid.';
   if (o.gs && !ISO_.test(o.gs)) return 'Tanggal garansi tidak valid.';
   return '';
+}
+function deptOf_(v) {
+  var d = clean_(v), out = null;
+  if (!d) return '';
+  rows_('Pekerja').forEach(function (r) { if (!out && same_(r[1], d)) out = clean_(r[1]); });
+  return out;
 }
 function unitNosOf_(jenisId, exceptKode) {
   var out = [];
@@ -466,6 +478,7 @@ function addUnit_(r) {
   var f = normUnit_(r.f), bad = checkUnit_(f);
   if (bad) return err_(bad);
   if (f.loc && !tempatOk_(f.loc)) return err_('Pilih tempat dari daftar.');
+  if (f.pm) { var dp = deptOf_(f.pm); if (dp === null) return err_('Pemilik harus departemen dari daftar pekerja.'); f.pm = dp; }
   var jrows = filled_('Jenis'), jenis, kat, awalan = '', newJenis = false;
   if (clean_(r.jenisId)) {
     var jf = findRow_('Jenis', clean_(r.jenisId));
@@ -498,7 +511,7 @@ function addUnit_(r) {
     sheet_('Jenis').appendRow([jenis.id, jenis.c, jenis.n, jenis.b, jenis.m, '']);
     log_(jenis.id, 'Tambah jenis', jenis.n + (jenis.b ? ' / ' + jenis.b : '') + (jenis.m ? ' / ' + jenis.m : '') + ' (' + jenis.c + ')', r.oleh);
   }
-  sheet_('Unit').appendRow([kode, jenis.id, u, f.sl || 'Normal', f.loc || '', f.sn || '', f.tb || '', f.gs || '', f.cat || '', '', '']);
+  sheet_('Unit').appendRow([kode, jenis.id, u, f.sl || 'Normal', f.loc || '', f.sn || '', f.tb || '', f.gs || '', f.cat || '', '', '', f.pm || '']);
   log_(kode, 'Tambah unit', jenis.n + ' unit ' + u, r.oleh);
   return { ok: true, kode: kode, jenisId: jenis.id };
 }
@@ -508,14 +521,17 @@ function editUnit_(r) {
   if (!f) return err_('Unit tidak ditemukan.');
   var o = normUnit_(r.f), bad = checkUnit_(o);
   if (bad) return err_(bad);
-  var row = f.row.slice(), labels = { u: [2, 'No. unit'], sl: [3, 'Kondisi'], loc: [4, 'Tempat'], sn: [5, 'No. seri'], tb: [6, 'Tanggal beli'], gs: [7, 'Garansi'], cat: [8, 'Catatan'] };
+  var row = f.row.slice(); while (row.length < HEADERS['Unit'].length) row.push('');
+  var labels = { u: [2, 'No. unit'], sl: [3, 'Kondisi'], loc: [4, 'Tempat'], sn: [5, 'No. seri'], tb: [6, 'Tanggal beli'], gs: [7, 'Garansi'], cat: [8, 'Catatan'], pm: [11, 'Pemilik'] };
   var diffs = [], k;
   for (k in labels) {
     if (o[k] === undefined) continue;
     var idx = labels[k][0], before = (k === 'tb' || k === 'gs') ? ds_(f.row[idx]) : (k === 'cat' ? str_(f.row[idx]).trim() : clean_(f.row[idx]));
+    if (k === 'pm' && o.pm && deptOf_(o.pm) !== null) o.pm = deptOf_(o.pm);
     if (k === 'sl' && o[k] === '') continue;
     if (before !== o[k]) {
       if (k === 'loc' && !tempatOk_(o.loc)) return err_('Pilih tempat dari daftar.');
+      if (k === 'pm' && o.pm) { var dq = deptOf_(o.pm); if (dq === null) return err_('Pemilik harus departemen dari daftar pekerja.'); o.pm = dq; }
       if (k === 'u') {
         if (!o.u) return err_('No. unit wajib diisi.');
         var nu = parseUnitNo_(o.u);
@@ -924,10 +940,60 @@ function imporUnit_(r) {
     used[u] = 1;
     seq[p] = (seq[p] || 0) + 1;
     var loc = tByName[clean_(d.loc).toLowerCase()] || '';
-    newU.push([p + '-' + pad3_(seq[p]), jid, u, sl, loc, clean_(d.sn), '', '', str_(d.cat).trim(), '', '']);
+    var pmv = deptOf_(d.pm);
+    if (pmv === null) { errors.push('Baris ' + line + ': pemilik "' + clean_(d.pm) + '" tidak ada di daftar departemen.'); return; }
+    newU.push([p + '-' + pad3_(seq[p]), jid, u, sl, loc, clean_(d.sn), '', '', str_(d.cat).trim(), '', '', pmv]);
   });
   if (newJ.length) { var js = sheet_('Jenis'); js.getRange(js.getLastRow() + 1, 1, newJ.length, 6).setValues(newJ); }
-  if (newU.length) { var us = sheet_('Unit'); us.getRange(us.getLastRow() + 1, 1, newU.length, 11).setValues(newU); }
+  if (newU.length) { var us = sheet_('Unit'); us.getRange(us.getLastRow() + 1, 1, newU.length, 12).setValues(newU); }
   if (newU.length) log_('', 'Impor Excel', newU.length + ' unit, ' + newJ.length + ' jenis baru' + (skipped.length ? ', ' + skipped.length + ' baris dilewati' : ''), r.oleh);
   return { ok: true, unit: newU.length, jenis: newJ.length, skipped: skipped.slice(0, 30), errors: errors.slice(0, 30), nSkipped: skipped.length, nErrors: errors.length };
+}
+
+/* ---------- rak otomatis: Rak 001 ... Rak 050 (kode LOK-001 ... LOK-050) ---------- */
+function buatRak_(r) {
+  var dari = Math.max(1, Number(r.dari) || 1), sampai = Math.min(999, Number(r.sampai) || 50);
+  var byName = {};
+  filled_('Tempat').forEach(function (x) { byName[clean_(x[1]).toLowerCase()] = 1; });
+  var next = maxLok_() + 1, add = [], skip = 0;
+  for (var i = dari; i <= sampai; i++) {
+    var nama = 'Rak ' + pad3_(i);
+    if (byName[nama.toLowerCase()]) { skip++; continue; }
+    if (next > 999) return err_('Nomor LOK sudah penuh (999).');
+    add.push(['LOK-' + pad3_(next), nama, '', '']); next++;
+  }
+  if (add.length) {
+    var sh = sheet_('Tempat');
+    sh.getRange(sh.getLastRow() + 1, 1, add.length, 4).setValues(add);
+    log_('', 'Rak otomatis', add.length + ' rak dibuat (' + add[0][1] + ' sampai ' + add[add.length - 1][1] + ', kode ' + add[0][0] + ' sampai ' + add[add.length - 1][0] + ')', r.oleh || 'Sistem');
+  }
+  return { ok: true, dibuat: add.length, dilewati: skip };
+}
+// Jalankan sekali dari editor Apps Script jika tidak lewat aplikasi.
+function buatRak050() {
+  var res = buatRak_({ dari: 1, sampai: 50, oleh: 'Sistem' });
+  var msg = res.dibuat + ' rak dibuat, ' + res.dilewati + ' dilewati (sudah ada).';
+  Logger.log(msg);
+  try { SpreadsheetApp.getUi().alert(msg); } catch (e) {}
+}
+// Saran yang ditolak diingat di sheet Pengaturan supaya tidak muncul lagi.
+function saranTolak_(r) {
+  var id = clean_(r.id);
+  if (!id || id.length > 120) return err_('Saran tidak valid.');
+  var list = [];
+  try { list = JSON.parse(getSetting_('SARAN DITOLAK') || '[]'); } catch (e) { list = []; }
+  if (r.batal) list = list.filter(function (x) { return x !== id; });
+  else if (list.indexOf(id) < 0) list.push(id);
+  if (list.length > 300) list = list.slice(-300);
+  setSetting_('SARAN DITOLAK', JSON.stringify(list));
+  return { ok: true, saranTolak: JSON.stringify(list) };
+}
+
+// Membatalkan pengembalian "Rusak" dari layar scan: kondisi unit dikembalikan. Tidak butuh nama pengedit.
+function pulihKondisi_(r) {
+  var kondisi = clean_(r.kondisi);
+  if (KONDISI_OK.indexOf(kondisi) < 0) return err_('Kondisi tidak dikenal.');
+  if (!findRow_('Unit', clean_(r.kode))) return err_('Unit tidak ditemukan.');
+  setKondisiUnit_(clean_(r.kode), kondisi, 'Pengembalian dibatalkan');
+  return { ok: true };
 }

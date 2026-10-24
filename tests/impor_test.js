@@ -37,6 +37,6 @@ const nm = U.filter(r => r[8]).length;
 ok('notes kept (perlu dicek reasons)', nm === data.filter(d => d[7]).length && nm > 20, nm);
 // setelah impor, fitur lain jalan: tambah unit ke jenis yang ada memberi nomor berikut
 const bor = J.find(r => r[2] === 'Bor breaker kecil');
-const add = call({ action: 'addUnit', token: TOKEN, oleh: 'Tes', jenisId: bor[0], f: {} });
+const add = call({ action: 'addUnit', token: TOKEN, oleh: 'Abidin', jenisId: bor[0], f: {} });
 ok('addUnit after import: next unit number 5 and next free code', add.ok && /^BOR-\d{3}$/.test(add.kode) && rows('Unit').find(r => r[0] === add.kode)[2] === 5, add);
 console.log(t.join('\n')); const f = t.filter(x => x.startsWith('FAIL')).length; console.log(f ? f + ' GAGAL' : 'SEMUA LULUS (' + t.length + ')'); process.exit(f ? 1 : 0);

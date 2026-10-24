@@ -20,9 +20,11 @@ const check = (n, c, extra) => log.push((c ? 'PASS ' : 'FAIL ') + n + (c ? '' : 
 const rows = name => ss.getSheetByName(name).data.slice(1).filter(r => r && r[0]);
 const raw = body => JSON.parse(env.doPost({ postData: { contents: JSON.stringify(body) } }).getContent());
 const TOKEN = raw({ action: 'login', pin: PIN }).token;
-const srv = body => raw({ token: TOKEN, oleh: 'Seed', ...body });
+const srv = body => raw({ token: TOKEN, oleh: 'Abidin', ...body });
 const txt = async (page, sel) => ((await page.textContent(sel)) || '').replace(/\s+/g, ' ').trim();
 const unitRow = k => rows('Unit').find(r => r[0] === k);
+const openJ = async (page, id) => { const nm = await page.evaluate(i => nameKey(J[i]), id); if (await page.locator('#jlist').count()) await page.click('.jcard[data-nm="' + nm + '"]'); await page.click('.jcard[data-id="' + id + '"]'); };
+const pickEd = async (page, n) => { await page.waitForSelector('#picker:not([hidden]) [data-action="pickitem"]'); await page.click('#picker [data-action="pickitem"]:has-text("' + n + '")'); await page.waitForSelector('#picker', { state: 'hidden' }); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
@@ -40,12 +42,13 @@ const jenisId = bor.jenisId;
 (async () => {
   const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', '--use-file-for-fake-video-capture=' + path.resolve(__dirname, 'cam3.y4m')]
+    args: ['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', '--use-file-for-fake-video-capture=' + path.resolve(__dirname, 'cam4.y4m')]
   });
   const ctx = await browser.newContext({ viewport: { width: 400, height: 860 }, permissions: ['camera'], acceptDownloads: true });
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error' && !/fonts|favicon|ERR_FAILED|Failed to load resource/.test(m.text())) errors.push('console: ' + m.text()); });
+  await page.addInitScript(() => { const st = document.createElement('style'); st.textContent = '#scan .frame{position:fixed!important;left:50%;top:50%;transform:translate(-50%,-50%)}'; document.addEventListener('DOMContentLoaded', () => document.head.appendChild(st)); });
   await page.addInitScript(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
   let offline = false;
   await page.route('https://script.google.com/**', async route => {
@@ -74,23 +77,23 @@ const jenisId = bor.jenisId;
 
   // ===== 2. daftar per jenis
   check('3 jenis cards', (await page.locator('#jlist .jcard').count()) === 3);
-  const borCard = await txt(page, '.jcard[data-id="' + jenisId + '"]');
-  check('Bor card: name, merek model, 3 unit, 3 tersedia', borCard.includes('Bor') && borCard.includes('Bosch · GBH 2-28') && borCard.includes('3 unit') && borCard.includes('3 tersedia'), borCard);
-  const grdCard = await txt(page, '.jcard[data-id="' + grd.jenisId + '"]');
+  const borCard = await txt(page, '.jcard[data-nm="bor"]');
+  check('Bor card: name, merek model, 3 unit, 3 tersedia', borCard.includes('Bor') && borCard.includes('1 merek/model · 3 unit') && borCard.includes('3 tersedia'), borCard);
+  const grdCard = await txt(page, '.jcard[data-nm="gurinda tangan"]');
   check('Gurinda card: 1 rusak, 1 tersedia', grdCard.includes('1 rusak') && grdCard.includes('1 tersedia'), grdCard);
-  check('header shows counts', (await txt(page, '#hdr')).includes('3 jenis') && (await txt(page, '#hdr')).includes('6 unit'), await txt(page, '#hdr'));
+  check('header shows counts', (await txt(page, '#hdr')).includes('3 mesin') && (await txt(page, '#hdr')).includes('6 unit'), await txt(page, '#hdr'));
   await page.click('.fchip[data-f="rusak"]');
   check('filter Rusak: only Gurinda', (await page.locator('#jlist .jcard').count()) === 1 && (await txt(page, '#jlist')).includes('Gurinda'));
   await page.click('.fchip[data-f=""]');
   await page.fill('#q', 'krp-001');
   check('search by unit code finds Gergaji', (await page.locator('#jlist .jcard').count()) === 1 && (await txt(page, '#jlist')).includes('Gergaji'));
   await page.fill('#q', 'makita');
-  check('search by merek finds 2 jenis', (await page.locator('#jlist .jcard').count()) === 2);
+  check('search by merek finds 2 names', (await page.locator('#jlist .jcard').count()) === 2);
   await page.fill('#q', '');
   await page.screenshot({ path: OUT + '/v3_mesin.png' });
 
   // ===== 3. detail jenis
-  await page.click('.jcard[data-id="' + jenisId + '"]');
+  await openJ(page, jenisId);
   await page.waitForSelector('.ucard');
   check('jenis detail: 3 unit cards with codes BOR-001..003', (await page.locator('.ucard').count()) === 3 && (await txt(page, '#app')).includes('BOR-003'));
   check('header shows jenis name + merek model', (await txt(page, '#hdr')).includes('Bor') && (await txt(page, '#hdr')).includes('Bosch'));
@@ -113,14 +116,14 @@ const jenisId = bor.jenisId;
   await page.click('[data-action="usave"]');
   await page.waitForSelector('#picker:not([hidden])');
   check('first save asks "Siapa Anda?"', (await txt(page, '#picker')).includes('Siapa Anda'));
-  await pickFirstName('Budi');
+  await pickEd(page, 'Abidin');
   await page.waitForSelector('.ucard');
   await page.waitForTimeout(300);
   const ur = unitRow('BOR-002');
   check('unit saved in sheet (Servis, tempat, catatan)', ur[3] === 'Servis' && ur[4] === 'LOK-001' && ur[8] === 'Karbon brush aus', JSON.stringify(ur));
-  check('log has who/old>new', rows('Log Perubahan').some(r => r[1] === 'BOR-002' && r[2] === 'Ubah unit' && r[4] === 'Budi' && String(r[3]).includes('Normal > Servis')), JSON.stringify(rows('Log Perubahan').slice(-2)));
+  check('log has who/old>new', rows('Log Perubahan').some(r => r[1] === 'BOR-002' && r[2] === 'Ubah unit' && r[4] === 'Abidin' && String(r[3]).includes('Normal > Servis')), JSON.stringify(rows('Log Perubahan').slice(-2)));
   check('back on jenis detail with servis pill + note', (await txt(page, '#u-BOR-002')).includes('Servis') && (await txt(page, '#u-BOR-002')).includes('Karbon brush aus'), await txt(page, '#u-BOR-002'));
-  check('own name remembered', await page.evaluate(() => JSON.parse(localStorage.getItem('qrg.me'))) === 'Budi');
+  check('own name remembered', await page.evaluate(() => JSON.parse(localStorage.getItem('qrg.me'))) === 'Abidin');
   // nomor unit bentrok ditolak
   await page.click('[data-action="uedit"][data-k="BOR-003"]'); await page.waitForSelector('#uu');
   await page.fill('#uu', '1'); await page.click('[data-action="usave"]'); await page.waitForTimeout(500);
@@ -137,7 +140,7 @@ const jenisId = bor.jenisId;
   await page.click('[data-action="jsave"]'); await page.waitForSelector('.ucard');
   await page.waitForTimeout(300);
   check('second tap saves model', rows('Jenis').find(r => r[0] === jenisId)[4] === 'GBH 2-28 DFV');
-  check('log says berlaku untuk 3 unit', rows('Log Perubahan').some(r => r[2] === 'Ubah jenis' && String(r[3]).includes('berlaku untuk 3 unit') && r[4] === 'Budi'));
+  check('log says berlaku untuk 3 unit', rows('Log Perubahan').some(r => r[2] === 'Ubah jenis' && String(r[3]).includes('berlaku untuk 3 unit') && r[4] === 'Abidin'));
   check('header updated', (await txt(page, '#hdr')).includes('GBH 2-28 DFV'));
 
   // ===== 6. tambah unit pada jenis yang ada
@@ -150,11 +153,11 @@ const jenisId = bor.jenisId;
   check('BOR-004 created: unit 4, belum dicek, seri', nu && nu[1] === jenisId && nu[2] === 4 && nu[3] === 'Belum dicek' && nu[5] === 'XYZ-1', JSON.stringify(nu));
   check('landed on jenis detail focusing the new unit', await page.isVisible('#u-BOR-004.focus'));
   // android back dari detail ke daftar
-  await page.goBack(); await page.waitForTimeout(200);
+  await page.goBack(); await page.waitForSelector('.jcard[data-id]'); await page.goBack(); await page.waitForTimeout(200);
   check('Back from detail returns to Mesin list (not exit)', await page.isVisible('#jlist') && (await page.locator('#jlist .jcard').count()) === 3);
 
   // ===== 7. mesin baru: jenis baru + kategori baru
-  await page.click('#fab'); await page.waitForSelector('#tq');
+  await page.click('[data-action="tambah"]'); await page.waitForSelector('#tq');
   check('tambah: pick screen lists existing jenis', (await page.locator('#tlist .pickrow').count()) === 3);
   await page.click('[data-action="tnew"]'); await page.waitForSelector('#tnama');
   await page.selectOption('#tkat', '__new');
@@ -165,7 +168,7 @@ const jenisId = bor.jenisId;
   await page.waitForTimeout(300);
   check('new jenis + category + LAS-001 saved', unitRow('LAS-001') && rows('Kategori').some(r => r[0] === 'Mesin Las' && r[1] === 'LAS') && rows('Jenis').some(r => r[2] === 'Mesin las' && r[3] === 'Lakoni'));
   // jenis sama ditolak
-  await page.goBack(); await page.click('#fab'); await page.click('[data-action="tnew"]'); await page.selectOption('#tkat', 'Mesin Las');
+  await page.goBack(); await page.click('[data-action="tambah"]'); await page.click('[data-action="tnew"]'); await page.selectOption('#tkat', 'Mesin Las');
   await page.fill('#tnama', 'mesin LAS'); await page.selectOption('#tmerek', 'Lakoni'); await page.fill('#tmodel', 'basic 160');
   await page.click('[data-action="tsave"]:not([data-print])'); await page.waitForTimeout(500);
   check('duplicate jenis refused', (await txt(page, '#toast')).includes('sudah ada') && rows('Unit').filter(r => r[1] === rows('Jenis').find(j => j[2] === 'Mesin las')[0]).length === 1, await txt(page, '#toast'));
@@ -207,7 +210,7 @@ const jenisId = bor.jenisId;
   check('Back closes scan overlay, stays in app', await page.isHidden('#scan') && await page.isVisible('#jlist'));
 
   // ===== 9. tombol Ambil / Kembalikan pada kartu unit (tanpa scan)
-  await page.click('.jcard[data-id="' + jenisId + '"]'); await page.waitForSelector('.ucard');
+  await openJ(page, jenisId); await page.waitForSelector('.ucard');
   await page.click('[data-action="uambil"][data-k="BOR-001"]'); await page.waitForSelector('#sheet .bitem');
   check('Ambil button opens basket with that unit', (await txt(page, '#sheet')).includes('BOR-001') && (await page.locator('#sheet .bitem').count()) === 1);
   await page.click('.namebar'); await pickFirstName('Andi');
@@ -215,7 +218,7 @@ const jenisId = bor.jenisId;
   pr = rows('Pengambilan');
   check('BOR-001 taken by Andi', pr.length === 1 && pr[0][2] === 'Andi' && pr[0][3] === 'BOR-001' && !pr[0][7], JSON.stringify(pr));
   await page.click('[data-action="scanclose"]'); await page.waitForSelector('#scan', { state: 'hidden' });
-  check('unit card now Di luar + Kembalikan button', (await txt(page, '#u-BOR-001')).includes('Di luar: Andi') && await page.isVisible('[data-action="uret"][data-k="BOR-001"]'));
+  check('unit card now Di luar + Kembalikan button', (await txt(page, '#u-BOR-001')).includes('Dipegang') && (await txt(page, '#u-BOR-001')).includes('Andi') && await page.isVisible('[data-action="uret"][data-k="BOR-001"]'));
   check('Hari Ini badge shows 1', (await txt(page, '#hariBadge')) === '1');
 
   // BOR-001 dipindah tangan ke Citra
@@ -272,8 +275,8 @@ const jenisId = bor.jenisId;
   await page.click('[data-action="uambil"][data-k="BOR-003"]'); await page.waitForSelector('#sheet .bitem');
   await page.click('.namebar'); await pickFirstName('Citra'); await page.click('.yes'); await page.waitForSelector('.donebox');
   await page.click('[data-action="scanclose"]'); await page.waitForTimeout(400);
-  check('offline: sync bar shows pending, nothing on server', (await txt(page, '#sync')).includes('menunggu terkirim') && rows('Pengambilan').length === 1 && !(await page.locator('#sync').isHidden()), await txt(page, '#sync'));
-  check('offline: unit shows as taken locally', (await txt(page, '#u-BOR-003')).includes('Di luar: Citra'));
+  check('offline: sync bar shows pending, nothing on server', (await txt(page, '#sync')).includes('Menunggu sinyal') && rows('Pengambilan').length === 1 && !(await page.locator('#sync').isHidden()), await txt(page, '#sync'));
+  check('offline: unit shows as taken locally', (await txt(page, '#u-BOR-003')).includes('Citra'));
   await page.screenshot({ path: OUT + '/v3_offline.png' });
   offline = false; await page.evaluate(() => window.dispatchEvent(new Event('online'))); await page.waitForTimeout(1200);
   check('back online: queue flushed to sheet', rows('Pengambilan').length === 2 && rows('Pengambilan').some(r => r[3] === 'BOR-003' && r[2] === 'Citra') && await page.locator('#sync').isHidden());
@@ -299,7 +302,7 @@ const jenisId = bor.jenisId;
   await page.goBack(); await page.waitForSelector('#nvMesin'); await page.click('#nvMesin'); await page.waitForSelector('[data-action="menu"]');
   await page.click('[data-action="menu"]'); await page.waitForSelector('#drawer:not([hidden]) aside');
   const dr = await txt(page, '#drawer');
-  check('drawer: Mesin, Hari Ini, Riwayat, Merek, Pekerja, Log, label, name, keluar', ['Mesin', 'Hari Ini', 'Riwayat', 'Merek', 'Pekerja', 'Log perubahan', 'Cetak label QR', 'Nama saya: Budi', 'Keluar'].every(s => dr.includes(s)), dr);
+  check('drawer: Mesin, Hari Ini, Riwayat, Merek, Pekerja, Log, label, name, keluar', ['Mesin', 'Hari Ini', 'Riwayat', 'Merek', 'Pekerja', 'Log perubahan', 'Cetak label QR', 'Nama saya: Abidin', 'Keluar'].every(s => dr.includes(s)), dr);
   check('drawer shows the logo (image loaded)', await page.evaluate(() => { const i = document.querySelector('#drawer .dh img'); return !!i && i.complete && i.naturalWidth > 0; }));
   await page.screenshot({ path: OUT + '/v3_drawer.png' });
   await page.goBack(); await page.waitForTimeout(200);
@@ -312,13 +315,13 @@ const jenisId = bor.jenisId;
   await page.click('[data-action="mreksave"]');
   check('merek rename needs 2nd tap (affects 2 jenis)', (await txt(page, '[data-action="mreksave"]')).includes('Ya, ubah 2 jenis') && rows('Jenis').filter(r => r[3] === 'Makita').length === 2);
   await page.click('[data-action="mreksave"]'); await page.waitForTimeout(600);
-  check('merek renamed in all jenis + logged', rows('Jenis').filter(r => r[3] === 'Makita Pro').length === 2 && rows('Log Perubahan').some(r => r[2] === 'Ubah merek' && r[4] === 'Budi'));
+  check('merek renamed in all jenis + logged', rows('Jenis').filter(r => r[3] === 'Makita Pro').length === 2 && rows('Log Perubahan').some(r => r[2] === 'Ubah merek' && r[4] === 'Abidin'));
   await page.screenshot({ path: OUT + '/v3_merek.png' });
 
   // ===== 15. log + pekerja
   await page.click('[data-action="menu"]'); await page.click('[data-action="dgo"][data-view="log"]'); await page.waitForSelector('.logrow');
   const lg = await txt(page, '#live-log');
-  check('log screen shows who/when/old>new', lg.includes('Budi') && lg.includes('Normal > Servis') && lg.includes('Ubah merek'), lg.slice(0, 200));
+  check('log screen shows who/when/old>new', lg.includes('Abidin') && lg.includes('Normal > Servis') && lg.includes('Ubah merek'), lg.slice(0, 200));
   await page.click('[data-action="menu"]'); await page.click('[data-action="dgo"][data-view="pekerja"]'); await page.waitForSelector('#newName');
   await page.fill('#newName', 'Dewi'); await page.fill('#newDept', 'Listrik'); await page.click('[data-action="addname"]'); await page.waitForTimeout(400);
   check('worker added', rows('Pekerja').some(r => r[0] === 'Dewi'));

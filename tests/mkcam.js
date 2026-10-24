@@ -4,7 +4,7 @@ const W = 640, H = 480, codes = process.argv.slice(3), out = process.argv[2];
 const frames = [];
 for (const code of codes) {
   const qr = qrcode(0, 'H'); qr.addData(code); qr.make();
-  const n = qr.getModuleCount(), m = 4, tot = n + 2 * m, px = Math.floor(400 / tot);
+  const n = qr.getModuleCount(), m = 4, tot = n + 2 * m, px = Math.floor((Number(process.env.QRSIZE) || 400) / tot);
   const Y = Buffer.alloc(W * H, 255);
   const ox = Math.floor((W - tot * px) / 2), oy = Math.floor((H - tot * px) / 2);
   for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c))

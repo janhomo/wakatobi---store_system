@@ -27,7 +27,7 @@ ok('after lock expires, correct PIN gives token', l.ok && /^\d+\.\d+\.[0-9a-f]{6
 ok('GAGAL reset after success', setting('GAGAL') === '0');
 const TOKEN = l.token;
 const call = body => raw({ token: TOKEN, ...body });
-const adm = body => call({ oleh: 'Pak Admin', ...body });
+const adm = body => call({ oleh: 'Abidin', ...body });
 const boot = (tgl) => call({ action: 'bootstrap', tgl });
 ok('token works', boot().ok === true);
 const parts = TOKEN.split('.');
@@ -142,7 +142,7 @@ ok('arsipkan moves to Arsip', (() => { const r = call({ action: 'arsipkan', tgl:
 // ---- maintenance, pekerja, log
 ok('maint add/invalid/list/delete', call({ action: 'addMaintenance', id: 'm1', kode: 'BOR-001', tgl: '2026-10-01', jenis: 'Servis rutin', oleh: 'Tono', cat: 'oli', next: '2026-11-01' }).ok && call({ action: 'addMaintenance', id: 'm2', kode: 'BOR-001', tgl: '1/2/26' }).ok === false && boot().maintenance.length === 1 && call({ action: 'deleteMaintenance', id: 'm1' }).ok && boot().maintenance.length === 0);
 ok('savePekerja objects sorted+dedupe', (() => { call({ action: 'savePekerja', pekerja: [{ n: 'Budi', d: 'Karpenter' }, { n: 'andi', d: 'Pembesian' }, { n: 'BUDI', d: 'X' }, { n: ' Citra ', d: '' }] }); const p = boot().pekerja; return p.length === 3 && p.some(x => x.n === 'Budi' && x.d === 'Karpenter'); })());
-ok('logList newest first with who', (() => { const lg = call({ action: 'logList' }).log; return lg.length > 10 && lg[0].t >= lg[lg.length - 1].t && lg.some(x => x.a === 'Ubah unit' && x.o === 'Pak Admin' && x.d.includes('Gudang Karpenter (LOK-001)')) && lg.some(x => x.a === 'Gabung jenis') && lg.some(x => x.a === 'Ubah merek'); })());
+ok('logList newest first with who', (() => { const lg = call({ action: 'logList' }).log; return lg.length > 10 && lg[0].t >= lg[lg.length - 1].t && lg.some(x => x.a === 'Ubah unit' && x.o === 'Abidin' && x.d.includes('Gudang Karpenter (LOK-001)')) && lg.some(x => x.a === 'Gabung jenis') && lg.some(x => x.a === 'Ubah merek'); })());
 
 // ---- harga tidak bocor
 ss.getSheetByName('Unit').data[1][10] = 98765432;

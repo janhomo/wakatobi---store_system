@@ -1,7 +1,8 @@
 </style>
 </head>
 <body>
-<header class="top"><div class="in" id="hdr"></div></header>
+<header class="top"><div class="in" id="hdr"></div><div class="prog" id="prog" hidden><i></i></div></header>
+<div class="savebar" id="savebar" hidden role="status" aria-live="polite"></div>
 <div class="syncbar" id="sync" hidden></div>
 <main class="wrap" id="app"></main>
 <button class="fab" id="fab" data-action="tambah" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Mesin baru</button>
@@ -35,7 +36,7 @@
 <input type="file" id="fileGal" accept="image/*" hidden>
 <div id="pin" hidden>
   <form class="box" id="pinForm">
-    <picture><source media="(prefers-color-scheme: dark)" srcset="logo-gelap.png"><img class="brand" src="logo-terang.png" alt="Wakatobi Project Villa" width="240" height="167"></picture>
+    <img class="brand lt" src="logo-terang.png" alt="Wakatobi Project Villa" width="240" height="167"><img class="brand dk" src="logo-gelap.png" alt="" width="240" height="167">
     <h2>Masukkan PIN</h2>
     <p class="muted" style="margin:0">PIN 6 angka. Tanyakan ke pengelola gudang.</p>
     <input id="pinInput" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" aria-label="PIN">
