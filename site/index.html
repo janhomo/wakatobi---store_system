@@ -99,6 +99,15 @@ label.lbl{display:block; font-size:14px; color:var(--muted); margin:0 0 4px}
 .note.bad{background:var(--bad-bg); color:var(--bad)}
 .note.info{background:var(--accent-soft); color:var(--ink)}
 .card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px}
+.dkpi{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:4px}
+.kpi{background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:2px}
+.kpi b{font-family:var(--f-display); font-size:32px; line-height:1; color:var(--ink)}
+.kpi small{font-size:13px; font-weight:600; color:var(--muted)}
+.kpi .s{font-size:12px; color:var(--muted)}
+.kpi.bad{border-left-color:var(--bad)} .kpi.bad b{color:var(--bad)}
+.kpi.warn{border-left-color:var(--warn)} .kpi.warn b{color:var(--warn)}
+.kpi.info{border-left-color:var(--accent)}
+@media (min-width:640px){.dkpi{grid-template-columns:repeat(3, 1fr)}}
 .card h3{margin:0 0 10px; font-family:var(--f-display); font-weight:700; font-size:22px; letter-spacing:.03em; text-transform:uppercase}
 .card h4{margin:14px 0 8px; font-size:15px}
 .h2{font-family:var(--f-display); font-weight:700; font-size:22px; letter-spacing:.03em; text-transform:uppercase; margin:18px 0 8px}
@@ -490,9 +499,10 @@ button.loading{opacity:.75; cursor:progress}
 .cnt.soft{background:var(--warn)!important}
 
 /* ---- pilihan tampilan di menu ---- */
-.themeseg{padding:6px 14px 10px}
-.themeseg .tl{display:flex; align-items:center; gap:10px; font-size:14px; color:var(--muted); font-weight:600; margin-bottom:6px}
+.themeseg,.langseg{padding:6px 14px 10px}
+.themeseg .tl,.langseg .tl{display:flex; align-items:center; gap:10px; font-size:14px; color:var(--muted); font-weight:600; margin-bottom:6px}
 .seg{display:grid; grid-template-columns:repeat(3,1fr); border:1.5px solid var(--line); border-radius:10px; overflow:hidden}
+.seg.seg2{grid-template-columns:repeat(2,1fr)}
 .seg button{min-height:42px; border:0; background:var(--surface); font-size:14px; font-weight:600; color:var(--ink)}
 .seg button+button{border-left:1.5px solid var(--line)}
 .seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink)}
@@ -633,7 +643,9 @@ const IC = {
   book: '<path d="M5 4h10a3 3 0 013 3v13H8a3 3 0 01-3-3zM5 17a3 3 0 013-3h10"/>',
   minus: '<path d="M5 12h14"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
-  alert: '<path d="M12 4l9 16H3zM12 10v4M12 17h.01"/>'
+  alert: '<path d="M12 4l9 16H3zM12 10v4M12 17h.01"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>'
 };
 const ic = (n, s = 24) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
 
@@ -785,7 +797,7 @@ function busyEnd(ok) {
 /* aksi yang menulis ke Sheet */
 const WRITE_ACTIONS = new Set(['addUnit', 'editUnit', 'editJenis', 'nonaktifUnit', 'aktifkanUnit', 'renameMerek', 'gabungJenis', 'addTempat', 'editTempat', 'nonaktifTempat', 'aktifTempat', 'setTempat',
   'fotoSet', 'fotoHapus', 'panduanSimpan', 'addMaterial', 'editMaterial', 'statusMaterial', 'stok', 'imporUnit', 'savePekerja', 'arsipkan', 'addPengambilan', 'returnPengambilan', 'batalKembali',
-  'cancelPengambilan', 'addMaintenance', 'deleteMaintenance', 'buatRak', 'saranTolak', 'pulihKondisi']);
+  'cancelPengambilan', 'addMaintenance', 'deleteMaintenance', 'buatRak', 'saranTolak', 'pulihKondisi', 'imporRak']);
 
 /* ---------- API dan login ---------- */
 async function raw(action, payload = {}) {
@@ -1002,11 +1014,77 @@ const merekList = () => {
   S.jenis.forEach(j => { if (j.b) { const k = norm(j.b); if (!m.has(k)) m.set(k, { name: j.b, n: 0 }); m.get(k).n++; } });
   return [...m.values()].sort((a, b) => byName(a.name, b.name));
 };
+/* ---------- Bahasa: ID | EN ----------
+   Hanya teks umum (menu, tombol, status) yang diterjemahkan. Nama mesin, kode, nama pekerja,
+   catatan, dan nama rak tidak disentuh karena tidak pernah cocok persis dengan kamus ini.
+   Templat selalu ditulis dalam Indonesia; saat bahasa = en, setiap perubahan tampilan disusul
+   satu kali jalan "terjemah" yang menukar teks yang cocok persis di kamus. */
+const LANG = { cur: (() => { const v = lsGet('qrg.lang', 'id'); return v === 'en' ? 'en' : 'id'; })() };
+const isEN = () => LANG.cur === 'en';
+const DICT_EN = {
+  'Mesin': 'Machines', 'Penyimpanan': 'Storage', 'Material': 'Material', 'Hari Ini': 'Today',
+  'Riwayat per tanggal': 'History by date', 'Scan QR': 'Scan QR', 'Saran': 'Suggestions', 'Merek': 'Brand',
+  'Pekerja': 'Workers', 'Impor Excel': 'Import Excel', 'Impor isi rak': 'Import rack contents',
+  'Log perubahan': 'Change log', 'Cetak label QR': 'Print QR labels', 'Dasbor': 'Dashboard',
+  'Utama': 'Main', 'Admin': 'Admin', 'Tampilan': 'Appearance', 'Bahasa': 'Language',
+  'Otomatis': 'Automatic', 'Terang': 'Light', 'Gelap': 'Dark', 'Muat ulang data': 'Reload data',
+  'Keluar': 'Log out', 'Simpan': 'Save', 'Batal': 'Cancel', 'Tutup': 'Close', 'Kembali': 'Back',
+  'Cari': 'Search', 'Cari mesin atau kode': 'Search machine or code', 'Nama saya': 'My name',
+  'belum dipilih': 'not chosen', 'Pilih nama': 'Choose name', 'Pilih mesin': 'Choose machine',
+  'Siapa Anda?': 'Who are you?', 'Siapa yang mengambil?': 'Who is taking it?',
+  'Normal': 'Normal', 'Servis': 'In service', 'Rusak': 'Broken', 'Rusak total': 'Totally broken',
+  'Belum dicek': 'Not checked', 'Nonaktif': 'Inactive', 'Di tempat': 'In place', 'Baik': 'Good',
+  'Terlambat': 'Late', 'Dipakai': 'In use', 'Menipis': 'Low', 'Hampir habis': 'Almost empty',
+  'Mesin baru': 'New machine', 'Tempat baru': 'New place', 'Material baru': 'New material',
+  'Ambil': 'Take', 'Kembalikan': 'Return', 'Scan lagi': 'Scan again', 'Buka semua': 'Open all',
+  'Tambah mesin': 'Add machine', 'Ubah': 'Edit', 'Ubah mesin': 'Edit machine',
+  'Ubah jenis': 'Edit type', 'Ubah unit': 'Edit unit', 'Ubah material': 'Edit material',
+  'Ubah tempat': 'Edit place', 'Ubah panduan': 'Edit guide', 'Cetak ringkasan': 'Print summary',
+  'Cetak QR tempat': 'Print place QR', 'Memuat…': 'Loading…', 'Tersimpan': 'Saved',
+  'Belum kembali': 'Not returned yet', 'Rusak / servis': 'Broken / in service',
+  'Servis jatuh tempo': 'Service due', 'Stok menipis': 'Low stock', 'Sedang dipakai': 'In use now',
+  'Mesin tanpa rak': 'Machines without a rack', 'Baca saja': 'View only',
+  'Pilih file Excel': 'Choose Excel file', 'Unduh contoh': 'Download example',
+  'Pilih dari galeri': 'Choose from gallery', 'Ambil foto': 'Take photo', 'Hapus foto': 'Delete photo',
+  'Tanpa departemen': 'No department', 'Unit': 'Unit'
+};
+function trText(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  return s && DICT_EN[s] ? DICT_EN[s] : null;
+}
+let langTick = false;
+function translateNode(root) {
+  if (!isEN() || !root) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  const nodes = []; let n;
+  while ((n = walker.nextNode())) nodes.push(n);
+  nodes.forEach(nd => { const t = trText(nd.nodeValue); if (t) nd.nodeValue = nd.nodeValue.replace(nd.nodeValue.trim(), t); });
+  if (root.querySelectorAll) root.querySelectorAll('[placeholder],[aria-label],[title]').forEach(el => {
+    ['placeholder', 'aria-label', 'title'].forEach(attr => { const v = el.getAttribute(attr), t = v && trText(v); if (t) el.setAttribute(attr, t); });
+  });
+}
+function setupLangObserver() {
+  const obs = new MutationObserver(() => {
+    if (!isEN() || langTick) return;
+    langTick = true;
+    requestAnimationFrame(() => { translateNode(document.body); langTick = false; });
+  });
+  obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+}
+function setLang(l) {
+  const v = l === 'en' ? 'en' : 'id'; if (v === LANG.cur) return;
+  LANG.cur = v; lsSet('qrg.lang', v); document.documentElement.lang = v;
+  render(); renderChrome(); if (!$('#drawer').hidden) renderDrawer();
+  if (isEN()) translateNode(document.body);
+}
 /* ---------- kerangka: header, navigasi, sinkron ---------- */
 function hdrInfo() {
   const j = J[curJid()];
   switch (S.view) {
     case 'mesin': return { root: 1, title: 'Mesin', sub: S.loaded ? nameGroups().size + ' mesin · ' + S.units.filter(u => !u.off).length + ' unit' : 'Memuat…', right: S.loaded && !isWide() ? { a: 'tambah', i: 'plus', l: 'Mesin baru', t: 'Mesin baru' } : null };
+    case 'dasbor': return { root: 1, title: 'Dasbor', sub: 'Baca saja · ' + fmtDate(today()) };
+    case 'fotoimpor': return { root: 1, title: 'Impor foto massal', sub: 'Satu foto per jenis mesin' };
+    case 'imporrak': return { root: 1, title: 'Impor isi rak', sub: 'Isi tempat sekaligus dari Excel' };
     case 'nama': { const g = nameGroup(S.nm); return { title: g ? g.name : 'Mesin', sub: g ? g.jenis.length + ' merek/model · ' + nameUnits(g).filter(u => !u.off).length + ' unit' : '' }; }
     case 'saran': return { root: 1, title: 'Saran', sub: S.loaded ? saranList().length + ' saran' : 'Memuat…' };
     case 'hari': return { root: 1, title: 'Hari Ini', sub: fmtDate(today()) };
@@ -1063,15 +1141,16 @@ function renderDrawer() {
   $('#drawer').innerHTML = '<button class="dbg" data-action="dclose" aria-label="Tutup menu"></button><aside role="dialog" aria-label="Menu">' +
     '<div class="dh"><img src="logo-gelap.png" alt="Wakatobi Project Villa" width="168" height="117"><small>QR Aset Gudang · Construction site</small></div>' +
     '<nav>' +
-    '<div class="sec">Utama</div>' + it('mesin', 'grid', 'Mesin') + it('tempatlist', 'box', 'Penyimpanan') + it('material', 'layers', 'Material') +
+    '<div class="sec">Utama</div>' + it('dasbor', 'chart', 'Dasbor') + it('mesin', 'grid', 'Mesin') + it('tempatlist', 'box', 'Penyimpanan') + it('material', 'layers', 'Material') +
     it('hari', 'clock', 'Hari Ini', open ? '<span class="cnt">' + open + '</span>' : '') + it('riwayat', 'list', 'Riwayat per tanggal') +
     '<button class="it" data-action="dscan">' + ic('qr', 24) + '<span>Scan QR</span></button>' +
     '<div class="sec">Admin</div>' + it('saran', 'alert', 'Saran', saranList().length ? '<span class="cnt soft">' + saranList().length + '</span>' : '') + it('merek', 'tag', 'Merek') + it('pekerja', 'users', 'Pekerja') +
-    it('impor', 'upload', 'Impor Excel') + it('log', 'doc', 'Log perubahan') +
+    it('impor', 'upload', 'Impor Excel') + it('imporrak', 'box', 'Impor isi rak') + it('fotoimpor', 'cam', 'Impor foto massal') + it('log', 'doc', 'Log perubahan') +
     '<a class="it" href="label.html">' + ic('qr', 24) + '<span>Cetak label QR</span></a>' +
     '</nav><div class="foot">' +
     '<button class="it" data-action="dme">' + ic('user', 24) + '<span>Nama saya: ' + (S.me ? esc(S.me) : '<i>belum dipilih</i>') + '</span></button>' +
     '<div class="themeseg"><span class="tl">' + ic('sun', 20) + 'Tampilan</span><div class="seg" role="group" aria-label="Tampilan">' + THEMES.map(t => '<button data-action="dtheme" data-t="' + t + '" aria-pressed="' + (getTheme() === t) + '">' + THEME_L[t] + '</button>').join('') + '</div></div>' +
+    '<div class="langseg"><span class="tl">' + ic('globe', 20) + 'Bahasa</span><div class="seg seg2" role="group" aria-label="Bahasa"><button data-action="dlang" data-l="id" aria-pressed="' + (LANG.cur === 'id') + '">ID</button><button data-action="dlang" data-l="en" aria-pressed="' + (LANG.cur === 'en') + '">EN</button></div></div>' +
     '<button class="it" data-action="dreload">' + ic('refresh', 24) + '<span>Muat ulang data</span></button>' +
     '<button class="it bad" data-action="logout">' + ic('logout', 24) + '<span>Keluar</span></button>' +
     '</div></aside>';
@@ -1080,7 +1159,8 @@ function openDrawer() { if (S.pinned || S.ov.includes('drawer')) return; renderD
 
 /* ---------- render ---------- */
 const VIEWS = () => ({ mesin: viewMesin, nama: viewNama, saran: viewSaran, jenis: viewJenis, profil: viewProfil, unit: viewUnit, jedit: viewJedit, tambah: viewTambah, hari: viewHari, riwayat: viewRiwayat, pekerja: viewWorkers, log: viewLog, merek: viewMerek,
-  tempatlist: viewTempatList, tempat: viewTempat, tambahtempat: viewTambahTempat, tempatform: viewTempatForm, material: viewMaterial, mat: viewMat, matform: viewMatForm, panduan: viewPanduanEdit, impor: viewImpor });
+  tempatlist: viewTempatList, tempat: viewTempat, tambahtempat: viewTambahTempat, tempatform: viewTempatForm, material: viewMaterial, mat: viewMat, matform: viewMatForm, panduan: viewPanduanEdit, impor: viewImpor,
+  dasbor: viewDasbor, fotoimpor: viewFotoImpor, imporrak: viewImporRak });
 function render() {
   const f = VIEWS()[S.view] || viewMesin;
   $('#app').innerHTML = f();
@@ -1102,7 +1182,8 @@ function renderLive() {
 }
 /* dipanggil setelah data baru datang: form yang sedang diisi tidak boleh terhapus */
 function refresh() {
-  if (S.view === 'jenis') { $('#app').innerHTML = viewJenis(); if (S.tab === 'riwayat') loadRiwayatJenis(); }
+  if (S.view === 'dasbor') $('#app').innerHTML = viewDasbor();
+  else if (S.view === 'jenis') { $('#app').innerHTML = viewJenis(); if (S.tab === 'riwayat') loadRiwayatJenis(); }
   else if (S.view === 'nama') $('#app').innerHTML = viewNama();
   else if (S.view === 'profil' && !['maint', 'riw'].includes(S.tab)) $('#app').innerHTML = viewProfil();
   else if (['tempat', 'mat'].includes(S.view)) { $('#app').innerHTML = VIEWS()[S.view](); if (S.view === 'mat') renderLive(); }
@@ -1640,6 +1721,48 @@ async function loadRiwayatUnit() {
   catch (e) { if (S.riwu.key === key) { S.riwu.list = []; S.riwu.error = true; } }
   const el2 = $('#live-riwu'); if (el2) el2.innerHTML = liveRiwUnit();
 }
+/* ---------- Dasbor: baca saja, dari data yang sudah dimuat (bootstrap). Tidak ada tombol ubah data. ---------- */
+function dasborStats() {
+  const open = openEntries(), late = open.filter(isLate);
+  const act = S.units.filter(u => !u.off);
+  const broken = act.filter(u => u.s === 'bad' || u.cond === 'Servis').filter(u => !heldMap().has(u.k));
+  const due = [];
+  act.forEach(u => { const n = nextService(u.k); if (n) { const d = daysFromToday(n); if (d <= 7) due.push({ u, d }); } });
+  due.sort((a, b) => a.d - b.d);
+  const places = activePlaces();
+  const empty = places.filter(p => { const sm = placeSummary(p.id); return !sm.units.length && !sm.mats.length; });
+  const noPlace = act.filter(u => !hasPlace(u));
+  const low = allMaterial().filter(m => !m.off && isLow(m));
+  return { open, late, broken, due, places, empty, noPlace, low };
+}
+function dkpi(n, label, sub, kind) {
+  return '<div class="kpi ' + kind + '"><b>' + n + '</b><small>' + esc(label) + '</small>' + (sub ? '<span class="s">' + esc(sub) + '</span>' : '') + '</div>';
+}
+function drow(a, b, tag, kind) {
+  return '<div class="trow"><span class="nm"><b>' + esc(a) + '</b><small class="muted">' + esc(b) + '</small></span>' + (tag ? '<span class="pill ' + kind + '">' + esc(tag) + '</span>' : '') + '</div>';
+}
+function viewDasbor() {
+  if (!S.loaded) return '<p class="empty">' + (S.loadError ? 'Data belum bisa dimuat. Cek sinyal lalu buka lagi.' : 'Memuat…') + '</p>';
+  const d = dasborStats(), act = S.units.filter(u => !u.off);
+  const lateRows = d.late.slice(0, 10).map(e => drow(e.mesin + (e.kode ? ' · ' + e.kode : ''), e.nama + ' · sejak ' + fmtDT(e.ts), 'Terlambat', 'bad'));
+  const brokenRows = d.broken.slice(0, 10).map(u => drow(jenisOf(u).n + ' · ' + u.k, u.sl, u.sl, u.s));
+  const dueRows = d.due.slice(0, 10).map(x => drow(jenisOf(x.u).n + ' · ' + x.u.k, x.d < 0 ? 'Terlewat ' + (-x.d) + ' hari' : x.d + ' hari lagi', x.d < 0 ? 'Lewat' : x.d + ' hari', x.d < 0 ? 'bad' : 'warn'));
+  const lowRows = d.low.slice(0, 10).map(m => drow(m.n, 'Sisa ' + fmtQty(m.q) + ' ' + m.s + (m.lo ? ' · batas ' + fmtQty(m.lo) : ''), 'Menipis', 'warn'));
+  return '<p class="note info" style="margin-bottom:10px">Dasbor baca saja. Data sama dengan Sheet, diperbarui otomatis tiap kali dibuka.</p>' +
+    '<div class="dkpi">' +
+    dkpi(d.open.length, 'Sedang dipakai', 'dari ' + act.length + ' unit', 'info') +
+    dkpi(d.late.length, 'Terlambat', 'lewat jam ' + (S.cfg.jamPulang || '17:00'), d.late.length ? 'bad' : 'info') +
+    dkpi(d.broken.length, 'Rusak / servis', '', d.broken.length ? 'warn' : 'info') +
+    dkpi(d.due.length, 'Servis jatuh tempo', 'dalam 7 hari', d.due.length ? 'warn' : 'info') +
+    dkpi(d.noPlace.length, 'Mesin tanpa rak', d.empty.length + ' rak kosong', 'info') +
+    dkpi(d.low.length, 'Stok menipis', 'material', d.low.length ? 'warn' : 'info') +
+    '</div>' +
+    '<div style="margin:12px 0"><button class="btn ghost small" data-action="dasborprint">' + ic('print', 20) + 'Cetak ringkasan</button></div>' +
+    '<h2 class="h2">Belum kembali · ' + d.open.length + '</h2>' + (lateRows.length || d.open.length ? '<div class="tbox">' + (lateRows.join('') || '<div class="trow"><span class="nm"><b>Tidak ada yang terlambat.</b></span></div>') + '</div>' : '<p class="muted">Tidak ada mesin di luar.</p>') +
+    '<h2 class="h2">Rusak / servis · ' + d.broken.length + '</h2>' + (brokenRows.length ? '<div class="tbox">' + brokenRows.join('') + '</div>' : '<p class="muted">Tidak ada.</p>') +
+    '<h2 class="h2">Servis jatuh tempo · ' + d.due.length + '</h2>' + (dueRows.length ? '<div class="tbox">' + dueRows.join('') + '</div>' : '<p class="muted">Tidak ada dalam 7 hari ke depan.</p>') +
+    '<h2 class="h2">Stok menipis · ' + d.low.length + '</h2>' + (lowRows.length ? '<div class="tbox">' + lowRows.join('') + '</div>' : '<p class="muted">Tidak ada yang menipis.</p>');
+}
 /* ---------- foto per jenis: disimpan kecil (sekitar 360 px) di sheet Foto, disalin ke HP ---------- */
 const FOTO = { cache: lsGet('qrg.foto', {}), busy: false };
 const FOTO_PX = 360;
@@ -1798,6 +1921,82 @@ async function fotoHapus() {
     e.preventDefault(); S.fotoEd.zoom = Math.max(1, Math.min(4, S.fotoEd.zoom * (e.deltaY < 0 ? 1.08 : 0.93))); const z = $('#cropZoom'); if (z) z.value = S.fotoEd.zoom; drawCrop();
   }, { passive: false });
 })();
+/* ---------- Impor foto massal: banyak foto sekaligus, dicocokkan ke Jenis lewat nama file ---------- */
+function fiStripExt(name) { return String(name).replace(/\.[a-z0-9]+$/i, ''); }
+function fiMatch(stripped) {
+  const up = clean(stripped).toUpperCase();
+  if (J[up]) return up;
+  const nq = norm(stripped);
+  const cand = S.jenis.filter(j => norm(j.n) === nq || norm(j.n + ' ' + j.b + ' ' + j.m) === nq || norm([j.b, j.m].filter(Boolean).join(' ') + ' ' + j.n) === nq);
+  return cand.length === 1 ? cand[0].id : null;
+}
+function viewFotoImpor() {
+  const fi = S.fimp;
+  const head = '<section class="card"><h3>Impor foto massal</h3><div class="stack">' +
+    '<p class="note info">Satu foto untuk satu jenis mesin (bukan per unit). Nama file sebaiknya ID jenis, contoh ' + (S.jenis[0] ? esc(S.jenis[0].id) : 'J0004') + '.jpg. Kalau tidak cocok, pilih mesinnya satu per satu di bawah.</p>' +
+    '<label class="btn ghost small" for="fiFile" style="cursor:pointer">' + ic('upload', 20) + 'Pilih banyak foto</label>' +
+    '<input id="fiFile" type="file" accept="image/*" multiple hidden></div></section>';
+  if (!fi || !fi.items.length) return head;
+  const need = fi.items.filter(x => !x.jid).length, n = fi.items.length - need;
+  return head + '<section class="card"><h3>' + fi.items.length + ' foto dipilih</h3>' +
+    (need ? '<p class="note warn" style="margin-bottom:8px">' + need + ' foto belum punya pasangan mesin. Pilih manual dulu.</p>' : '<p class="note info" style="margin-bottom:8px">Semua foto sudah punya pasangan. Cek sekali lagi sebelum impor.</p>') +
+    '<div class="tbox" id="fiList"></div>' +
+    '<div class="two" style="margin-top:12px"><button class="btn ghost" data-action="fireset">Batal</button><button class="btn" data-action="figo"' + (need || fi.busy ? ' disabled' : '') + '>' + (fi.busy ? 'Mengimpor ' + fi.done + '/' + n + '…' : 'Impor ' + n + ' foto') + '</button></div>' +
+    (fi.res ? '<p class="note' + (fi.res.err ? ' bad' : ' info') + '" style="margin-top:10px">' + esc(fi.res.msg) + '</p>' : '') +
+    '</section>';
+}
+function fiRender() { if (S.view === 'fotoimpor') { $('#app').innerHTML = viewFotoImpor(); fiRenderList(); } }
+function fiRenderList() {
+  const fi = S.fimp, el = $('#fiList'); if (!fi || !el) return;
+  el.innerHTML = fi.items.map((x, i) => '<div class="trow" style="gap:10px">' +
+    '<span class="thumb sm"><img src="' + x.data + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px"></span>' +
+    '<span class="nm"><b>' + esc(x.name) + '</b><small class="muted">' + (x.jid && J[x.jid] ? esc(J[x.jid].n + ' · ' + subText(J[x.jid])) : 'Belum cocok') + '</small></span>' +
+    '<button class="btn ghost small" data-action="fipick" data-i="' + i + '">' + (x.jid ? 'Ganti' : 'Pilih mesin') + '</button>' +
+    '<button class="x" data-action="firemove" data-i="' + i + '" aria-label="Keluarkan">' + ic('x', 20) + '</button></div>').join('');
+}
+async function fiSquare(bmp, px) {
+  const w0 = bmp.width || bmp.naturalWidth, h0 = bmp.height || bmp.naturalHeight, side = Math.min(w0, h0);
+  const sx = (w0 - side) / 2, sy = (h0 - side) / 2;
+  const c = document.createElement('canvas'); c.width = c.height = px;
+  const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.fillStyle = '#fff'; x.fillRect(0, 0, px, px);
+  x.drawImage(bmp, sx, sy, side, side, 0, 0, px, px);
+  for (const q of [0.78, 0.68, 0.58, 0.48, 0.4]) { const d = c.toDataURL('image/jpeg', q); if (d.length <= 44000) return d; }
+  return c.toDataURL('image/jpeg', 0.35);
+}
+async function fiPicked(files) {
+  const list = [...files].slice(0, 80);
+  if (!list.length) return;
+  S.fimp = S.fimp || { items: [], busy: false, done: 0, res: null };
+  S.fimp.res = null; fiRender();
+  for (const f of list) {
+    try {
+      const bmp = await loadBitmap(f), data = await fiSquare(bmp, FOTO_PX), stripped = fiStripExt(f.name);
+      S.fimp.items.push({ name: f.name, data, jid: fiMatch(stripped) });
+    } catch (e) { /* foto ini dilewati kalau tidak bisa dibaca */ }
+    fiRender();
+  }
+}
+function fiPick(i) {
+  const fi = S.fimp; if (!fi || !fi.items[i]) return;
+  openPicker({ title: 'Pilih mesin untuk ' + fi.items[i].name, items: S.jenis.slice().sort((a, b) => byName(a.n, b.n)).map(j => ({ v: j.id, l: j.n, s: subText(j) || j.id })),
+    onPick: it => { fi.items[i].jid = it.v; fiRender(); } });
+}
+function fiRemove(i) { const fi = S.fimp; if (!fi) return; fi.items.splice(i, 1); fiRender(); }
+function fiGo() {
+  const fi = S.fimp; if (!fi || fi.busy || fi.items.some(x => !x.jid)) return;
+  ensureMe(async () => {
+    fi.busy = true; fi.done = 0; fi.res = null; fiRender();
+    let ok = 0, fail = 0;
+    for (const x of fi.items) {
+      try { const r = await api('fotoSet', { jid: x.jid, foto: x.data, oleh: S.me }); FOTO.cache[x.jid] = { t: r.t, d: x.data }; if (J[x.jid]) J[x.jid].f = r.t; ok++; }
+      catch (e) { fail++; }
+      fi.done++; fiRender();
+    }
+    saveFotoCache(); fi.busy = false; fi.res = { msg: ok + ' foto tersimpan' + (fail ? ', ' + fail + ' gagal' : '') + '.', err: !!fail }; fi.items = [];
+    fiRender(); refreshThumbs(); toast(ok + ' foto diimpor.'); loadAll(true);
+  });
+}
+function fiReset() { S.fimp = null; fiRender(); }
 /* ---------- Penyimpanan: tempat (rak, lemari, kontainer) dengan QR sendiri (LOK-xxx) ---------- */
 const placeIcon = () => '<span class="thumb ico">' + ic('box', 28) + '</span>';
 function viewTempatList() {
@@ -2212,6 +2411,96 @@ function impContoh() {
   const a = [IMP_COLS.map(c => c[1]), [(S.kategori[0] && S.kategori[0].c) || 'Listrik', 'Bor', 'Bosch', 'GBH 2-28', '', 'Normal', 'Rak 1', 'SN12345', 'contoh'], [(S.kategori[0] && S.kategori[0].c) || 'Listrik', 'Gerinda', 'Makita', '9553B', '2', 'Servis', '', '', '']];
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a), 'Mesin'); XLSX.writeFile(wb, 'contoh_impor_mesin.xlsx');
 }
+/* ---------- Impor Excel: isi rak dan mesin sekaligus (Kode Mesin, Kode Rak) ---------- */
+const IR_COLS = { kode: ['kode mesin', 'kode', 'kode aset'], rak: ['kode rak', 'rak', 'tempat', 'isi tangan', 'kode rak isi tangan'] };
+function irNorm(h) { return norm(String(h).replace(/[._()]/g, ' ').replace(/\s+/g, ' ')); }
+function irResolveRak(v) {
+  const s = clean(v); if (!s) return null;
+  if (isLok(s.toUpperCase()) && T[s.toUpperCase()]) return T[s.toUpperCase()];
+  const t = activePlaces().find(x => norm(x.n) === norm(s));
+  return t || null;
+}
+function viewImporRak() {
+  const ir = S.imr;
+  const head = '<section class="card"><h3>Impor isi rak</h3><div class="stack">' +
+    '<p class="note info">Satu baris = satu mesin. Kolom yang dikenali: Kode Mesin, Kode Rak. Kode Rak boleh "LOK-003" atau nama "Rak 014". Baris dengan Kode Rak kosong dilewati.</p>' +
+    '<div class="two"><label class="btn ghost small" for="irFile" style="cursor:pointer">' + ic('upload', 20) + 'Pilih file Excel</label><button class="btn ghost small" data-action="ircontoh">Unduh contoh</button></div>' +
+    '<input id="irFile" type="file" accept=".xlsx,.xls,.csv" hidden></div></section>';
+  if (!ir) return head;
+  if (ir.err) return head + '<p class="note bad">' + esc(ir.err) + '</p>';
+  if (ir.res) {
+    const r = ir.res;
+    return head + '<section class="card"><h3>Hasil impor</h3><p style="margin:0 0 8px"><b>' + r.changed + '</b> mesin dipindah' + (r.nSkipped ? ', ' + r.nSkipped + ' dilewati' : '') + (r.nErrors ? ', <b style="color:var(--bad)">' + r.nErrors + ' gagal</b>' : '') + '.</p>' +
+      (r.errors.length ? '<ul class="impl bad">' + r.errors.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '') +
+      (r.skipped.length ? '<ul class="impl">' + r.skipped.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '') +
+      '<button class="btn ghost" style="margin-top:10px" data-action="irreset">Impor file lain</button></section>';
+  }
+  const ok = ir.rows.filter(r => !r.bad), bad = ir.rows.length - ok.length;
+  return head + '<section class="card"><h3>' + esc(ir.file) + '</h3>' +
+    '<p style="margin:0 0 8px"><b>' + ok.length + '</b> baris siap' + (bad ? ', <b style="color:var(--bad)">' + bad + ' bermasalah</b> (tidak ikut)' : '') + '.</p>' +
+    '<div class="tblwrap"><table class="tbl small"><thead><tr><th>#</th><th>Kode</th><th>Mesin</th><th>Rak tujuan</th></tr></thead><tbody>' +
+    ir.rows.slice(0, 40).map(r => '<tr class="' + (r.bad ? 'badrow' : '') + '"><td>' + r.line + '</td><td>' + esc(r.kode) + '</td><td>' + esc(r.nama) + (r.bad ? '<br><small>' + esc(r.bad) + '</small>' : '') + '</td><td>' + esc(r.rakNama) + '</td></tr>').join('') +
+    '</tbody></table></div>' + (ir.rows.length > 40 ? '<p class="muted" style="font-size:13px">Menampilkan 40 baris pertama dari ' + ir.rows.length + '.</p>' : '') +
+    '<div class="two" style="margin-top:12px"><button class="btn ghost" data-action="irreset">Batal</button><button class="btn" data-action="irgo"' + (ok.length && !ir.busy ? '' : ' disabled') + '>' + (ir.busy ? 'Mengimpor ' + ir.done + '/' + ok.length + '…' : 'Impor ' + ok.length + ' mesin') + '</button></div></section>';
+}
+function irRender() { if (S.view === 'imporrak') $('#app').innerHTML = viewImporRak(); }
+async function irLoad(file) {
+  S.imr = { file: file.name, rows: [] };
+  try {
+    if (file.size > 3 * 1024 * 1024) throw new Error('File terlalu besar (maks 3 MB).');
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' }).filter(r => r.some(c => clean(c) !== ''));
+    if (data.length < 2) throw new Error('File kosong atau hanya berisi judul kolom.');
+    let hi = -1, map = {};
+    for (let i = 0; i < Math.min(10, data.length); i++) {
+      const m = {};
+      data[i].forEach((h, ci) => { const k = irNorm(h); Object.entries(IR_COLS).forEach(([key, names]) => { if (m[key] === undefined && names.includes(k)) m[key] = ci; }); });
+      if (m.kode !== undefined) { hi = i; map = m; break; }
+    }
+    if (hi < 0) throw new Error('Judul kolom "Kode Mesin" tidak ditemukan di baris atas.');
+    if (map.rak === undefined) throw new Error('Judul kolom "Kode Rak" tidak ditemukan.');
+    const rows = [];
+    data.slice(hi + 1).forEach((r, i) => {
+      const kode = clean(r[map.kode]).toUpperCase(), rakTxt = clean(r[map.rak]);
+      let bad = '', rakNama = '';
+      if (!kode) { bad = 'Kode mesin kosong.'; }
+      else if (!U[kode]) bad = 'Mesin ' + kode + ' tidak ditemukan.';
+      if (!bad && !rakTxt) bad = 'Kode rak kosong (dilewati).';
+      if (!bad) { const t = irResolveRak(rakTxt); if (!t) bad = 'Rak "' + rakTxt + '" tidak ditemukan.'; else rakNama = t.n + ' · ' + t.id; }
+      rows.push({ line: hi + i + 2, kode, nama: U[kode] ? unitTitle(U[kode]) : '', rakTxt, rakNama, bad });
+    });
+    if (!rows.length) throw new Error('Tidak ada baris data.');
+    if (rows.length > 400) throw new Error('Maksimal 400 baris sekali impor.');
+    S.imr = { file: file.name, rows };
+  } catch (e) { S.imr = { file: file.name, rows: [], err: e.message || 'File tidak bisa dibaca.' }; }
+  irRender();
+}
+function irGo() {
+  const ir = S.imr; if (!ir || ir.busy) return;
+  const ok = ir.rows.filter(r => !r.bad).map(r => ({ kode: r.kode, rak: r.rakTxt })); if (!ok.length) return;
+  ensureMe(async () => {
+    ir.busy = true; ir.done = 0; irRender();
+    const tot = { changed: 0, skipped: [], errors: [], nSkipped: 0, nErrors: 0 };
+    try {
+      for (let i = 0; i < ok.length; i += 150) {
+        const r = await api('imporRak', { rows: ok.slice(i, i + 150), oleh: S.me });
+        tot.changed += r.changed; tot.nSkipped += r.nSkipped; tot.nErrors += r.nErrors;
+        r.skipped.forEach(x => tot.skipped.length < 30 && tot.skipped.push(x)); r.errors.forEach(x => tot.errors.length < 30 && tot.errors.push(x));
+        ir.done = Math.min(ok.length, i + 150); irRender();
+      }
+    } catch (e) { ir.busy = false; irRender(); failed(e); if (tot.changed) { ir.res = tot; irRender(); loadAll(true); } return; }
+    ir.busy = false; ir.res = tot; irRender(); loadAll(true); toast(tot.changed + ' mesin dipindah.');
+  });
+}
+function irContoh() {
+  const racks = activePlaces().filter(t => /^rak /i.test(t.n)).slice(0, 2);
+  const units = S.units.filter(u => !u.off).slice(0, 2);
+  const a = [['Kode Mesin', 'Kode Rak'],
+    [units[0] ? units[0].k : 'BOR-001', racks[0] ? racks[0].n : 'Rak 001'],
+    [units[1] ? units[1].k : 'GRD-001', racks[1] ? racks[1].n : 'Rak 002']];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a), 'Isi Rak'); XLSX.writeFile(wb, 'contoh_impor_rak.xlsx');
+}
 /* ---------- Saran: aturan sederhana (tanpa AI). Tidak ada yang berubah sebelum Terima ditekan. ---------- */
 const KAT_RULES = [
   [/kipas|blower|fan\b|kompresor/, 'Peralatan Udara'],
@@ -2530,7 +2819,7 @@ function scanYes() {
       rec.push({ kode: b.kode, ids: b.ids, rusak, prev, label: unitTitle(u) + (rusak ? ' · RUSAK' : ' · baik') });
     });
   }
-  sc.done = { mode: sc.mode, rec }; sc.basket = []; sc.paused = false; sc.fb = null;
+  sc.done = { mode: sc.mode, rec }; sc.basket = []; sc.paused = false; sc.fb = null; sc.place = null;
   beep(true); renderScan(); renderChrome();
 }
 function undoReturn(ids) {
@@ -2557,19 +2846,33 @@ function scanUndo() {
 function openScanPreset(mode, kode) { openScan({ mode, preset: [kode] }); }
 
 
-/* popup isi tempat (hasil scan QR tempat LOK-xxx) */
+/* popup isi tempat (hasil scan QR tempat LOK-xxx). Mesin yang ada di rak bisa diambil langsung dari
+   sini (tombol Ambil per mesin), tanpa scan ulang ke QR mesinnya. */
 function placePopup(tid) {
   const t = T[tid]; if (!t) return '';
-  const sm = placeSummary(tid), held = heldMap();
-  const urow = u => { const h = held.get(u.k), ln = unitLine(u); return '<button class="trow" data-action="scanopenunit" data-k="' + esc(u.k) + '"><span class="nm"><b>' + esc(ln.a) + '</b><small class="muted">' + esc(ln.b) + '</small></span>' +
-    (h ? '<span class="pill out">Di luar · ' + esc(h.nama) + '</span>' : u.s === 'ok' ? '<span class="pill ok">Di tempat</span>' : '<span class="pill ' + u.s + '">' + esc(u.sl) + '</span>') + '</button>'; };
+  const sc = S.scan, sm = placeSummary(tid), held = heldMap();
+  const inBasket = k => sc.basket.find(b => b.kode === k);
+  const urow = u => {
+    const h = held.get(u.k), ln = unitLine(u), b = inBasket(u.k);
+    let right;
+    if (h) right = '<span class="pill out">Di luar · ' + esc(h.nama) + '</span>';
+    else if (u.off || u.s === 'bad') right = '<span class="pill ' + u.s + '">' + esc(u.sl) + '</span>';
+    else if (b) right = '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0">' +
+      '<button class="namebar plain" style="width:auto;min-height:40px;padding:0 10px;font-size:14px;gap:4px" data-action="bname" data-k="' + esc(u.k) + '">' + (b.name ? esc(b.name) : 'Pilih nama') + ic('chev', 16) + '</button>' +
+      '<button class="x" data-action="bremove" data-k="' + esc(u.k) + '" aria-label="Batal ambil ' + esc(u.k) + '">' + ic('x', 18) + '</button></div>';
+    else right = '<button class="btn small" style="flex-shrink:0" data-action="rakambil" data-k="' + esc(u.k) + '">Ambil</button>';
+    return '<div class="trow"><button class="nm lnkbtn" data-action="scanopenunit" data-k="' + esc(u.k) + '" style="min-width:0;flex-grow:1;text-align:left"><b>' + esc(ln.a) + '</b><small class="muted">' + esc(ln.b) + '</small></button>' + right + '</div>';
+  };
   const mrow = m => '<div class="trow mat"><button class="nm lnkbtn" data-action="openmat" data-id="' + esc(m.id) + '"><b>' + esc(m.n) + '</b></button>' +
     '<button class="rnd" data-action="stokopen" data-id="' + esc(m.id) + '" data-t="Keluar" aria-label="Kurangi">−</button><span class="qty"><b>' + esc(fmtQty(m.q)) + '</b><small>' + esc(m.s) + '</small></span><button class="rnd" data-action="stokopen" data-id="' + esc(m.id) + '" data-t="Masuk" aria-label="Tambah">+</button></div>';
+  const n = sc.basket.length, need = n && sc.basket.some(b => !b.name);
   return '<div class="grab"></div><div class="sh-h"><span class="t">' + esc(t.n) + '</span><span class="n">' + sm.units.length + '</span></div><p class="muted" style="margin:-4px 0 0;font-size:14px"><span class="code">' + esc(t.id) + '</span>' + (t.l ? ' · ' + esc(t.l) : '') + ' · ' + sm.units.length + ' mesin · ' + sm.mats.length + ' material</p>' +
+    (sc.fb ? '<div class="fb ' + sc.fb.type + '">' + esc(sc.fb.text) + '</div>' : '') +
     (sm.units.length ? '<div class="tbox scroll">' + sm.units.sort((a, b) => a.k.localeCompare(b.k)).map(urow).join('') + '</div>' : '') +
     (sm.mats.length ? '<div class="tbox scroll">' + sm.mats.sort((a, b) => byName(a.n, b.n)).map(mrow).join('') + '</div>' : '') +
     (!sm.units.length && !sm.mats.length ? '<p class="muted" style="margin:0">Tempat ini masih kosong.</p>' : '') +
-    '<div class="yn"><button class="no" data-action="placeclose">Scan lagi</button><button class="yes" data-action="placeopen" data-id="' + esc(t.id) + '">Buka semua</button></div>';
+    (n ? '<div class="yn"><button class="no" data-action="scanclear">Batal ambil</button><button class="yes" data-action="scanyes"' + (need ? ' disabled' : '') + '>YA, catat ' + n + ' mesin</button></div>' + (need ? '<p class="muted" style="margin:0;font-size:14px;text-align:center">Pilih nama untuk setiap mesin dulu.</p>' : '')
+      : '<div class="yn"><button class="no" data-action="placeclose">Scan lagi</button><button class="yes" data-action="placeopen" data-id="' + esc(t.id) + '">Buka semua</button></div>');
 }
 
 /* ---------- pemilih nama ---------- */
@@ -2704,6 +3007,7 @@ document.addEventListener('click', async e => {
     case 'back': back(); break;
     case 'dme': pickEditor(() => toast('Nama diganti: ' + S.me), 'Nama saya'); break;
     case 'dtheme': setTheme(t.dataset.t); renderDrawer(); toast('Tampilan: ' + THEME_L[getTheme()]); break;
+    case 'dlang': setLang(t.dataset.l); if (!$('#drawer').hidden) renderDrawer(); break;
     case 'dreload': closeTop(); toast('Memuat ulang…'); loadAll(); break;
     case 'logout': S.tok = ''; lsSet('qrg.tok', ''); lsSet('qrg.hadTok', false); closeTop(); showPin(); break;
     case 'nama': go('nama', { nm: t.dataset.nm }); break;
@@ -2781,6 +3085,13 @@ document.addEventListener('click', async e => {
     case 'scanopenunit': go('profil', { kode: t.dataset.k, jid: U[t.dataset.k].j }); break;
     case 'placeclose': if (S.scan) { S.scan.place = null; S.scan.paused = false; lastCode = ''; renderScan(); } break;
     case 'placeopen': go('tempat', { tid: t.dataset.id }); break;
+    case 'rakambil': {
+      if (!S.scan) break;
+      S.scan.mode = 'ambil';
+      const fb = scanAmbil(t.dataset.k);
+      beep(fb.type === 'ok' || fb.type === 'warn'); setFb(fb);
+      break;
+    }
     case 'pickplace': {
       const inp = $('#' + t.dataset.for), lab = $('#' + t.dataset.for + '-l');
       openPicker({ title: 'Tempat simpan', sub: 'Pilih rak, lemari, atau kontainer.', items: [{ v: '', l: 'Belum punya tempat' }, ...activePlaces().map(p => ({ v: p.id, l: p.n, s: p.l || p.id }))],
@@ -2812,6 +3123,17 @@ document.addEventListener('click', async e => {
     case 'impcontoh': impContoh(); break;
     case 'impreset': S.imp = null; impRender(); break;
     case 'impgo': impGo(); break;
+    /* impor isi rak */
+    case 'ircontoh': irContoh(); break;
+    case 'irreset': S.imr = null; irRender(); break;
+    case 'irgo': irGo(); break;
+    /* impor foto massal */
+    case 'fipick': fiPick(Number(t.dataset.i)); break;
+    case 'firemove': fiRemove(Number(t.dataset.i)); break;
+    case 'fireset': fiReset(); break;
+    case 'figo': fiGo(); break;
+    /* dasbor */
+    case 'dasborprint': window.print(); break;
     /* menu */
     case 'dscan': afterOv(() => openScan({ mode: 'ambil' })); break;
     case 'srterima': saranTerima(t.dataset.id); break;
@@ -2922,6 +3244,8 @@ document.addEventListener('input', e => {
 document.addEventListener('change', e => {
   const id = e.target.id, v = e.target.value;
   if (id === 'impFile') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) impLoad(f); return; }
+  if (id === 'irFile') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) irLoad(f); return; }
+  if (id === 'fiFile') { const fs = e.target.files; e.target.value = ''; if (fs && fs.length) fiPicked(fs); return; }
   if (id === 'fileCam' || id === 'fileGal') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) fotoPicked(f); return; }
   if (id === 'tkat') { $('#tkatBox').hidden = v !== '__new'; updateCodePrev(); }
   else if (id === 'jkat') $('#jkatBox').hidden = v !== '__new';
@@ -2960,6 +3284,8 @@ function applyPinned(init) {
 
 /* ---------- mulai ---------- */
 (function start() {
+  document.documentElement.lang = LANG.cur;
+  setupLangObserver();
   const c = lsGet('qrg.c3', null);
   if (c && c.jenis) applyData(c);
   const k = codeFromHash();

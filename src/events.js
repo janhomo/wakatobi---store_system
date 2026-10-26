@@ -80,6 +80,7 @@ document.addEventListener('click', async e => {
     case 'back': back(); break;
     case 'dme': pickEditor(() => toast('Nama diganti: ' + S.me), 'Nama saya'); break;
     case 'dtheme': setTheme(t.dataset.t); renderDrawer(); toast('Tampilan: ' + THEME_L[getTheme()]); break;
+    case 'dlang': setLang(t.dataset.l); if (!$('#drawer').hidden) renderDrawer(); break;
     case 'dreload': closeTop(); toast('Memuat ulang…'); loadAll(); break;
     case 'logout': S.tok = ''; lsSet('qrg.tok', ''); lsSet('qrg.hadTok', false); closeTop(); showPin(); break;
     case 'nama': go('nama', { nm: t.dataset.nm }); break;
@@ -157,6 +158,13 @@ document.addEventListener('click', async e => {
     case 'scanopenunit': go('profil', { kode: t.dataset.k, jid: U[t.dataset.k].j }); break;
     case 'placeclose': if (S.scan) { S.scan.place = null; S.scan.paused = false; lastCode = ''; renderScan(); } break;
     case 'placeopen': go('tempat', { tid: t.dataset.id }); break;
+    case 'rakambil': {
+      if (!S.scan) break;
+      S.scan.mode = 'ambil';
+      const fb = scanAmbil(t.dataset.k);
+      beep(fb.type === 'ok' || fb.type === 'warn'); setFb(fb);
+      break;
+    }
     case 'pickplace': {
       const inp = $('#' + t.dataset.for), lab = $('#' + t.dataset.for + '-l');
       openPicker({ title: 'Tempat simpan', sub: 'Pilih rak, lemari, atau kontainer.', items: [{ v: '', l: 'Belum punya tempat' }, ...activePlaces().map(p => ({ v: p.id, l: p.n, s: p.l || p.id }))],
@@ -188,6 +196,17 @@ document.addEventListener('click', async e => {
     case 'impcontoh': impContoh(); break;
     case 'impreset': S.imp = null; impRender(); break;
     case 'impgo': impGo(); break;
+    /* impor isi rak */
+    case 'ircontoh': irContoh(); break;
+    case 'irreset': S.imr = null; irRender(); break;
+    case 'irgo': irGo(); break;
+    /* impor foto massal */
+    case 'fipick': fiPick(Number(t.dataset.i)); break;
+    case 'firemove': fiRemove(Number(t.dataset.i)); break;
+    case 'fireset': fiReset(); break;
+    case 'figo': fiGo(); break;
+    /* dasbor */
+    case 'dasborprint': window.print(); break;
     /* menu */
     case 'dscan': afterOv(() => openScan({ mode: 'ambil' })); break;
     case 'srterima': saranTerima(t.dataset.id); break;
@@ -298,6 +317,8 @@ document.addEventListener('input', e => {
 document.addEventListener('change', e => {
   const id = e.target.id, v = e.target.value;
   if (id === 'impFile') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) impLoad(f); return; }
+  if (id === 'irFile') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) irLoad(f); return; }
+  if (id === 'fiFile') { const fs = e.target.files; e.target.value = ''; if (fs && fs.length) fiPicked(fs); return; }
   if (id === 'fileCam' || id === 'fileGal') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) fotoPicked(f); return; }
   if (id === 'tkat') { $('#tkatBox').hidden = v !== '__new'; updateCodePrev(); }
   else if (id === 'jkat') $('#jkatBox').hidden = v !== '__new';
@@ -336,6 +357,8 @@ function applyPinned(init) {
 
 /* ---------- mulai ---------- */
 (function start() {
+  document.documentElement.lang = LANG.cur;
+  setupLangObserver();
   const c = lsGet('qrg.c3', null);
   if (c && c.jenis) applyData(c);
   const k = codeFromHash();

@@ -33,6 +33,17 @@ ok('racks Rak 001..050 with LOK codes', T.length === 50 && T[0][0] === 'LOK-001'
 ok('racks idempotent', call({ action: 'buatRak', oleh: 'Abidin' }).dibuat === 0 && rows('Tempat').length === 50);
 ok('unit can be placed in rack', call({ action: 'editUnit', oleh: 'Abidin', kode: 'BOR-001', f: { loc: 'LOK-007' } }).changed === 1);
 ok('next new tempat is LOK-051', call({ action: 'addTempat', oleh: 'Abidin', nama: 'Gudang Utara' }).id === 'LOK-051');
+// impor isi rak (Kode Mesin -> Kode/Nama Rak). Hanya BOR-001..003 ada di titik ini.
+ok('imporRak by LOK id', call({ action: 'imporRak', oleh: 'Abidin', rows: [{ kode: 'BOR-002', rak: 'LOK-008' }] }).changed === 1);
+ok('imporRak unit moved to LOK-008', rows('Unit').find(r => r[0] === 'BOR-002')[4] === 'LOK-008');
+ok('imporRak by rack name', call({ action: 'imporRak', oleh: 'Abidin', rows: [{ kode: 'BOR-003', rak: 'Rak 009' }] }).changed === 1);
+ok('imporRak unit moved by name', rows('Unit').find(r => r[0] === 'BOR-003')[4] === 'LOK-009');
+ok('imporRak unknown kode errors', call({ action: 'imporRak', oleh: 'Abidin', rows: [{ kode: 'XXX-999', rak: 'Rak 001' }] }).nErrors === 1);
+ok('imporRak unknown rak errors', call({ action: 'imporRak', oleh: 'Abidin', rows: [{ kode: 'BOR-001', rak: 'Rak 999' }] }).nErrors === 1);
+ok('imporRak empty rak skipped', call({ action: 'imporRak', oleh: 'Abidin', rows: [{ kode: 'BOR-001', rak: '' }] }).nSkipped === 1);
+ok('imporRak already there skipped', call({ action: 'imporRak', oleh: 'Abidin', rows: [{ kode: 'BOR-002', rak: 'LOK-008' }] }).nSkipped === 1);
+ok('imporRak duplicate row in same batch skipped', (() => { const r2 = call({ action: 'imporRak', oleh: 'Abidin', rows: [{ kode: 'BOR-001', rak: 'Rak 010' }, { kode: 'BOR-001', rak: 'Rak 011' }] }); return r2.changed === 1 && r2.nSkipped === 1; })());
+ok('imporRak non-editor refused', call({ action: 'imporRak', oleh: 'Budi', rows: [{ kode: 'BOR-001', rak: 'Rak 001' }] }).ok === false);
 // saran tolak
 ok('saranTolak stored and served', call({ action: 'saranTolak', oleh: 'Vikar', id: 'm:a|b' }).ok && JSON.parse(call({ action: 'bootstrap' }).cfg.saranTolak).includes('m:a|b'));
 ok('saranTolak undo', call({ action: 'saranTolak', oleh: 'Vikar', id: 'm:a|b', batal: true }).ok && JSON.parse(call({ action: 'bootstrap' }).cfg.saranTolak).length === 0);

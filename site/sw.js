@@ -1,5 +1,5 @@
 // Service worker sederhana: jaringan dulu, cadangan dari cache supaya aplikasi tetap terbuka saat sinyal hilang.
-const CACHE = 'qrg-v7';
+const CACHE = 'qrg-v8';
 const FILES = ['./', 'index.html', 'label.html', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'logo-gelap.png', 'logo-terang.png',
   'lib/jsQR.js', 'lib/qrcode.js', 'lib/xlsx.full.min.js'];
 self.addEventListener('install', e => {

@@ -178,7 +178,7 @@ function login_(req) {
 
 var BUTUH_NAMA = ['addUnit', 'editUnit', 'editJenis', 'nonaktifUnit', 'aktifkanUnit', 'renameMerek', 'gabungJenis',
   'addTempat', 'editTempat', 'nonaktifTempat', 'aktifTempat', 'setTempat', 'fotoSet', 'fotoHapus', 'panduanSimpan',
-  'addMaterial', 'editMaterial', 'statusMaterial', 'imporUnit', 'buatRak', 'saranTolak'];
+  'addMaterial', 'editMaterial', 'statusMaterial', 'imporUnit', 'imporRak', 'buatRak', 'saranTolak'];
 function route_(req) {
   if (BUTUH_NAMA.indexOf(req.action) >= 0 && !clean_(req.oleh)) return { ok: false, error: 'Pilih nama Anda dulu.' };
   if (BUTUH_NAMA.indexOf(req.action) >= 0 && !PENGEDIT.some(function (n) { return same_(n, req.oleh); })) return { ok: false, error: 'Hanya Abidin, Vikar, dan La Ode Riyan Syaputra yang boleh mengubah data.' };
@@ -223,6 +223,7 @@ function route_(req) {
     case 'stok': return stok_(req);
     case 'stokLog': return { ok: true, log: stokLog_(clean_(req.id)) };
     case 'imporUnit': return imporUnit_(req);
+    case 'imporRak': return imporRak_(req);
     case 'buatRak': return buatRak_(req);
     case 'pulihKondisi': return pulihKondisi_(req);
     case 'saranTolak': return saranTolak_(req);
@@ -948,6 +949,41 @@ function imporUnit_(r) {
   if (newU.length) { var us = sheet_('Unit'); us.getRange(us.getLastRow() + 1, 1, newU.length, 12).setValues(newU); }
   if (newU.length) log_('', 'Impor Excel', newU.length + ' unit, ' + newJ.length + ' jenis baru' + (skipped.length ? ', ' + skipped.length + ' baris dilewati' : ''), r.oleh);
   return { ok: true, unit: newU.length, jenis: newJ.length, skipped: skipped.slice(0, 30), errors: errors.slice(0, 30), nSkipped: skipped.length, nErrors: errors.length };
+}
+
+/* ---------- impor Excel: isi banyak rak sekaligus (Kode Mesin -> Kode/Nama Rak) ---------- */
+function imporRak_(r) {
+  var rows = r.rows || [];
+  if (!rows.length) return err_('Tidak ada baris untuk diimpor.');
+  if (rows.length > 400) return err_('Maksimal 400 baris sekali impor.');
+  var units = rows_('Unit'), uIndex = {}, i;
+  for (i = 0; i < units.length; i++) uIndex[str_(units[i][0])] = i;
+  var tByName = {}, tById = {};
+  filled_('Tempat').forEach(function (x) {
+    var id = str_(x[0]);
+    if (str_(x[3]).toLowerCase() !== 'nonaktif') { tByName[clean_(x[1]).toLowerCase()] = id; tById[id] = id; }
+  });
+  var changes = [], skipped = [], errors = [], seen = {};
+  rows.forEach(function (d, idx) {
+    var line = idx + 1, kode = clean_(d.kode).toUpperCase(), rakIn = clean_(d.rak);
+    if (!kode) { errors.push('Baris ' + line + ': kode mesin kosong.'); return; }
+    if (uIndex[kode] === undefined) { errors.push('Baris ' + line + ': mesin ' + kode + ' tidak ditemukan.'); return; }
+    if (!rakIn) { skipped.push('Baris ' + line + ': ' + kode + ' tidak ada kode rak, dilewati.'); return; }
+    var rid = /^LOK-\d{3}$/.test(rakIn.toUpperCase()) ? (tById[rakIn.toUpperCase()] || '') : (tByName[rakIn.toLowerCase()] || '');
+    if (!rid) { errors.push('Baris ' + line + ': rak "' + rakIn + '" tidak ditemukan.'); return; }
+    if (seen[kode] !== undefined) { skipped.push('Baris ' + line + ': ' + kode + ' sudah diisi baris lain, baris ini dilewati.'); return; }
+    seen[kode] = 1;
+    var i2 = uIndex[kode];
+    if (clean_(units[i2][4]) === rid) { skipped.push('Baris ' + line + ': ' + kode + ' sudah di ' + tempatLabel_(rid) + '.'); return; }
+    changes.push({ i: i2, kode: kode, rid: rid });
+  });
+  if (changes.length) {
+    var ush = sheet_('Unit');
+    changes.forEach(function (c) { ush.getRange(c.i + 2, 5, 1, 1).setValues([[c.rid]]); });
+    var shown = changes.slice(0, 15).map(function (c) { return c.kode + ' > ' + tempatLabel_(c.rid); }).join(', ') + (changes.length > 15 ? ' dan ' + (changes.length - 15) + ' lainnya' : '');
+    log_('', 'Impor isi rak', changes.length + ' mesin dipindah: ' + shown, r.oleh);
+  }
+  return { ok: true, changed: changes.length, nSkipped: skipped.length, nErrors: errors.length, skipped: skipped.slice(0, 30), errors: errors.slice(0, 30) };
 }
 
 /* ---------- rak otomatis: Rak 001 ... Rak 050 (kode LOK-001 ... LOK-050) ---------- */

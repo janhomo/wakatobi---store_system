@@ -3,6 +3,9 @@ function hdrInfo() {
   const j = J[curJid()];
   switch (S.view) {
     case 'mesin': return { root: 1, title: 'Mesin', sub: S.loaded ? nameGroups().size + ' mesin · ' + S.units.filter(u => !u.off).length + ' unit' : 'Memuat…', right: S.loaded && !isWide() ? { a: 'tambah', i: 'plus', l: 'Mesin baru', t: 'Mesin baru' } : null };
+    case 'dasbor': return { root: 1, title: 'Dasbor', sub: 'Baca saja · ' + fmtDate(today()) };
+    case 'fotoimpor': return { root: 1, title: 'Impor foto massal', sub: 'Satu foto per jenis mesin' };
+    case 'imporrak': return { root: 1, title: 'Impor isi rak', sub: 'Isi tempat sekaligus dari Excel' };
     case 'nama': { const g = nameGroup(S.nm); return { title: g ? g.name : 'Mesin', sub: g ? g.jenis.length + ' merek/model · ' + nameUnits(g).filter(u => !u.off).length + ' unit' : '' }; }
     case 'saran': return { root: 1, title: 'Saran', sub: S.loaded ? saranList().length + ' saran' : 'Memuat…' };
     case 'hari': return { root: 1, title: 'Hari Ini', sub: fmtDate(today()) };
@@ -59,15 +62,16 @@ function renderDrawer() {
   $('#drawer').innerHTML = '<button class="dbg" data-action="dclose" aria-label="Tutup menu"></button><aside role="dialog" aria-label="Menu">' +
     '<div class="dh"><img src="logo-gelap.png" alt="Wakatobi Project Villa" width="168" height="117"><small>QR Aset Gudang · Construction site</small></div>' +
     '<nav>' +
-    '<div class="sec">Utama</div>' + it('mesin', 'grid', 'Mesin') + it('tempatlist', 'box', 'Penyimpanan') + it('material', 'layers', 'Material') +
+    '<div class="sec">Utama</div>' + it('dasbor', 'chart', 'Dasbor') + it('mesin', 'grid', 'Mesin') + it('tempatlist', 'box', 'Penyimpanan') + it('material', 'layers', 'Material') +
     it('hari', 'clock', 'Hari Ini', open ? '<span class="cnt">' + open + '</span>' : '') + it('riwayat', 'list', 'Riwayat per tanggal') +
     '<button class="it" data-action="dscan">' + ic('qr', 24) + '<span>Scan QR</span></button>' +
     '<div class="sec">Admin</div>' + it('saran', 'alert', 'Saran', saranList().length ? '<span class="cnt soft">' + saranList().length + '</span>' : '') + it('merek', 'tag', 'Merek') + it('pekerja', 'users', 'Pekerja') +
-    it('impor', 'upload', 'Impor Excel') + it('log', 'doc', 'Log perubahan') +
+    it('impor', 'upload', 'Impor Excel') + it('imporrak', 'box', 'Impor isi rak') + it('fotoimpor', 'cam', 'Impor foto massal') + it('log', 'doc', 'Log perubahan') +
     '<a class="it" href="label.html">' + ic('qr', 24) + '<span>Cetak label QR</span></a>' +
     '</nav><div class="foot">' +
     '<button class="it" data-action="dme">' + ic('user', 24) + '<span>Nama saya: ' + (S.me ? esc(S.me) : '<i>belum dipilih</i>') + '</span></button>' +
     '<div class="themeseg"><span class="tl">' + ic('sun', 20) + 'Tampilan</span><div class="seg" role="group" aria-label="Tampilan">' + THEMES.map(t => '<button data-action="dtheme" data-t="' + t + '" aria-pressed="' + (getTheme() === t) + '">' + THEME_L[t] + '</button>').join('') + '</div></div>' +
+    '<div class="langseg"><span class="tl">' + ic('globe', 20) + 'Bahasa</span><div class="seg seg2" role="group" aria-label="Bahasa"><button data-action="dlang" data-l="id" aria-pressed="' + (LANG.cur === 'id') + '">ID</button><button data-action="dlang" data-l="en" aria-pressed="' + (LANG.cur === 'en') + '">EN</button></div></div>' +
     '<button class="it" data-action="dreload">' + ic('refresh', 24) + '<span>Muat ulang data</span></button>' +
     '<button class="it bad" data-action="logout">' + ic('logout', 24) + '<span>Keluar</span></button>' +
     '</div></aside>';
@@ -76,7 +80,8 @@ function openDrawer() { if (S.pinned || S.ov.includes('drawer')) return; renderD
 
 /* ---------- render ---------- */
 const VIEWS = () => ({ mesin: viewMesin, nama: viewNama, saran: viewSaran, jenis: viewJenis, profil: viewProfil, unit: viewUnit, jedit: viewJedit, tambah: viewTambah, hari: viewHari, riwayat: viewRiwayat, pekerja: viewWorkers, log: viewLog, merek: viewMerek,
-  tempatlist: viewTempatList, tempat: viewTempat, tambahtempat: viewTambahTempat, tempatform: viewTempatForm, material: viewMaterial, mat: viewMat, matform: viewMatForm, panduan: viewPanduanEdit, impor: viewImpor });
+  tempatlist: viewTempatList, tempat: viewTempat, tambahtempat: viewTambahTempat, tempatform: viewTempatForm, material: viewMaterial, mat: viewMat, matform: viewMatForm, panduan: viewPanduanEdit, impor: viewImpor,
+  dasbor: viewDasbor, fotoimpor: viewFotoImpor, imporrak: viewImporRak });
 function render() {
   const f = VIEWS()[S.view] || viewMesin;
   $('#app').innerHTML = f();
@@ -98,7 +103,8 @@ function renderLive() {
 }
 /* dipanggil setelah data baru datang: form yang sedang diisi tidak boleh terhapus */
 function refresh() {
-  if (S.view === 'jenis') { $('#app').innerHTML = viewJenis(); if (S.tab === 'riwayat') loadRiwayatJenis(); }
+  if (S.view === 'dasbor') $('#app').innerHTML = viewDasbor();
+  else if (S.view === 'jenis') { $('#app').innerHTML = viewJenis(); if (S.tab === 'riwayat') loadRiwayatJenis(); }
   else if (S.view === 'nama') $('#app').innerHTML = viewNama();
   else if (S.view === 'profil' && !['maint', 'riw'].includes(S.tab)) $('#app').innerHTML = viewProfil();
   else if (['tempat', 'mat'].includes(S.view)) { $('#app').innerHTML = VIEWS()[S.view](); if (S.view === 'mat') renderLive(); }

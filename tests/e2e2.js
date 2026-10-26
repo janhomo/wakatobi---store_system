@@ -179,7 +179,9 @@ const jenisId = bor.jenisId;
   const pp = await txt(page, '#sheet');
   check('scan LOK popup: place, machines, material', pp.includes('Rak 1') && pp.includes('BOR-001') && pp.includes('Kabel NYM'), pp);
   await page.screenshot({ path: OUT + '/n_scan_tempat.png' });
-  await page.click('[data-action="placeclose"]'); await page.evaluate(() => onCode('MAT-001'));
+  await page.click('[data-action="placeclose"]');
+  await page.evaluate(() => { if (S.scan) S.scan.paused = true; }); /* cam4.y4m terus menampilkan GRD-001/BOR-001/KRP-001; hentikan baca otomatis selagi tes memanggil onCode() manual */
+  await page.evaluate(() => onCode('MAT-001'));
   await page.waitForSelector('#stokSheet:not([hidden]) #stokJ');
   check('scan MAT opens stok sheet', (await txt(page, '#stokSheet')).includes('Kabel NYM'));
   await page.click('.fsheet [data-action="stokclose"]'); await page.waitForSelector('#stokSheet', { state: 'hidden' });

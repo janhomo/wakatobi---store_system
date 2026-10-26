@@ -86,6 +86,15 @@ label.lbl{display:block; font-size:14px; color:var(--muted); margin:0 0 4px}
 .note.bad{background:var(--bad-bg); color:var(--bad)}
 .note.info{background:var(--accent-soft); color:var(--ink)}
 .card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px}
+.dkpi{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:4px}
+.kpi{background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:2px}
+.kpi b{font-family:var(--f-display); font-size:32px; line-height:1; color:var(--ink)}
+.kpi small{font-size:13px; font-weight:600; color:var(--muted)}
+.kpi .s{font-size:12px; color:var(--muted)}
+.kpi.bad{border-left-color:var(--bad)} .kpi.bad b{color:var(--bad)}
+.kpi.warn{border-left-color:var(--warn)} .kpi.warn b{color:var(--warn)}
+.kpi.info{border-left-color:var(--accent)}
+@media (min-width:640px){.dkpi{grid-template-columns:repeat(3, 1fr)}}
 .card h3{margin:0 0 10px; font-family:var(--f-display); font-weight:700; font-size:22px; letter-spacing:.03em; text-transform:uppercase}
 .card h4{margin:14px 0 8px; font-size:15px}
 .h2{font-family:var(--f-display); font-weight:700; font-size:22px; letter-spacing:.03em; text-transform:uppercase; margin:18px 0 8px}
@@ -477,9 +486,10 @@ button.loading{opacity:.75; cursor:progress}
 .cnt.soft{background:var(--warn)!important}
 
 /* ---- pilihan tampilan di menu ---- */
-.themeseg{padding:6px 14px 10px}
-.themeseg .tl{display:flex; align-items:center; gap:10px; font-size:14px; color:var(--muted); font-weight:600; margin-bottom:6px}
+.themeseg,.langseg{padding:6px 14px 10px}
+.themeseg .tl,.langseg .tl{display:flex; align-items:center; gap:10px; font-size:14px; color:var(--muted); font-weight:600; margin-bottom:6px}
 .seg{display:grid; grid-template-columns:repeat(3,1fr); border:1.5px solid var(--line); border-radius:10px; overflow:hidden}
+.seg.seg2{grid-template-columns:repeat(2,1fr)}
 .seg button{min-height:42px; border:0; background:var(--surface); font-size:14px; font-weight:600; color:var(--ink)}
 .seg button+button{border-left:1.5px solid var(--line)}
 .seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink)}

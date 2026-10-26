@@ -213,7 +213,7 @@ function scanYes() {
       rec.push({ kode: b.kode, ids: b.ids, rusak, prev, label: unitTitle(u) + (rusak ? ' · RUSAK' : ' · baik') });
     });
   }
-  sc.done = { mode: sc.mode, rec }; sc.basket = []; sc.paused = false; sc.fb = null;
+  sc.done = { mode: sc.mode, rec }; sc.basket = []; sc.paused = false; sc.fb = null; sc.place = null;
   beep(true); renderScan(); renderChrome();
 }
 function undoReturn(ids) {
@@ -240,19 +240,33 @@ function scanUndo() {
 function openScanPreset(mode, kode) { openScan({ mode, preset: [kode] }); }
 
 
-/* popup isi tempat (hasil scan QR tempat LOK-xxx) */
+/* popup isi tempat (hasil scan QR tempat LOK-xxx). Mesin yang ada di rak bisa diambil langsung dari
+   sini (tombol Ambil per mesin), tanpa scan ulang ke QR mesinnya. */
 function placePopup(tid) {
   const t = T[tid]; if (!t) return '';
-  const sm = placeSummary(tid), held = heldMap();
-  const urow = u => { const h = held.get(u.k), ln = unitLine(u); return '<button class="trow" data-action="scanopenunit" data-k="' + esc(u.k) + '"><span class="nm"><b>' + esc(ln.a) + '</b><small class="muted">' + esc(ln.b) + '</small></span>' +
-    (h ? '<span class="pill out">Di luar · ' + esc(h.nama) + '</span>' : u.s === 'ok' ? '<span class="pill ok">Di tempat</span>' : '<span class="pill ' + u.s + '">' + esc(u.sl) + '</span>') + '</button>'; };
+  const sc = S.scan, sm = placeSummary(tid), held = heldMap();
+  const inBasket = k => sc.basket.find(b => b.kode === k);
+  const urow = u => {
+    const h = held.get(u.k), ln = unitLine(u), b = inBasket(u.k);
+    let right;
+    if (h) right = '<span class="pill out">Di luar · ' + esc(h.nama) + '</span>';
+    else if (u.off || u.s === 'bad') right = '<span class="pill ' + u.s + '">' + esc(u.sl) + '</span>';
+    else if (b) right = '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0">' +
+      '<button class="namebar plain" style="width:auto;min-height:40px;padding:0 10px;font-size:14px;gap:4px" data-action="bname" data-k="' + esc(u.k) + '">' + (b.name ? esc(b.name) : 'Pilih nama') + ic('chev', 16) + '</button>' +
+      '<button class="x" data-action="bremove" data-k="' + esc(u.k) + '" aria-label="Batal ambil ' + esc(u.k) + '">' + ic('x', 18) + '</button></div>';
+    else right = '<button class="btn small" style="flex-shrink:0" data-action="rakambil" data-k="' + esc(u.k) + '">Ambil</button>';
+    return '<div class="trow"><button class="nm lnkbtn" data-action="scanopenunit" data-k="' + esc(u.k) + '" style="min-width:0;flex-grow:1;text-align:left"><b>' + esc(ln.a) + '</b><small class="muted">' + esc(ln.b) + '</small></button>' + right + '</div>';
+  };
   const mrow = m => '<div class="trow mat"><button class="nm lnkbtn" data-action="openmat" data-id="' + esc(m.id) + '"><b>' + esc(m.n) + '</b></button>' +
     '<button class="rnd" data-action="stokopen" data-id="' + esc(m.id) + '" data-t="Keluar" aria-label="Kurangi">−</button><span class="qty"><b>' + esc(fmtQty(m.q)) + '</b><small>' + esc(m.s) + '</small></span><button class="rnd" data-action="stokopen" data-id="' + esc(m.id) + '" data-t="Masuk" aria-label="Tambah">+</button></div>';
+  const n = sc.basket.length, need = n && sc.basket.some(b => !b.name);
   return '<div class="grab"></div><div class="sh-h"><span class="t">' + esc(t.n) + '</span><span class="n">' + sm.units.length + '</span></div><p class="muted" style="margin:-4px 0 0;font-size:14px"><span class="code">' + esc(t.id) + '</span>' + (t.l ? ' · ' + esc(t.l) : '') + ' · ' + sm.units.length + ' mesin · ' + sm.mats.length + ' material</p>' +
+    (sc.fb ? '<div class="fb ' + sc.fb.type + '">' + esc(sc.fb.text) + '</div>' : '') +
     (sm.units.length ? '<div class="tbox scroll">' + sm.units.sort((a, b) => a.k.localeCompare(b.k)).map(urow).join('') + '</div>' : '') +
     (sm.mats.length ? '<div class="tbox scroll">' + sm.mats.sort((a, b) => byName(a.n, b.n)).map(mrow).join('') + '</div>' : '') +
     (!sm.units.length && !sm.mats.length ? '<p class="muted" style="margin:0">Tempat ini masih kosong.</p>' : '') +
-    '<div class="yn"><button class="no" data-action="placeclose">Scan lagi</button><button class="yes" data-action="placeopen" data-id="' + esc(t.id) + '">Buka semua</button></div>';
+    (n ? '<div class="yn"><button class="no" data-action="scanclear">Batal ambil</button><button class="yes" data-action="scanyes"' + (need ? ' disabled' : '') + '>YA, catat ' + n + ' mesin</button></div>' + (need ? '<p class="muted" style="margin:0;font-size:14px;text-align:center">Pilih nama untuk setiap mesin dulu.</p>' : '')
+      : '<div class="yn"><button class="no" data-action="placeclose">Scan lagi</button><button class="yes" data-action="placeopen" data-id="' + esc(t.id) + '">Buka semua</button></div>');
 }
 
 /* ---------- pemilih nama ---------- */

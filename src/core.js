@@ -53,7 +53,9 @@ const IC = {
   book: '<path d="M5 4h10a3 3 0 013 3v13H8a3 3 0 01-3-3zM5 17a3 3 0 013-3h10"/>',
   minus: '<path d="M5 12h14"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
-  alert: '<path d="M12 4l9 16H3zM12 10v4M12 17h.01"/>'
+  alert: '<path d="M12 4l9 16H3zM12 10v4M12 17h.01"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>'
 };
 const ic = (n, s = 24) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
 
@@ -205,7 +207,7 @@ function busyEnd(ok) {
 /* aksi yang menulis ke Sheet */
 const WRITE_ACTIONS = new Set(['addUnit', 'editUnit', 'editJenis', 'nonaktifUnit', 'aktifkanUnit', 'renameMerek', 'gabungJenis', 'addTempat', 'editTempat', 'nonaktifTempat', 'aktifTempat', 'setTempat',
   'fotoSet', 'fotoHapus', 'panduanSimpan', 'addMaterial', 'editMaterial', 'statusMaterial', 'stok', 'imporUnit', 'savePekerja', 'arsipkan', 'addPengambilan', 'returnPengambilan', 'batalKembali',
-  'cancelPengambilan', 'addMaintenance', 'deleteMaintenance', 'buatRak', 'saranTolak', 'pulihKondisi']);
+  'cancelPengambilan', 'addMaintenance', 'deleteMaintenance', 'buatRak', 'saranTolak', 'pulihKondisi', 'imporRak']);
 
 /* ---------- API dan login ---------- */
 async function raw(action, payload = {}) {
