@@ -44,6 +44,21 @@ ok('imporRak empty rak skipped', call({ action: 'imporRak', oleh: 'Abidin', rows
 ok('imporRak already there skipped', call({ action: 'imporRak', oleh: 'Abidin', rows: [{ kode: 'BOR-002', rak: 'LOK-008' }] }).nSkipped === 1);
 ok('imporRak duplicate row in same batch skipped', (() => { const r2 = call({ action: 'imporRak', oleh: 'Abidin', rows: [{ kode: 'BOR-001', rak: 'Rak 010' }, { kode: 'BOR-001', rak: 'Rak 011' }] }); return r2.changed === 1 && r2.nSkipped === 1; })());
 ok('imporRak non-editor refused', call({ action: 'imporRak', oleh: 'Budi', rows: [{ kode: 'BOR-001', rak: 'Rak 001' }] }).ok === false);
+// sub rak (satu level di bawah rak, tidak pernah punya QR)
+let sr = call({ action: 'addTempat', oleh: 'Abidin', nama: 'Tingkat 1', induk: 'LOK-007' });
+ok('sub rak created under Rak 007', sr.ok === true, sr);
+const subId = sr.id;
+ok('listTempat exposes ind for sub rak', call({ action: 'bootstrap' }).tempat.find(x => x.id === subId).ind === 'LOK-007');
+ok('sub rak cannot have its own sub rak', call({ action: 'addTempat', oleh: 'Abidin', nama: 'Tingkat 1a', induk: subId }).ok === false);
+ok('sub rak name can repeat under a different rak', call({ action: 'addTempat', oleh: 'Abidin', nama: 'Tingkat 1', induk: 'LOK-008' }).ok === true);
+ok('sub rak name cannot repeat under the same rak', call({ action: 'addTempat', oleh: 'Abidin', nama: 'Tingkat 1', induk: 'LOK-007' }).ok === false);
+ok('unit can be placed directly in a sub rak', call({ action: 'editUnit', oleh: 'Abidin', kode: 'BOR-001', f: { loc: subId } }).changed === 1);
+ok('rak with active sub rak cannot be deactivated', call({ action: 'nonaktifTempat', oleh: 'Abidin', id: 'LOK-007' }).ok === false);
+ok('sub rak with a unit inside cannot be deactivated', call({ action: 'nonaktifTempat', oleh: 'Abidin', id: subId }).ok === false);
+ok('move unit out of sub rak', call({ action: 'editUnit', oleh: 'Abidin', kode: 'BOR-001', f: { loc: 'LOK-001' } }).changed === 1);
+ok('empty sub rak can now be deactivated', call({ action: 'nonaktifTempat', oleh: 'Abidin', id: subId }).ok === true);
+ok('rak can be deactivated once its sub rak is inactive', call({ action: 'nonaktifTempat', oleh: 'Abidin', id: 'LOK-007' }).ok === true);
+call({ action: 'aktifTempat', oleh: 'Abidin', id: 'LOK-007' }); call({ action: 'aktifTempat', oleh: 'Abidin', id: subId });
 // saran tolak
 ok('saranTolak stored and served', call({ action: 'saranTolak', oleh: 'Vikar', id: 'm:a|b' }).ok && JSON.parse(call({ action: 'bootstrap' }).cfg.saranTolak).includes('m:a|b'));
 ok('saranTolak undo', call({ action: 'saranTolak', oleh: 'Vikar', id: 'm:a|b', batal: true }).ok && JSON.parse(call({ action: 'bootstrap' }).cfg.saranTolak).length === 0);

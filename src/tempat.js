@@ -17,13 +17,13 @@ function placeCard(t) {
 }
 function renderTempatList() {
   const el = $('#tlist2'); if (!el) return;
-  const q = norm(S.tq || ''), list = activePlaces().filter(t => !q || norm(t.n + ' ' + t.l + ' ' + t.id).includes(q));
+  const q = norm(S.tq || ''), list = topPlaces().filter(t => !q || norm(t.n + ' ' + t.l + ' ' + t.id).includes(q));
   const act = S.units.filter(u => !u.off), placed = act.filter(hasPlace).length;
-  $('#tstats').textContent = activePlaces().length + ' tempat · ' + placed + ' mesin tersimpan · ' + (act.length - placed) + ' mesin belum punya tempat';
+  $('#tstats').textContent = topPlaces().length + ' tempat · ' + placed + ' mesin tersimpan · ' + (act.length - placed) + ' mesin belum punya tempat';
   el.innerHTML = list.length ? list.map(placeCard).join('') :
-    '<p class="empty">' + (activePlaces().length ? 'Tidak ada tempat yang cocok.' : 'Belum ada tempat. Tekan Tempat baru, misalnya Rak 1 atau Lemari Kunci.') + '</p>';
+    '<p class="empty">' + (topPlaces().length ? 'Tidak ada tempat yang cocok.' : 'Belum ada tempat. Tekan Tempat baru, misalnya Rak 1 atau Lemari Kunci.') + '</p>';
   $('#rakbtn').innerHTML = S.tempat.some(t => norm(t.n) === 'rak 001') ? '' : '<a class="dashed" style="margin-bottom:10px" href="#" data-action="rakbuat">' + ic('plus', 20) + 'Buat Rak 001 sampai Rak 050</a>';
-  const off = S.tempat.filter(t => t.off);
+  const off = S.tempat.filter(t => t.off && !t.ind);
   $('#toff').innerHTML = off.length ? '<button class="btn ghost small block" style="margin-top:10px" data-action="toggleoff">' + (S.showOffT ? 'Sembunyikan' : 'Lihat') + ' tempat nonaktif (' + off.length + ')</button>' +
     (S.showOffT ? '<div class="jlist" style="margin-top:8px">' + off.map(placeCard).join('') + '</div>' : '') : '';
 }
@@ -31,6 +31,8 @@ function renderTempatList() {
 function viewTempat() {
   const t = T[S.tid];
   if (!t) return '<p class="empty">' + (S.loaded ? 'Tempat tidak ditemukan.' : 'Memuat…') + '</p>';
+  const isSub = !!t.ind, parent = isSub ? T[t.ind] : null;
+  const subs = isSub ? [] : childRaks(t.id);
   const sm = placeSummary(t.id), held = heldMap();
   const mrow = u => { const j = jenisOf(u), h = held.get(u.k);
     const ln = unitLine(u);
@@ -39,12 +41,18 @@ function viewTempat() {
   const matrow = m => '<div class="trow mat"><span class="thumb sm">' + ic('layers', 22) + '</span><button class="nm lnkbtn" data-action="openmat" data-id="' + esc(m.id) + '"><b>' + esc(m.n) + '</b>' + (isLow(m) ? '<span class="pill warn">Menipis</span>' : '') + '</button>' +
     '<button class="rnd" data-action="stokopen" data-id="' + esc(m.id) + '" data-t="Keluar" aria-label="Kurangi ' + esc(m.n) + '">−</button><span class="qty"><b>' + esc(fmtQty(m.q)) + '</b><small>' + esc(m.s) + '</small></span>' +
     '<button class="rnd" data-action="stokopen" data-id="' + esc(m.id) + '" data-t="Masuk" aria-label="Tambah ' + esc(m.n) + '">+</button></div>';
-  return (t.off ? '<p class="note warn" style="margin-bottom:10px">Tempat ini nonaktif. <button class="btn small ghost" style="display:inline-flex;min-height:36px;margin-left:6px" data-action="tempataktif" data-id="' + esc(t.id) + '">Aktifkan kembali</button></p>' : '') +
+  const btns = [];
+  if (!isSub) btns.push('<button class="pbtn" data-action="subrakbaru" data-id="' + esc(t.id) + '">' + ic('plus', 22) + 'Sub rak</button>');
+  btns.push('<button class="pbtn" data-action="tambahke" data-id="' + esc(t.id) + '" data-tab="mesin">' + ic('plus', 22) + 'Mesin</button>');
+  btns.push('<button class="pbtn" data-action="tambahke" data-id="' + esc(t.id) + '" data-tab="material">' + ic('plus', 22) + 'Material</button>');
+  return (isSub ? '<button class="ulink" data-action="opentempat" data-id="' + esc(parent.id) + '" style="margin-bottom:8px">' + ic('back', 16) + esc(parent.n) + '</button>' : '') +
+    (t.off ? '<p class="note warn" style="margin-bottom:10px">Tempat ini nonaktif. <button class="btn small ghost" style="display:inline-flex;min-height:36px;margin-left:6px" data-action="tempataktif" data-id="' + esc(t.id) + '">Aktifkan kembali</button></p>' : '') +
     '<div class="stat3"><div><b>' + sm.units.length + '</b><small>Mesin</small></div><div><b>' + sm.mats.length + '</b><small>Jenis material</small></div><div class="' + (sm.low ? 'lowc' : '') + '"><b>' + sm.low + '</b><small>Menipis</small></div></div>' +
-    '<div class="two" style="margin:10px 0"><a class="btn ghost small" href="label.html?kode=' + esc(t.id) + '">' + ic('print', 20) + 'Cetak QR tempat</a><button class="btn ghost small" data-action="tempatedit" data-id="' + esc(t.id) + '">' + ic('edit', 20) + 'Ubah nama</button></div>' +
-    '<h2 class="h2" style="margin-top:6px">Mesin</h2>' + (sm.units.length ? '<div class="tbox">' + sm.units.sort((a, b) => byName(jenisOf(a).n, jenisOf(b).n) || (Number(a.u) || 0) - (Number(b.u) || 0) || a.k.localeCompare(b.k)).map(mrow).join('') + '</div>' : '<p class="muted">Belum ada mesin di sini.</p>') +
+    '<div class="two" style="margin:10px 0">' + (isSub ? '<p class="muted" style="font-size:13px;margin:0">Sub rak tidak punya QR sendiri, karena bisa diubah-ubah.</p>' : '<a class="btn ghost small" href="label.html?kode=' + esc(t.id) + '">' + ic('print', 20) + 'Cetak QR tempat</a>') + '<button class="btn ghost small" data-action="tempatedit" data-id="' + esc(t.id) + '">' + ic('edit', 20) + 'Ubah nama</button></div>' +
+    (isSub ? '' : '<h2 class="h2" style="margin-top:6px">Sub rak</h2>' + (subs.length ? '<div class="jlist">' + subs.map(placeCard).join('') + '</div>' : '<p class="muted">Belum ada sub rak.</p>')) +
+    '<h2 class="h2" style="margin-top:6px">Mesin' + (isSub ? '' : ' di rak ini') + '</h2>' + (sm.units.length ? '<div class="tbox">' + sm.units.sort((a, b) => byName(jenisOf(a).n, jenisOf(b).n) || (Number(a.u) || 0) - (Number(b.u) || 0) || a.k.localeCompare(b.k)).map(mrow).join('') + '</div>' : '<p class="muted">Belum ada mesin di sini.</p>') +
     '<h2 class="h2">Material · stok</h2>' + (sm.mats.length ? '<div class="tbox">' + sm.mats.sort((a, b) => byName(a.n, b.n)).map(matrow).join('') + '</div>' : '<p class="muted">Belum ada material di sini.</p>') +
-    '<div class="pbar"><button class="pbtn" data-action="tambahke" data-id="' + esc(t.id) + '">' + ic('plus', 22) + 'Tambah mesin atau material</button></div>';
+    '<div class="pbar' + (btns.length > 1 ? ' pbar3' : '') + '">' + btns.join('') + '</div>';
 }
 
 /* ---------- Tambah mesin / material ke tempat ---------- */
@@ -89,10 +97,13 @@ function saveTambahTempat() {
 function viewTempatForm() {
   const t = S.tid ? T[S.tid] : null;
   if (S.tid && !t) return '<p class="empty">' + (S.loaded ? 'Tempat tidak ditemukan.' : 'Memuat…') + '</p>';
+  const induk = !t && S.form && S.form.induk ? T[S.form.induk] : null;
+  const isSub = t ? !!t.ind : !!induk;
   const lokasi = [...new Set(S.tempat.map(x => x.l).filter(Boolean))].sort(byName);
-  return '<div class="stack"><section class="card"><h3>' + (t ? t.id : 'Tempat baru') + '</h3><div class="stack">' +
-    '<p class="note info">' + (t ? 'Kode ' + esc(t.id) + ' tidak berubah, jadi QR yang sudah dicetak tetap berlaku.' : 'Kode LOK dibuat otomatis. Setelah disimpan, QR tempat bisa dicetak.') + '</p>' +
-    fld('pnama', 'Nama tempat', t ? t.n : '', { ph: 'contoh: Rak 1' }) +
+  return '<div class="stack"><section class="card"><h3>' + (t ? t.id : (isSub ? 'Sub rak baru' : 'Tempat baru')) + '</h3><div class="stack">' +
+    (induk ? '<p class="note info">Di dalam ' + esc(induk.n) + '.</p>' : '') +
+    '<p class="note info">' + (t ? 'Kode ' + esc(t.id) + ' tidak berubah' + (t.ind ? '.' : ', jadi QR yang sudah dicetak tetap berlaku.') : (isSub ? 'Sub rak tidak punya QR, karena bisa diubah-ubah bentuknya.' : 'Kode LOK dibuat otomatis. Setelah disimpan, QR tempat bisa dicetak.')) + '</p>' +
+    fld('pnama', isSub ? 'Nama sub rak' : 'Nama tempat', t ? t.n : '', { ph: isSub ? 'contoh: Tingkat 1' : 'contoh: Rak 1' }) +
     fld('plokasi', 'Lokasi (boleh kosong)', t ? t.l : '', { ph: 'contoh: Gudang A', list: 'lokasiList' }) + '<datalist id="lokasiList">' + lokasi.map(l => '<option value="' + esc(l) + '">').join('') + '</datalist>' +
     '<button class="btn" data-action="tempatsave">Simpan</button></div></section>' +
     (t ? '<section class="card"><h3>' + (t.off ? 'Tempat nonaktif' : 'Nonaktifkan tempat') + '</h3>' + (t.off ? '<button class="btn ghost" data-action="tempataktif" data-id="' + esc(t.id) + '">Aktifkan kembali</button>' :
@@ -102,5 +113,8 @@ function saveTempat() {
   const n = clean(val('pnama')), l = clean(val('plokasi'));
   if (!n) { toast('Isi nama tempat.'); return; }
   if (S.tid) callEdit('editTempat', { id: S.tid, nama: n, lokasi: l }, r => r.changed ? 'Tempat diubah.' : 'Tidak ada yang berubah.');
-  else callEdit('addTempat', { nama: n, lokasi: l }, r => 'Tempat dibuat: ' + r.id, r => go('tempat', { tid: r.id, replace: true }));
+  else {
+    const induk = (S.form && S.form.induk) || '';
+    callEdit('addTempat', { nama: n, lokasi: l, induk }, r => (induk ? 'Sub rak dibuat: ' : 'Tempat dibuat: ') + r.id, r => go('tempat', { tid: r.id, replace: true }));
+  }
 }

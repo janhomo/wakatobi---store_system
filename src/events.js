@@ -145,11 +145,12 @@ document.addEventListener('click', async e => {
     case 'opentempat': go('tempat', { tid: t.dataset.id }); break;
     case 'tempatbaru': go('tempatform', {}); break;
     case 'tempatedit': go('tempatform', { tid: t.dataset.id }); break;
+    case 'subrakbaru': go('tempatform', { form: { induk: t.dataset.id } }); break;
     case 'tempatsave': saveTempat(); break;
     case 'tempatoff': callEdit('nonaktifTempat', { id: t.dataset.id }, 'Tempat dinonaktifkan.', () => go('tempatlist', { root: true })); break;
     case 'tempataktif': callEdit('aktifTempat', { id: t.dataset.id }, 'Tempat diaktifkan kembali.', () => render()); break;
     case 'toggleoff': S.showOffT = !S.showOffT; renderTempatList(); break;
-    case 'tambahke': go('tambahtempat', { tid: t.dataset.id, form: { tab: 'mesin', q: '', filt: 'belum', sel: [], selM: [] } }); break;
+    case 'tambahke': go('tambahtempat', { tid: t.dataset.id, form: { tab: t.dataset.tab || 'mesin', q: '', filt: 'belum', sel: [], selM: [] } }); break;
     case 'atab': if (S.form) { S.form.tab = t.dataset.t; S.form.q = ''; S.form.filt = 'belum'; $('#app').innerHTML = viewTambahTempat(); renderTambahTempat(); } break;
     case 'afilt': if (S.form) { S.form.filt = t.dataset.f; renderTambahTempat(); } break;
     case 'selunit': case 'selmat': if (S.form) { const l = a === 'selunit' ? S.form.sel : S.form.selM, i = l.indexOf(t.dataset.k); if (i >= 0) l.splice(i, 1); else l.push(t.dataset.k); renderTambahTempat(); } break;

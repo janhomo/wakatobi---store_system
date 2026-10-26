@@ -11,10 +11,10 @@ function hdrInfo() {
     case 'hari': return { root: 1, title: 'Hari Ini', sub: fmtDate(today()) };
     case 'jenis': return { title: j ? j.n : 'Mesin', sub: j ? subText(j) : '', right: j ? { a: 'jedit', i: 'edit', l: 'Ubah jenis' } : null };
     case 'profil': { const u = U[S.kode]; return { title: u ? u.k : 'Unit', sub: u ? unitTitle(u) : '', right: u ? { a: 'uedit', i: 'edit', l: 'Ubah unit', k: u.k } : null }; }
-    case 'tempatlist': return { root: 1, title: 'Penyimpanan', sub: S.loaded ? S.tempat.filter(t => !t.off).length + ' tempat' : 'Memuat…' };
-    case 'tempat': { const t = T[S.tid]; return { title: t ? t.n : 'Tempat', sub: t ? [t.l, t.id].filter(Boolean).join(' · ') : '' }; }
+    case 'tempatlist': return { root: 1, title: 'Penyimpanan', sub: S.loaded ? topPlaces().length + ' tempat' : 'Memuat…' };
+    case 'tempat': { const t = T[S.tid]; const p = t && t.ind ? T[t.ind] : null; return { title: t ? t.n : 'Tempat', sub: t ? (p ? p.n + ' · ' : '') + [t.l, t.id].filter(Boolean).join(' · ') : '' }; }
     case 'tambahtempat': { const t = T[S.tid]; return { title: 'Tambah ke ' + (t ? t.n : 'tempat'), sub: 'Mesin dan material' }; }
-    case 'tempatform': return { title: S.tid ? 'Ubah tempat' : 'Tempat baru', sub: S.tid && T[S.tid] ? T[S.tid].id : 'Penyimpanan' };
+    case 'tempatform': { const indT = !S.tid && S.form && S.form.induk ? T[S.form.induk] : null; return { title: S.tid ? (T[S.tid] && T[S.tid].ind ? 'Ubah sub rak' : 'Ubah tempat') : (indT ? 'Sub rak baru' : 'Tempat baru'), sub: S.tid && T[S.tid] ? T[S.tid].id : (indT ? 'Di ' + indT.n : 'Penyimpanan') }; }
     case 'material': return { root: 1, title: 'Material', sub: S.loaded ? S.material.filter(m => !m.off).length + ' jenis' : 'Memuat…' };
     case 'mat': { const m = M[S.mid]; return { title: m ? m.n : 'Material', sub: m ? m.id : '', right: m ? { a: 'matedit', i: 'edit', l: 'Ubah material' } : null }; }
     case 'matform': return { title: S.mid ? 'Ubah material' : 'Material baru', sub: S.mid || 'Stok' };

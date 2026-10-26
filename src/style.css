@@ -345,6 +345,8 @@ textarea.field.tall{min-height:160px}
 .pbar.two .yes{background:var(--accent); color:var(--accent-ink)}
 .pbar.two .yes[disabled]{background:var(--line); color:var(--muted)}
 .pbtn{width:100%; min-height:58px; border-radius:12px; border:0; background:var(--accent); color:var(--accent-ink); font-size:19px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:10px}
+.pbar.pbar3{display:flex; gap:8px}
+.pbar.pbar3 .pbtn{width:auto; flex:1; min-height:56px; font-size:14px; gap:4px; padding:0 2px}
 .pbtn.ret{background:var(--ok); color:#fff}
 .pdis{display:block; text-align:center; padding:16px; border-radius:12px; border:1.5px solid var(--line); color:var(--muted); font-weight:600}
 .wrap:has(.pbar){padding-bottom:calc(110px + env(safe-area-inset-bottom, 0px))}

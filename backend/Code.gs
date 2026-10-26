@@ -36,7 +36,7 @@ var HEADERS = {
   'Log Perubahan': ['Waktu', 'Kode Aset', 'Aksi', 'Detail', 'Oleh'],
   'Pengaturan': ['Kunci', 'Nilai'],
   'Foto': ['ID Jenis', 'Foto', 'Diubah'],
-  'Tempat': ['ID Tempat', 'Nama', 'Lokasi', 'Status'],
+  'Tempat': ['ID Tempat', 'Nama', 'Lokasi', 'Status', 'Induk'],
   'Panduan': ['ID Jenis', 'Versi', 'Peringatan', 'Alat dan Bahan', 'Langkah', 'Interval (bulan)', 'Tautan Manual', 'Oleh', 'Waktu'],
   'Material': ['ID Material', 'Nama', 'Kategori', 'Merek', 'Satuan', 'Stok', 'Batas Menipis', 'Tempat', 'Status'],
   'Stok Log': ['ID', 'Waktu', 'ID Material', 'Jenis', 'Jumlah', 'Stok Sesudah', 'Oleh', 'Catatan']
@@ -50,7 +50,7 @@ var TEXT_COLS = {
   'Pengaturan': ['B:B'],
   'Foto': ['C:C'],
   'Panduan': ['C:E', 'G:G', 'I:I'],
-  'Tempat': ['B:C'],
+  'Tempat': ['B:C', 'E:E'],
   'Material': ['B:E'],
   'Stok Log': ['B:B', 'G:H']
 };
@@ -637,11 +637,17 @@ function tempatOk_(v) {
 function tempatLabel_(v) {
   v = clean_(v);
   if (!v) return '(kosong)';
-  if (isLok_(v)) { var f = findRow_('Tempat', v); return f ? clean_(f.row[1]) + ' (' + v + ')' : v; }
+  if (isLok_(v)) {
+    var f = findRow_('Tempat', v);
+    if (!f) return v;
+    var nm = clean_(f.row[1]), ind = clean_(f.row[4]);
+    if (ind) { var pf = findRow_('Tempat', ind); if (pf) nm = clean_(pf.row[1]) + ' > ' + nm; }
+    return nm + ' (' + v + ')';
+  }
   return v;
 }
 function listTempat_() {
-  return filled_('Tempat').map(function (r) { return { id: str_(r[0]), n: clean_(r[1]), l: clean_(r[2]), off: str_(r[3]).toLowerCase() === 'nonaktif' }; });
+  return filled_('Tempat').map(function (r) { return { id: str_(r[0]), n: clean_(r[1]), l: clean_(r[2]), off: str_(r[3]).toLowerCase() === 'nonaktif', ind: str_(r[4]) }; });
 }
 // Isi kolom Tempat lama (teks bebas, contoh "Gudang Karpenter") menjadi tempat LOK-xxx. "Gudang" saja dianggap belum punya tempat.
 function migrasiTempat_() {
@@ -655,7 +661,7 @@ function migrasiTempat_() {
     if (!id) {
       maxN++;
       id = 'LOK-' + pad3_(maxN);
-      tsh.appendRow([id, loc, '', '']);
+      tsh.appendRow([id, loc, '', '', '']);
       byName[loc.toLowerCase()] = id; made++;
     }
     ush.getRange(i + 2, 5, 1, 1).setValues([[id]]); moved++;
@@ -664,16 +670,22 @@ function migrasiTempat_() {
   return { made: made, moved: moved };
 }
 function addTempat_(r) {
-  var n = clean_(r.nama), l = clean_(r.lokasi);
+  var n = clean_(r.nama), l = clean_(r.lokasi), induk = clean_(r.induk);
   if (!n) return err_('Nama tempat wajib diisi.');
   if (n.length > 60 || l.length > 60) return err_('Nama terlalu panjang.');
-  var dup = filled_('Tempat').some(function (x) { return same_(x[1], n) && str_(x[3]).toLowerCase() !== 'nonaktif'; });
+  if (induk) {
+    var pf = findRow_('Tempat', induk);
+    if (!pf) return err_('Rak induk tidak ditemukan.');
+    if (str_(pf.row[3]).toLowerCase() === 'nonaktif') return err_('Rak induk nonaktif.');
+    if (clean_(pf.row[4])) return err_('Sub rak tidak bisa punya sub rak lagi.');
+  }
+  var dup = filled_('Tempat').some(function (x) { return same_(x[1], n) && str_(x[3]).toLowerCase() !== 'nonaktif' && clean_(x[4]) === induk; });
   if (dup) return err_('Tempat bernama ' + n + ' sudah ada.');
   var num = maxLok_() + 1;
   if (num > 999) return err_('Nomor LOK sudah penuh (999).');
   var id = 'LOK-' + pad3_(num);
-  sheet_('Tempat').appendRow([id, n, l, '']);
-  log_(id, 'Tambah tempat', n + (l ? ' (' + l + ')' : ''), r.oleh);
+  sheet_('Tempat').appendRow([id, n, l, '', induk]);
+  log_(id, induk ? 'Tambah sub rak' : 'Tambah tempat', n + (l ? ' (' + l + ')' : '') + (induk ? ' di bawah ' + tempatLabel_(induk) : ''), r.oleh);
   return { ok: true, id: id };
 }
 function editTempat_(r) {
@@ -682,8 +694,8 @@ function editTempat_(r) {
   var n = r.nama !== undefined ? clean_(r.nama) : clean_(f.row[1]), l = r.lokasi !== undefined ? clean_(r.lokasi) : clean_(f.row[2]);
   if (!n) return err_('Nama tempat wajib diisi.');
   if (n.length > 60 || l.length > 60) return err_('Nama terlalu panjang.');
-  var id = str_(f.row[0]);
-  var dup = filled_('Tempat').some(function (x) { return str_(x[0]) !== id && same_(x[1], n) && str_(x[3]).toLowerCase() !== 'nonaktif'; });
+  var id = str_(f.row[0]), induk = clean_(f.row[4]);
+  var dup = filled_('Tempat').some(function (x) { return str_(x[0]) !== id && same_(x[1], n) && str_(x[3]).toLowerCase() !== 'nonaktif' && clean_(x[4]) === induk; });
   if (dup) return err_('Tempat bernama ' + n + ' sudah ada.');
   var diffs = [];
   if (n !== clean_(f.row[1])) diffs.push('Nama: ' + clean_(f.row[1]) + ' > ' + n);
@@ -700,6 +712,8 @@ function statusTempat_(r, off) {
     var nu = filled_('Unit').filter(function (x) { return clean_(x[4]) === id && str_(x[9]).toLowerCase() !== 'nonaktif'; }).length;
     var nm = filled_('Material').filter(function (x) { return clean_(x[7]) === id && str_(x[8]).toLowerCase() !== 'nonaktif'; }).length;
     if (nu || nm) return err_('Masih ada ' + nu + ' mesin dan ' + nm + ' material di tempat ini. Pindahkan dulu.');
+    var nSub = filled_('Tempat').filter(function (x) { return clean_(x[4]) === id && str_(x[3]).toLowerCase() !== 'nonaktif'; }).length;
+    if (nSub) return err_('Masih ada ' + nSub + ' sub rak di dalamnya. Nonaktifkan sub rak dulu.');
   }
   sheet_('Tempat').getRange(f.i + 2, 4, 1, 1).setValues([[off ? 'Nonaktif' : '']]);
   log_(id, off ? 'Nonaktifkan tempat' : 'Aktifkan tempat', clean_(f.row[1]), r.oleh);

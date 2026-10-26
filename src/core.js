@@ -142,6 +142,8 @@ const hasPlace = u => !!placeOf(u);
 const placeName = u => { const t = placeOf(u); return t ? t.n : ''; };
 const placeText = u => { const t = placeOf(u); return t ? t.n + (t.l ? ' · ' + t.l : '') : 'Belum punya tempat'; };
 const activePlaces = () => S.tempat.filter(t => !t.off).sort((a, b) => byName(a.n, b.n));
+const topPlaces = () => activePlaces().filter(t => !t.ind);
+const childRaks = tid => activePlaces().filter(t => t.ind === tid);
 function placeSummary(tid) {
   const held = heldMap();
   const us = S.units.filter(u => !u.off && u.loc === tid);
