@@ -44,13 +44,17 @@ ok('imporRak empty rak skipped', call({ action: 'imporRak', oleh: 'Abidin', rows
 ok('imporRak already there skipped', call({ action: 'imporRak', oleh: 'Abidin', rows: [{ kode: 'BOR-002', rak: 'LOK-008' }] }).nSkipped === 1);
 ok('imporRak duplicate row in same batch skipped', (() => { const r2 = call({ action: 'imporRak', oleh: 'Abidin', rows: [{ kode: 'BOR-001', rak: 'Rak 010' }, { kode: 'BOR-001', rak: 'Rak 011' }] }); return r2.changed === 1 && r2.nSkipped === 1; })());
 ok('imporRak non-editor refused', call({ action: 'imporRak', oleh: 'Budi', rows: [{ kode: 'BOR-001', rak: 'Rak 001' }] }).ok === false);
-// sub rak (satu level di bawah rak, tidak pernah punya QR)
+// sub rak (satu level di bawah rak, kode permanen induk-huruf, tidak terbatas, punya QR sendiri)
 let sr = call({ action: 'addTempat', oleh: 'Abidin', nama: 'Tingkat 1', induk: 'LOK-007' });
 ok('sub rak created under Rak 007', sr.ok === true, sr);
 const subId = sr.id;
+ok('sub rak gets permanent code LOK-007-A', subId === 'LOK-007-A', sr);
 ok('listTempat exposes ind for sub rak', call({ action: 'bootstrap' }).tempat.find(x => x.id === subId).ind === 'LOK-007');
 ok('sub rak cannot have its own sub rak', call({ action: 'addTempat', oleh: 'Abidin', nama: 'Tingkat 1a', induk: subId }).ok === false);
+ok('2nd sub rak under same rak gets -B', call({ action: 'addTempat', oleh: 'Abidin', nama: 'Tingkat 2', induk: 'LOK-009' }).id === 'LOK-009-A');
+ok('2nd sibling under LOK-009 gets -B, numbering per rak not global', call({ action: 'addTempat', oleh: 'Abidin', nama: 'Tingkat 3', induk: 'LOK-009' }).id === 'LOK-009-B');
 ok('sub rak name can repeat under a different rak', call({ action: 'addTempat', oleh: 'Abidin', nama: 'Tingkat 1', induk: 'LOK-008' }).ok === true);
+ok('sub rak under a different rak starts again at -A', call({ action: 'bootstrap' }).tempat.find(x => x.ind === 'LOK-008').id === 'LOK-008-A');
 ok('sub rak name cannot repeat under the same rak', call({ action: 'addTempat', oleh: 'Abidin', nama: 'Tingkat 1', induk: 'LOK-007' }).ok === false);
 ok('unit can be placed directly in a sub rak', call({ action: 'editUnit', oleh: 'Abidin', kode: 'BOR-001', f: { loc: subId } }).changed === 1);
 ok('rak with active sub rak cannot be deactivated', call({ action: 'nonaktifTempat', oleh: 'Abidin', id: 'LOK-007' }).ok === false);
@@ -74,4 +78,17 @@ ok('No. lembar in Catatan', b.unit.filter(u => /^No\. lembar: \d+$/.test(u.cat))
 ok('marble cutter has no merek, model K 1601', b.jenis.some(j => /Marble/.test(j.n) && j.b === '' && j.m === 'K 1601'));
 ok('5 kipas unit 1..5', b.unit.filter(u => /Kipas/.test(jm[u.j].n)).map(u => Number(u.u)).sort().join() === '1,2,3,4,5');
 ok('run again skips all', env.isiMesinLembar().unit === 0 && rows('Unit').length === before + 21);
+// migrasi sub rak lama (kode LOK-xxx bebas dari sebelum fitur ini ada) ke kode permanen induk-huruf
+const tsh = ss.getSheetByName('Tempat');
+tsh.appendRow(['LOK-777', 'Sub Lama 1', '', '', 'LOK-010']); // kode lama gaya rak biasa, padahal sub rak
+tsh.appendRow(['LOK-778', 'Sub Lama 2', '', '', 'LOK-010']);
+const kodeTest = rows('Unit')[0][0];
+call({ action: 'editUnit', oleh: 'Abidin', kode: kodeTest, f: { loc: 'LOK-777' } });
+env.setup();
+const T2 = rows('Tempat');
+ok('old-style sub rak 1 renamed to LOK-010-A', T2.some(r => r[0] === 'LOK-010-A' && r[1] === 'Sub Lama 1'));
+ok('old-style sub rak 2 renamed to LOK-010-B', T2.some(r => r[0] === 'LOK-010-B' && r[1] === 'Sub Lama 2'));
+ok('old LOK-777/778 codes gone', !T2.some(r => r[0] === 'LOK-777' || r[0] === 'LOK-778'));
+ok('unit placed in old sub rak code follows the rename', rows('Unit').find(r => r[0] === kodeTest)[4] === 'LOK-010-A');
+ok('migration is idempotent (setup again, no more renames)', (() => { env.setup(); const T3 = rows('Tempat'); return T3.filter(r => r[4] === 'LOK-010').length === 2; })());
 console.log(t.join('\n')); const f = t.filter(x => x.startsWith('FAIL')).length; console.log(f ? f + ' GAGAL' : 'SEMUA LULUS (' + t.length + ')'); process.exit(f ? 1 : 0);

@@ -87,6 +87,8 @@ function setup() {
   if (['Sheet1', 'Sheet 1', 'Lembar1'].indexOf(first.getName()) >= 0) { try { ss.deleteSheet(first); } catch (e) {} }
   var mg = migrasiTempat_();
   if (mg.made) made.push(mg.made + ' tempat dibuat dari kolom Tempat lama');
+  var ms = migrasiSubRak_();
+  if (ms.changed) made.push(ms.changed + ' sub rak diberi kode permanen baru');
   var msg = 'Siap. ' + (made.length ? made.join('. ') + '. Catat PIN ini dan bagikan ke penjaga. ' : 'Pengaturan lama dipertahankan. ') +
     'PIN dan jam pulang ada di sheet Pengaturan.';
   Logger.log(msg);
@@ -620,13 +622,23 @@ function gabungJenis_(r) {
   return { ok: true, moved: moved, ke: idB };
 }
 
-/* ---------- tempat penyimpanan (LOK-xxx) ---------- */
+/* ---------- tempat penyimpanan (LOK-xxx, sub rak LOK-xxx-A) ---------- */
 var GENERIK_TEMPAT = ['', 'gudang'];
-function isLok_(s) { return /^LOK-\d{3}$/.test(clean_(s)); }
+function isLok_(s) { return /^LOK-\d{3}(-[A-Z]+)?$/.test(clean_(s).toUpperCase()); }
 function maxLok_() {
   var m = 0;
   filled_('Tempat').forEach(function (r) { var x = /^LOK-(\d+)$/.exec(str_(r[0])); if (x) m = Math.max(m, Number(x[1])); });
   return m;
+}
+// A=1 .. Z=26, AA=27 .. (gaya nomor kolom spreadsheet), untuk kode sub rak yang tidak terbatas
+function letterNum_(s) { var n = 0; for (var i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64); return n; }
+function numLetter_(n) { var s = ''; while (n > 0) { var r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); } return s; }
+function nextSubLetter_(induk) {
+  var max = 0;
+  filled_('Tempat').forEach(function (r) {
+    if (str_(r[4]) === induk) { var x = /-([A-Z]+)$/.exec(str_(r[0])); if (x) max = Math.max(max, letterNum_(x[1])); }
+  });
+  return numLetter_(max + 1);
 }
 function tempatOk_(v) {
   v = clean_(v);
@@ -669,6 +681,27 @@ function migrasiTempat_() {
   if (made || moved) log_('', 'Tempat otomatis', made + ' tempat dibuat, ' + moved + ' unit dihubungkan dari kolom Tempat lama', 'Sistem');
   return { made: made, moved: moved };
 }
+// Sub rak lama (kode LOK-xxx bebas, sebelum ada kode permanen) diberi kode baru induk-huruf (LOK-xxx-A dst),
+// lalu mesin/material yang menunjuk ke kode lama ikut dipindahkan ke kode baru.
+function migrasiSubRak_() {
+  var tsh = sheet_('Tempat'), trows = rows_('Tempat'), changed = [];
+  for (var i = 0; i < trows.length; i++) {
+    var id = str_(trows[i][0]), induk = str_(trows[i][4]);
+    if (!induk || !/^LOK-\d{3}$/.test(id)) continue;
+    var newId = induk + '-' + nextSubLetter_(induk);
+    tsh.getRange(i + 2, 1, 1, 1).setValues([[newId]]);
+    trows[i][0] = newId;
+    changed.push({ from: id, to: newId });
+  }
+  if (!changed.length) return { changed: 0 };
+  var ush = sheet_('Unit'), urows = rows_('Unit'), msh = sheet_('Material'), mrows = rows_('Material');
+  changed.forEach(function (c) {
+    for (var i = 0; i < urows.length; i++) if (str_(urows[i][4]) === c.from) { ush.getRange(i + 2, 5, 1, 1).setValues([[c.to]]); urows[i][4] = c.to; }
+    for (var j = 0; j < mrows.length; j++) if (str_(mrows[j][7]) === c.from) { msh.getRange(j + 2, 8, 1, 1).setValues([[c.to]]); mrows[j][7] = c.to; }
+  });
+  log_('', 'Migrasi kode sub rak', changed.length + ' sub rak diberi kode permanen: ' + changed.slice(0, 20).map(function (c) { return c.from + ' > ' + c.to; }).join(', '), 'Sistem');
+  return { changed: changed.length };
+}
 function addTempat_(r) {
   var n = clean_(r.nama), l = clean_(r.lokasi), induk = clean_(r.induk);
   if (!n) return err_('Nama tempat wajib diisi.');
@@ -681,9 +714,14 @@ function addTempat_(r) {
   }
   var dup = filled_('Tempat').some(function (x) { return same_(x[1], n) && str_(x[3]).toLowerCase() !== 'nonaktif' && clean_(x[4]) === induk; });
   if (dup) return err_('Tempat bernama ' + n + ' sudah ada.');
-  var num = maxLok_() + 1;
-  if (num > 999) return err_('Nomor LOK sudah penuh (999).');
-  var id = 'LOK-' + pad3_(num);
+  var id;
+  if (induk) {
+    id = induk + '-' + nextSubLetter_(induk);
+  } else {
+    var num = maxLok_() + 1;
+    if (num > 999) return err_('Nomor LOK sudah penuh (999).');
+    id = 'LOK-' + pad3_(num);
+  }
   sheet_('Tempat').appendRow([id, n, l, '', induk]);
   log_(id, induk ? 'Tambah sub rak' : 'Tambah tempat', n + (l ? ' (' + l + ')' : '') + (induk ? ' di bawah ' + tempatLabel_(induk) : ''), r.oleh);
   return { ok: true, id: id };

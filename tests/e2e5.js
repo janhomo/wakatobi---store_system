@@ -52,15 +52,15 @@ const u1 = srv({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 'Bor', b: 'Bosc
 
   // ===== buat sub rak
   await page.click('[data-action="subrakbaru"]'); await page.waitForSelector('#pnama');
-  check('sub rak form note: tidak punya QR', (await txt(page, '#app')).includes('tidak punya QR'));
+  check('sub rak form note: kode otomatis induk-huruf', (await txt(page, '#app')).includes('LOK-001-A'));
   await page.fill('#pnama', 'Tingkat 1'); await page.click('[data-action="tempatsave"]');
   await page.waitForSelector('#picker:not([hidden]) [data-action="pickitem"]');
   await page.click('#picker [data-action="pickitem"]:has-text("Abidin")'); await page.waitForSelector('#picker', { state: 'hidden' });
   await page.waitForSelector('[data-action="opentempat"]'); // breadcrumb back to parent on sub rak page
   check('navigated into new sub rak page', (await txt(page, '#hdr')).includes('Tingkat 1'));
-  check('sub rak page has no Cetak QR button', !(await page.isVisible('a[href^="label.html"]')));
-  check('sub rak page note: sub rak tidak punya QR', (await txt(page, '#app')).includes('tidak punya QR'));
-  check('sub rak page has only 2 buttons: Mesin, Material', (await page.locator('.pbar3 .pbtn').count()) === 2);
+  check('sub rak got permanent code LOK-001-A', (await txt(page, '#hdr')).includes('LOK-001-A'));
+  check('sub rak page has its own Cetak QR button', await page.isVisible('a[href="label.html?kode=LOK-001-A"]'));
+  check('sub rak page has only 2 bottom buttons: Mesin, Material', (await page.locator('.pbar3 .pbtn').count()) === 2);
   check('sub rak page has breadcrumb back to Rak 001', (await txt(page, '[data-action="opentempat"]')).includes('Rak 001'));
 
   // ===== pindahkan mesin ke sub rak lewat tombol + Mesin
@@ -72,6 +72,10 @@ const u1 = srv({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 'Bor', b: 'Bosc
   // ===== balik ke Rak 001, sub rak kini muncul sebagai kartu
   await page.click('[data-action="opentempat"]'); await page.waitForSelector('.jlist');
   check('Rak 001 now lists Tingkat 1 as a sub rak card', (await txt(page, '#app')).includes('Tingkat 1'));
+
+  // ===== label QR sub rak benar-benar mencetak, bukan cuma link kosong
+  await page.goto('http://localhost:8128/label.html?kode=LOK-001-A'); await page.waitForSelector('.lab');
+  check('label sub rak: tepat 1 label LOK-001-A dengan nama Tingkat 1', (await page.locator('.lab').count()) === 1 && (await txt(page, '.lab')).includes('Tingkat 1'), await txt(page, '.lab'));
 
   check('no console/page errors the whole run', errors.length === 0, errors.join(' | '));
   await browser.close(); server.close();
