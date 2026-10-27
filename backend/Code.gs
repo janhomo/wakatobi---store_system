@@ -89,6 +89,8 @@ function setup() {
   if (mg.made) made.push(mg.made + ' tempat dibuat dari kolom Tempat lama');
   var ms = migrasiSubRak_();
   if (ms.changed) made.push(ms.changed + ' sub rak diberi kode permanen baru');
+  var ms10 = migrasiSubRak10_();
+  if (ms10.dibuat) made.push(ms10.dibuat + ' sub rak dibuat (tiap rak minimal 10)');
   var msg = 'Siap. ' + (made.length ? made.join('. ') + '. Catat PIN ini dan bagikan ke penjaga. ' : 'Pengaturan lama dipertahankan. ') +
     'PIN dan jam pulang ada di sheet Pengaturan.';
   Logger.log(msg);
@@ -640,6 +642,29 @@ function nextSubLetter_(induk) {
   });
   return numLetter_(max + 1);
 }
+// Isi satu rak sampai punya minimal 10 sub rak (A..J). Tidak mengurangi yang sudah ada, hanya menambah kekurangannya.
+function isiSubRak10_(induk) {
+  var letters = [];
+  filled_('Tempat').forEach(function (r) {
+    if (str_(r[4]) === induk) { var x = /-([A-Z]+)$/.exec(str_(r[0])); if (x) letters.push(letterNum_(x[1])); }
+  });
+  var max = letters.length ? Math.max.apply(null, letters) : 0;
+  var toAdd = Math.max(0, 10 - letters.length);
+  if (!toAdd) return 0;
+  var add = [];
+  for (var i = 1; i <= toAdd; i++) { var letter = numLetter_(max + i); add.push([induk + '-' + letter, 'Sub ' + letter, '', '', induk]); }
+  sheet_('Tempat').getRange(sheet_('Tempat').getLastRow() + 1, 1, add.length, 5).setValues(add);
+  return add.length;
+}
+// Semua rak aktif yang sub raknya belum sampai 10, ditambah sampai 10.
+function migrasiSubRak10_() {
+  var total = 0;
+  filled_('Tempat').forEach(function (r) {
+    if (!clean_(r[4]) && str_(r[3]).toLowerCase() !== 'nonaktif') total += isiSubRak10_(str_(r[0]));
+  });
+  if (total) log_('', 'Sub rak otomatis', total + ' sub rak dibuat supaya tiap rak minimal punya 10 (A..J)', 'Sistem');
+  return { dibuat: total };
+}
 function tempatOk_(v) {
   v = clean_(v);
   if (!v) return true;
@@ -1053,7 +1078,8 @@ function buatRak_(r) {
   if (add.length) {
     var sh = sheet_('Tempat');
     sh.getRange(sh.getLastRow() + 1, 1, add.length, 4).setValues(add);
-    log_('', 'Rak otomatis', add.length + ' rak dibuat (' + add[0][1] + ' sampai ' + add[add.length - 1][1] + ', kode ' + add[0][0] + ' sampai ' + add[add.length - 1][0] + ')', r.oleh || 'Sistem');
+    add.forEach(function (x) { isiSubRak10_(x[0]); });
+    log_('', 'Rak otomatis', add.length + ' rak dibuat (' + add[0][1] + ' sampai ' + add[add.length - 1][1] + ', kode ' + add[0][0] + ' sampai ' + add[add.length - 1][0] + '), masing-masing dengan 10 sub rak', r.oleh || 'Sistem');
   }
   return { ok: true, dibuat: add.length, dilewati: skip };
 }

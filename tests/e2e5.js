@@ -47,10 +47,10 @@ const u1 = srv({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 'Bor', b: 'Bosc
   await page.click('[data-action="dgo"][data-view="tempatlist"]'); await page.waitForSelector('.jcard');
   await page.click('[data-action="opentempat"]'); await page.waitForSelector('.pbar3');
   check('rak page has 3 buttons: Sub rak, Mesin, Material', (await page.locator('.pbar3 .pbtn').count()) === 3);
-  check('rak page shows Sub rak section (empty)', (await txt(page, '#app')).includes('Belum ada sub rak'));
+  check('rak page auto-filled with 10 sub rak (Sub A..Sub J)', (await txt(page, '#app')).includes('Sub A') && (await txt(page, '#app')).includes('Sub J'));
   check('rak page still has Cetak QR tempat', await page.isVisible('a[href^="label.html"]'));
 
-  // ===== buat sub rak
+  // ===== buat sub rak ke-11 (manual, lanjut dari 10 yang otomatis)
   await page.click('[data-action="subrakbaru"]'); await page.waitForSelector('#pnama');
   check('sub rak form note: kode otomatis induk-huruf', (await txt(page, '#app')).includes('LOK-001-A'));
   await page.fill('#pnama', 'Tingkat 1'); await page.click('[data-action="tempatsave"]');
@@ -58,8 +58,8 @@ const u1 = srv({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 'Bor', b: 'Bosc
   await page.click('#picker [data-action="pickitem"]:has-text("Abidin")'); await page.waitForSelector('#picker', { state: 'hidden' });
   await page.waitForSelector('[data-action="opentempat"]'); // breadcrumb back to parent on sub rak page
   check('navigated into new sub rak page', (await txt(page, '#hdr')).includes('Tingkat 1'));
-  check('sub rak got permanent code LOK-001-A', (await txt(page, '#hdr')).includes('LOK-001-A'));
-  check('sub rak page has its own Cetak QR button', await page.isVisible('a[href="label.html?kode=LOK-001-A"]'));
+  check('11th sub rak gets permanent code LOK-001-K', (await txt(page, '#hdr')).includes('LOK-001-K'));
+  check('sub rak page has its own Cetak QR button', await page.isVisible('a[href="label.html?kode=LOK-001-K"]'));
   check('sub rak page has only 2 bottom buttons: Mesin, Material', (await page.locator('.pbar3 .pbtn').count()) === 2);
   check('sub rak page has breadcrumb back to Rak 001', (await txt(page, '[data-action="opentempat"]')).includes('Rak 001'));
 
@@ -74,8 +74,8 @@ const u1 = srv({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 'Bor', b: 'Bosc
   check('Rak 001 now lists Tingkat 1 as a sub rak card', (await txt(page, '#app')).includes('Tingkat 1'));
 
   // ===== label QR sub rak benar-benar mencetak, bukan cuma link kosong
-  await page.goto('http://localhost:8128/label.html?kode=LOK-001-A'); await page.waitForSelector('.lab');
-  check('label sub rak: tepat 1 label LOK-001-A dengan nama Tingkat 1', (await page.locator('.lab').count()) === 1 && (await txt(page, '.lab')).includes('Tingkat 1'), await txt(page, '.lab'));
+  await page.goto('http://localhost:8128/label.html?kode=LOK-001-K'); await page.waitForSelector('.lab');
+  check('label sub rak: tepat 1 label LOK-001-K dengan nama Tingkat 1', (await page.locator('.lab').count()) === 1 && (await txt(page, '.lab')).includes('Tingkat 1'), await txt(page, '.lab'));
 
   check('no console/page errors the whole run', errors.length === 0, errors.join(' | '));
   await browser.close(); server.close();
