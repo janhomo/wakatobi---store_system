@@ -1040,7 +1040,10 @@ function imporUnit_(r) {
     var loc = tByName[clean_(d.loc).toLowerCase()] || '';
     var pmv = deptOf_(d.pm);
     if (pmv === null) { errors.push('Baris ' + line + ': pemilik "' + clean_(d.pm) + '" tidak ada di daftar departemen.'); return; }
-    newU.push([p + '-' + pad3_(seq[p]), jid, u, sl, loc, clean_(d.sn), '', '', str_(d.cat).trim(), '', '', pmv]);
+    var tb = clean_(d.tb), gs = clean_(d.gs);
+    if (tb && !ISO_.test(tb)) { errors.push('Baris ' + line + ': tanggal beli tidak valid.'); return; }
+    if (gs && !ISO_.test(gs)) { errors.push('Baris ' + line + ': garansi sampai tidak valid.'); return; }
+    newU.push([p + '-' + pad3_(seq[p]), jid, u, sl, loc, clean_(d.sn), tb, gs, str_(d.cat).trim(), '', '', pmv]);
   });
   if (newJ.length) { var js = sheet_('Jenis'); js.getRange(js.getLastRow() + 1, 1, newJ.length, 6).setValues(newJ); }
   if (newU.length) { var us = sheet_('Unit'); us.getRange(us.getLastRow() + 1, 1, newU.length, 12).setValues(newU); }

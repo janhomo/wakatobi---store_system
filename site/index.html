@@ -2512,9 +2512,20 @@ const IMP_COLS = [
   ['u', 'No. unit', ['no unit', 'nomor unit', 'unit', 'no. unit', 'no']],
   ['sl', 'Kondisi', ['kondisi', 'status', 'keadaan']],
   ['loc', 'Tempat', ['tempat', 'tempat simpan', 'lokasi', 'lokasi simpan', 'rak']],
+  ['pm', 'Pemilik', ['pemilik', 'departemen', 'owner']],
   ['sn', 'No. seri', ['no seri', 'no. seri', 'seri', 'serial', 'serial number', 'no seri pabrik', 'sn']],
+  ['tb', 'Tanggal beli', ['tanggal beli', 'tgl beli']],
+  ['gs', 'Garansi sampai', ['garansi sampai', 'garansi', 'tgl garansi']],
   ['cat', 'Catatan', ['catatan', 'keterangan', 'note', 'notes', 'ket']]
 ];
+function impDate(s) {
+  s = clean(s); if (!s) return '';
+  let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
+  if (m) return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
+  m = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(s);
+  if (m) return m[3] + '-' + ('0' + m[1]).slice(-2) + '-' + ('0' + m[2]).slice(-2);
+  return null;
+}
 const KOND_ALIAS = { baik: 'Normal', bagus: 'Normal', ok: 'Normal', normal: 'Normal', servis: 'Servis', service: 'Servis', rusak: 'Rusak', 'rusak total': 'Rusak total', 'belum dicek': 'Belum dicek' };
 function viewImpor() {
   const im = S.imp;
@@ -2564,13 +2575,15 @@ async function impLoad(file) {
     const rows = []; let warnLoc = 0;
     data.slice(hi + 1).forEach((r, i) => {
       const g = key => map[key] === undefined ? '' : clean(r[map[key]]);
-      const d = { c: g('c'), n: g('n'), b: g('b'), m: g('m'), u: g('u'), sl: g('sl'), loc: g('loc'), sn: g('sn'), cat: map.cat === undefined ? '' : String(r[map.cat] ?? '').trim() };
+      const d = { c: g('c'), n: g('n'), b: g('b'), m: g('m'), u: g('u'), sl: g('sl'), loc: g('loc'), pm: g('pm'), sn: g('sn'), tb: '', gs: '', cat: map.cat === undefined ? '' : String(r[map.cat] ?? '').trim() };
       let bad = '';
       if (!d.c || !d.n) bad = 'Kategori dan nama wajib diisi.';
       else if (!kat.has(norm(d.c))) bad = 'Kategori "' + d.c + '" belum ada.';
       else d.c = kat.get(norm(d.c));
       if (!bad && d.sl) { const a = KOND_ALIAS[norm(d.sl)]; if (a) d.sl = a; else bad = 'Kondisi "' + d.sl + '" tidak dikenal.'; }
       if (!bad && d.u && !/^\d+$/.test(d.u)) bad = 'No. unit harus angka.';
+      if (!bad && g('tb')) { const pd = impDate(g('tb')); if (pd === null) bad = 'Tanggal beli tidak valid.'; else d.tb = pd; }
+      if (!bad && g('gs')) { const pd = impDate(g('gs')); if (pd === null) bad = 'Garansi sampai tidak valid.'; else d.gs = pd; }
       if (d.loc && !tp.has(norm(d.loc))) warnLoc++;
       rows.push({ line: hi + i + 2, d, bad });
     });
@@ -2598,7 +2611,7 @@ function impGo() {
   });
 }
 function impContoh() {
-  const a = [IMP_COLS.map(c => c[1]), [(S.kategori[0] && S.kategori[0].c) || 'Listrik', 'Bor', 'Bosch', 'GBH 2-28', '', 'Normal', 'Rak 1', 'SN12345', 'contoh'], [(S.kategori[0] && S.kategori[0].c) || 'Listrik', 'Gerinda', 'Makita', '9553B', '2', 'Servis', '', '', '']];
+  const a = [IMP_COLS.map(c => c[1]), [(S.kategori[0] && S.kategori[0].c) || 'Listrik', 'Bor', 'Bosch', 'GBH 2-28', '', 'Normal', 'Rak 1', '', 'SN12345', '15/06/2026', '15/06/2027', 'contoh'], [(S.kategori[0] && S.kategori[0].c) || 'Listrik', 'Gerinda', 'Makita', '9553B', '2', 'Servis', '', '', '', '', '', '']];
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(a), 'Mesin'); XLSX.writeFile(wb, 'contoh_impor_mesin.xlsx');
 }
 /* ---------- Impor Excel: isi rak dan mesin sekaligus (Kode Mesin, Kode Rak) ---------- */

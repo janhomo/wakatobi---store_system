@@ -132,16 +132,18 @@ ok('cannot deactivate a place that holds material', adm({ action: 'nonaktifTempa
 // ---- impor Excel
 const nUnit = rows('Unit').length, nJenis = rows('Jenis').length;
 const imp = adm({ action: 'imporUnit', rows: [
-  { c: 'Bor/Breker', n: 'Bor Breaker 550W', b: 'Bosch', m: 'GBH 2-28', u: '', sl: 'normal', loc: '', sn: 'S1', cat: '' },
+  { c: 'Bor/Breker', n: 'Bor Breaker 550W', b: 'Bosch', m: 'GBH 2-28', u: '', sl: 'normal', loc: '', sn: 'S1', cat: '', tb: '2026-06-15', gs: '2027-06-15' },
   { c: 'Bor/Breker', n: 'Bor Breaker 550W', b: 'Bosch', m: 'GBH 2-28', u: '1', sl: 'Normal' },
   { c: 'Mesin Amplas', n: 'Amplas Baru', b: 'Makita', m: 'X1', u: '5', sl: 'Servis', loc: 'Rak 2' },
   { c: 'Mesin Amplas', n: 'Amplas Baru', b: 'Makita', m: 'X1', u: '', sl: '' },
   { c: 'Kategori Hantu', n: 'Alat', b: '', m: '' },
   { c: 'Bor/Breker', n: 'Alat Salah', b: '', m: '', sl: 'Setengah rusak' },
-  { c: 'Bor/Breker', n: '', b: '', m: '' }
+  { c: 'Bor/Breker', n: '', b: '', m: '' },
+  { c: 'Bor/Breker', n: 'Bor Breaker 550W', b: 'Bosch', m: 'GBH 2-28', u: '9', tb: '15/06/2026' }
 ] });
-ok('imporUnit: 3 imported, 1 duplicate skipped, 3 errors', imp.ok && imp.unit === 3 && imp.nSkipped === 1 && imp.nErrors === 3 && imp.jenis === 1, imp);
+ok('imporUnit: 3 imported, 1 duplicate skipped, 4 errors', imp.ok && imp.unit === 3 && imp.nSkipped === 1 && imp.nErrors === 4 && imp.jenis === 1, imp);
 ok('imporUnit: rows written with next number, condition, place', (() => { const u = rows('Unit'); return u.length === nUnit + 3 && rows('Jenis').length === nJenis + 1 && u.some(r => r[2] === 5 && r[3] === 'Servis' && r[4] === 'LOK-002') && u.some(r => r[2] === 6 && r[3] === 'Belum dicek') && u.some(r => r[5] === 'S1'); })());
+ok('imporUnit: tanggal beli + garansi tersimpan', rows('Unit').some(r => r[5] === 'S1' && r[6] === '2026-06-15' && r[7] === '2027-06-15'), rows('Unit').find(r => r[5] === 'S1'));
 ok('imporUnit: codes continue the prefix sequence, no clash', (() => { const codes = rows('Unit').map(r => r[0]); return new Set(codes).size === codes.length; })());
 ok('imporUnit: logged', rows('Log Perubahan').some(r => r[2] === 'Impor Excel' && r[3].includes('3 unit')));
 ok('imporUnit needs a name', call({ action: 'imporUnit', rows: [{ c: 'Bor/Breker', n: 'X' }] }).ok === false);
