@@ -19,6 +19,10 @@ const DICT_EN = {
   'belum dipilih': 'not chosen', 'Pilih nama': 'Choose name', 'Pilih mesin': 'Choose machine',
   'belum diisi': 'not filled in', 'tidak ada': 'none',
   'Siapa Anda?': 'Who are you?', 'Siapa yang mengambil?': 'Who is taking it?',
+  'Siapa yang menerima?': 'Who is receiving it?', 'Siapa yang menghitung?': 'Who is counting it?',
+  'Siapa yang meminjam (boleh nama resort/orangnya)?': 'Who is borrowing it (resort/person name is fine)?',
+  'Siapa yang mengembalikan (boleh nama resort/orangnya)?': 'Who is returning it (resort/person name is fine)?',
+  'Dipinjam': 'Borrowed', 'Dikembalikan': 'Returned', 'Pinjam': 'Borrow',
   'Normal': 'Normal', 'Servis': 'In service', 'Rusak': 'Broken', 'Rusak total': 'Totally broken',
   'Belum dicek': 'Not checked', 'Nonaktif': 'Inactive', 'Di tempat': 'In place', 'Baik': 'Good',
   'Terlambat': 'Late', 'Dipakai': 'In use', 'Menipis': 'Low', 'Hampir habis': 'Almost empty',
@@ -141,6 +145,9 @@ const DICT_EN = {
    di mana pun munculnya di dalam satu node teks, bukan hanya di awal. */
 const DICT_FRAG = {
   'Ambil ': 'Taken ', 'Kembali ': 'Returned ', 'Dialihkan ke ': 'Redirected to ',
+  'Catat dipinjam ': 'Record borrowed ', 'Catat dikembalikan ': 'Record returned ',
+  'Dicatat dipinjam ': 'Recorded borrowed ', 'Dicatat dikembalikan ': 'Recorded returned ',
+  'Dipinjam, belum dikembalikan: ': 'Borrowed, not yet returned: ', 'Dipinjam ': 'Borrowed ',
   'Diarsipkan: ': 'Archived: ', 'Digabung. ': 'Merged. ', 'Dikurangi ': 'Reduced by ',
   'Disimpan ke ': 'Saved to ', 'Ditambah ': 'Added ', 'Hanya ': 'Only ', 'Impor ': 'Import ',
   'Mengimpor ': 'Importing ', 'Ini panduan pertama untuk ': 'This is the first guide for ',

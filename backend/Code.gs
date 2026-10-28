@@ -91,6 +91,7 @@ function setup() {
   if (ms.changed) made.push(ms.changed + ' sub rak diberi kode permanen baru');
   var ms10 = migrasiSubRak10_();
   if (ms10.dibuat) made.push(ms10.dibuat + ' sub rak dibuat (tiap rak minimal 10)');
+  if (tambahSemenAwal_()) made.push('Material Semen dibuat, stok awal 562 sak');
   var msg = 'Siap. ' + (made.length ? made.join('. ') + '. Catat PIN ini dan bagikan ke penjaga. ' : 'Pengaturan lama dipertahankan. ') +
     'PIN dan jam pulang ada di sheet Pengaturan.';
   Logger.log(msg);
@@ -885,9 +886,21 @@ function panduanSimpan_(r) {
 function num_(v) { var s = clean_(v).replace(',', '.'); return s === '' ? NaN : Number(s); }
 function round3_(x) { return Math.round(x * 1000) / 1000; }
 function listMaterial_() {
+  var pj = pinjamOutstanding_();
   return filled_('Material').map(function (r) {
-    return { id: str_(r[0]), n: clean_(r[1]), c: clean_(r[2]), b: clean_(r[3]), s: clean_(r[4]), q: Number(r[5]) || 0, lo: Number(r[6]) || 0, loc: clean_(r[7]), off: str_(r[8]).toLowerCase() === 'nonaktif' };
+    var id = str_(r[0]);
+    return { id: id, n: clean_(r[1]), c: clean_(r[2]), b: clean_(r[3]), s: clean_(r[4]), q: Number(r[5]) || 0, lo: Number(r[6]) || 0, loc: clean_(r[7]), off: str_(r[8]).toLowerCase() === 'nonaktif', pj: round3_(pj[id] || 0) };
   });
+}
+// Berapa yang sedang dipinjam (dari luar, misal resort) dan belum dikembalikan, per material.
+function pinjamOutstanding_() {
+  var out = {};
+  filled_('Stok Log').forEach(function (r) {
+    var mat = str_(r[2]), tipe = str_(r[3]), j = Number(r[4]) || 0;
+    if (tipe === 'Pinjam') out[mat] = (out[mat] || 0) + j;
+    else if (tipe === 'Kembali') out[mat] = (out[mat] || 0) - j;
+  });
+  return out;
 }
 function maxMat_() {
   var m = 0;
@@ -898,6 +911,13 @@ function dupMaterial_(n, b, s, exceptId) {
   return filled_('Material').some(function (r) {
     return str_(r[0]) !== exceptId && str_(r[8]).toLowerCase() !== 'nonaktif' && same_(r[1], n) && same_(r[3], b) && same_(r[4], s);
   });
+}
+// Dibuat sekali lewat setup(), kalau material Semen belum ada. Stok awal dari data terakhir di catatan manual (Google Sheet).
+function tambahSemenAwal_() {
+  var ada = filled_('Material').some(function (r) { return same_(r[1], 'Semen'); });
+  if (ada) return false;
+  addMaterial_({ nama: 'Semen', kategori: 'Bahan Bangunan', satuan: 'sak', stok: 562, oleh: 'Sistem' });
+  return true;
 }
 function addMaterial_(r) {
   var n = clean_(r.nama), c = clean_(r.kategori), b = clean_(r.merek), s = clean_(r.satuan);
@@ -955,7 +975,7 @@ function statusMaterial_(r) {
 function stok_(r) {
   var id = clean_(r.id), mat = clean_(r.mat), tipe = clean_(r.tipe), nama = clean_(r.nama);
   if (!id || !mat) return err_('Data stok tidak lengkap.');
-  if (['Keluar', 'Masuk', 'Koreksi'].indexOf(tipe) < 0) return err_('Jenis stok tidak dikenal.');
+  if (['Keluar', 'Masuk', 'Koreksi', 'Pinjam', 'Kembali'].indexOf(tipe) < 0) return err_('Jenis stok tidak dikenal.');
   if (findRow_('Stok Log', id)) return { ok: true, duplicate: true };
   var f = findRow_('Material', mat);
   if (!f) return err_('Material ' + mat + ' tidak ditemukan.');
@@ -965,10 +985,10 @@ function stok_(r) {
   if (!(j >= 0) || j > 10000000) return err_('Jumlah harus angka.');
   if (tipe !== 'Koreksi' && j <= 0) return err_('Jumlah harus lebih dari 0.');
   var cur = Number(f.row[5]) || 0, after;
-  if (tipe === 'Keluar') {
+  if (tipe === 'Keluar' || tipe === 'Pinjam') {
     after = round3_(cur - j);
     if (after < 0) return err_('Stok ' + clean_(f.row[1]) + ' tidak cukup. Sisa ' + cur + ' ' + clean_(f.row[4]) + '.');
-  } else if (tipe === 'Masuk') after = round3_(cur + j);
+  } else if (tipe === 'Masuk' || tipe === 'Kembali') after = round3_(cur + j);
   else after = round3_(j);
   sheet_('Material').getRange(f.i + 2, 6, 1, 1).setValues([[after]]);
   sheet_('Stok Log').appendRow([id, okTime_(r.waktu), mat, tipe, round3_(j), after, nama, str_(r.cat).trim()]);

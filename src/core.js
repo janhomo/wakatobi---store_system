@@ -154,7 +154,9 @@ function placeSummary(tid) {
 /* ---------- material dan stok (dengan catatan stok yang menunggu terkirim) ---------- */
 function stokApply(q, p) {
   const j = Number(String(p.jumlah).replace(',', '.')) || 0;
-  return p.tipe === 'Keluar' ? Math.round((q - j) * 1000) / 1000 : p.tipe === 'Masuk' ? Math.round((q + j) * 1000) / 1000 : j;
+  if (p.tipe === 'Keluar' || p.tipe === 'Pinjam') return Math.round((q - j) * 1000) / 1000;
+  if (p.tipe === 'Masuk' || p.tipe === 'Kembali') return Math.round((q + j) * 1000) / 1000;
+  return j;
 }
 function allMaterial() {
   const pend = Q.items.filter(i => i.action === 'stok');

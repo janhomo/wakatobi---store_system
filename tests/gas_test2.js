@@ -12,7 +12,7 @@ const adm = body => call({ oleh: 'Abidin', ...body });
 const boot = () => call({ action: 'bootstrap' });
 
 ok('new sheets exist after setup', ['Foto', 'Tempat', 'Panduan', 'Material', 'Stok Log'].every(n => ss.getSheetByName(n)));
-ok('bootstrap has tempat + material lists (empty)', boot().tempat.length === 0 && boot().material.length === 0);
+ok('bootstrap has tempat (empty) + material (Semen awal)', boot().tempat.length === 0 && boot().material.length === 1 && boot().material[0].n === 'Semen');
 
 // ---- data awal
 const bor = adm({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 'Bor Breaker 550W', b: 'Bosch', m: 'GBH 2-28' }, f: { sl: 'Normal' } });
@@ -105,28 +105,28 @@ ok('material negative stock refused', adm({ action: 'addMaterial', nama: 'Semen'
 ok('material unknown place refused', adm({ action: 'addMaterial', nama: 'Semen', satuan: 'sak', tempat: 'LOK-099' }).ok === false);
 const m1 = adm({ action: 'addMaterial', nama: 'Kabel NYM 3x2,5 mm', kategori: 'Listrik', merek: 'Supreme', satuan: 'meter', stok: '100', batas: '100', tempat: 'LOK-002' });
 const m2 = adm({ action: 'addMaterial', nama: 'Semen Tiga Roda 50 kg', kategori: 'Semen', merek: 'Tiga Roda', satuan: 'sak', stok: '120', batas: '20', tempat: '' });
-ok('MAT-001 and MAT-002', m1.id === 'MAT-001' && m2.id === 'MAT-002', [m1, m2]);
+ok('MAT-002 and MAT-003', m1.id === 'MAT-002' && m2.id === 'MAT-003', [m1, m2]);
 ok('duplicate material refused', adm({ action: 'addMaterial', nama: 'kabel nym 3x2,5 mm', merek: 'supreme', satuan: 'Meter' }).ok === false);
-ok('listed with numbers', (() => { const m = boot().material.find(x => x.id === 'MAT-001'); return m.n === 'Kabel NYM 3x2,5 mm' && m.q === 100 && m.lo === 100 && m.s === 'meter' && m.loc === 'LOK-002' && m.c === 'Listrik' && m.b === 'Supreme' && m.off === false; })());
-ok('initial stock logged as Masuk', call({ action: 'stokLog', id: 'MAT-001' }).log.length === 1 && call({ action: 'stokLog', id: 'MAT-001' }).log[0].cat === 'Stok awal');
-const s1 = adm({ action: 'stok', id: 's-1', mat: 'MAT-001', tipe: 'Keluar', jumlah: '10', nama: 'Budi Santoso', cat: 'lantai 2' });
-ok('Keluar 10: stock 90', s1.ok && s1.stok === 90 && boot().material.find(x => x.id === 'MAT-001').q === 90, s1);
-ok('same op id sent again is not counted twice', adm({ action: 'stok', id: 's-1', mat: 'MAT-001', tipe: 'Keluar', jumlah: '10', nama: 'Budi Santoso' }).duplicate === true && boot().material.find(x => x.id === 'MAT-001').q === 90);
-ok('Masuk adds', adm({ action: 'stok', id: 's-2', mat: 'MAT-001', tipe: 'Masuk', jumlah: '5', nama: 'Andi' }).stok === 95);
-ok('decimals ok (comma)', adm({ action: 'stok', id: 's-3', mat: 'MAT-001', tipe: 'Keluar', jumlah: '2,5', nama: 'Andi' }).stok === 92.5);
-ok('Koreksi sets the exact number', adm({ action: 'stok', id: 's-4', mat: 'MAT-001', tipe: 'Koreksi', jumlah: '80', nama: 'Abidin', cat: 'hitung ulang' }).stok === 80);
-ok('cannot take more than stock; stock unchanged, nothing logged', (() => { const n = rows('Stok Log').length; const x = adm({ action: 'stok', id: 's-5', mat: 'MAT-001', tipe: 'Keluar', jumlah: '81', nama: 'Andi' }); return x.ok === false && /tidak cukup/.test(x.error) && boot().material.find(y => y.id === 'MAT-001').q === 80 && rows('Stok Log').length === n; })());
-ok('zero / text amount refused for Keluar', adm({ action: 'stok', id: 's-6', mat: 'MAT-001', tipe: 'Keluar', jumlah: '0', nama: 'A' }).ok === false && adm({ action: 'stok', id: 's-7', mat: 'MAT-001', tipe: 'Keluar', jumlah: 'abc', nama: 'A' }).ok === false);
-ok('stok needs the worker name', adm({ action: 'stok', id: 's-8', mat: 'MAT-001', tipe: 'Keluar', jumlah: '1', nama: '' }).ok === false);
-ok('stok works without oleh (workers use it)', call({ action: 'stok', id: 's-9', mat: 'MAT-001', tipe: 'Keluar', jumlah: '1', nama: 'Budi Santoso' }).ok === true);
-ok('stokLog newest first, with who and after-stock', (() => { const l = call({ action: 'stokLog', id: 'MAT-001' }).log; return l.length === 6 && l[0].t >= l[l.length - 1].t && l.some(x => x.o === 'Budi Santoso' && x.tipe === 'Keluar' && x.j === 10 && x.q === 90 && x.cat === 'lantai 2'); })());
-ok('stock log is per material', call({ action: 'stokLog', id: 'MAT-002' }).log.length === 1);
-ok('editMaterial: batas + tempat + merek', adm({ action: 'editMaterial', id: 'MAT-002', f: { lo: '30', loc: 'LOK-001', b: 'Tiga Roda Baru' } }).changed === 3 && (() => { const m = boot().material.find(x => x.id === 'MAT-002'); return m.lo === 30 && m.loc === 'LOK-001' && m.b === 'Tiga Roda Baru'; })());
-ok('editMaterial does not touch stock', boot().material.find(x => x.id === 'MAT-002').q === 120);
-ok('editMaterial unknown place refused', adm({ action: 'editMaterial', id: 'MAT-002', f: { loc: 'LOK-099' } }).ok === false);
-ok('setTempat moves material too', adm({ action: 'setTempat', tempat: 'LOK-002', mats: ['MAT-002'] }).mats === 1 && boot().material.find(x => x.id === 'MAT-002').loc === 'LOK-002');
-ok('statusMaterial off blocks stok', adm({ action: 'statusMaterial', id: 'MAT-002', off: true }).ok && adm({ action: 'stok', id: 's-10', mat: 'MAT-002', tipe: 'Keluar', jumlah: '1', nama: 'A' }).ok === false);
-ok('statusMaterial on again', adm({ action: 'statusMaterial', id: 'MAT-002', off: false }).ok && adm({ action: 'stok', id: 's-11', mat: 'MAT-002', tipe: 'Keluar', jumlah: '1', nama: 'A' }).ok === true);
+ok('listed with numbers', (() => { const m = boot().material.find(x => x.id === 'MAT-002'); return m.n === 'Kabel NYM 3x2,5 mm' && m.q === 100 && m.lo === 100 && m.s === 'meter' && m.loc === 'LOK-002' && m.c === 'Listrik' && m.b === 'Supreme' && m.off === false; })());
+ok('initial stock logged as Masuk', call({ action: 'stokLog', id: 'MAT-002' }).log.length === 1 && call({ action: 'stokLog', id: 'MAT-002' }).log[0].cat === 'Stok awal');
+const s1 = adm({ action: 'stok', id: 's-1', mat: 'MAT-002', tipe: 'Keluar', jumlah: '10', nama: 'Budi Santoso', cat: 'lantai 2' });
+ok('Keluar 10: stock 90', s1.ok && s1.stok === 90 && boot().material.find(x => x.id === 'MAT-002').q === 90, s1);
+ok('same op id sent again is not counted twice', adm({ action: 'stok', id: 's-1', mat: 'MAT-002', tipe: 'Keluar', jumlah: '10', nama: 'Budi Santoso' }).duplicate === true && boot().material.find(x => x.id === 'MAT-002').q === 90);
+ok('Masuk adds', adm({ action: 'stok', id: 's-2', mat: 'MAT-002', tipe: 'Masuk', jumlah: '5', nama: 'Andi' }).stok === 95);
+ok('decimals ok (comma)', adm({ action: 'stok', id: 's-3', mat: 'MAT-002', tipe: 'Keluar', jumlah: '2,5', nama: 'Andi' }).stok === 92.5);
+ok('Koreksi sets the exact number', adm({ action: 'stok', id: 's-4', mat: 'MAT-002', tipe: 'Koreksi', jumlah: '80', nama: 'Abidin', cat: 'hitung ulang' }).stok === 80);
+ok('cannot take more than stock; stock unchanged, nothing logged', (() => { const n = rows('Stok Log').length; const x = adm({ action: 'stok', id: 's-5', mat: 'MAT-002', tipe: 'Keluar', jumlah: '81', nama: 'Andi' }); return x.ok === false && /tidak cukup/.test(x.error) && boot().material.find(y => y.id === 'MAT-002').q === 80 && rows('Stok Log').length === n; })());
+ok('zero / text amount refused for Keluar', adm({ action: 'stok', id: 's-6', mat: 'MAT-002', tipe: 'Keluar', jumlah: '0', nama: 'A' }).ok === false && adm({ action: 'stok', id: 's-7', mat: 'MAT-002', tipe: 'Keluar', jumlah: 'abc', nama: 'A' }).ok === false);
+ok('stok needs the worker name', adm({ action: 'stok', id: 's-8', mat: 'MAT-002', tipe: 'Keluar', jumlah: '1', nama: '' }).ok === false);
+ok('stok works without oleh (workers use it)', call({ action: 'stok', id: 's-9', mat: 'MAT-002', tipe: 'Keluar', jumlah: '1', nama: 'Budi Santoso' }).ok === true);
+ok('stokLog newest first, with who and after-stock', (() => { const l = call({ action: 'stokLog', id: 'MAT-002' }).log; return l.length === 6 && l[0].t >= l[l.length - 1].t && l.some(x => x.o === 'Budi Santoso' && x.tipe === 'Keluar' && x.j === 10 && x.q === 90 && x.cat === 'lantai 2'); })());
+ok('stock log is per material', call({ action: 'stokLog', id: 'MAT-003' }).log.length === 1);
+ok('editMaterial: batas + tempat + merek', adm({ action: 'editMaterial', id: 'MAT-003', f: { lo: '30', loc: 'LOK-001', b: 'Tiga Roda Baru' } }).changed === 3 && (() => { const m = boot().material.find(x => x.id === 'MAT-003'); return m.lo === 30 && m.loc === 'LOK-001' && m.b === 'Tiga Roda Baru'; })());
+ok('editMaterial does not touch stock', boot().material.find(x => x.id === 'MAT-003').q === 120);
+ok('editMaterial unknown place refused', adm({ action: 'editMaterial', id: 'MAT-003', f: { loc: 'LOK-099' } }).ok === false);
+ok('setTempat moves material too', adm({ action: 'setTempat', tempat: 'LOK-002', mats: ['MAT-003'] }).mats === 1 && boot().material.find(x => x.id === 'MAT-003').loc === 'LOK-002');
+ok('statusMaterial off blocks stok', adm({ action: 'statusMaterial', id: 'MAT-003', off: true }).ok && adm({ action: 'stok', id: 's-10', mat: 'MAT-003', tipe: 'Keluar', jumlah: '1', nama: 'A' }).ok === false);
+ok('statusMaterial on again', adm({ action: 'statusMaterial', id: 'MAT-003', off: false }).ok && adm({ action: 'stok', id: 's-11', mat: 'MAT-003', tipe: 'Keluar', jumlah: '1', nama: 'A' }).ok === true);
 ok('cannot deactivate a place that holds material', adm({ action: 'nonaktifTempat', id: 'LOK-002' }).ok === false);
 
 // ---- impor Excel
@@ -150,9 +150,9 @@ ok('imporUnit over 400 refused', adm({ action: 'imporUnit', rows: new Array(401)
 ok('imporUnit again: all duplicates, nothing added', (() => { const n = rows('Unit').length; const x = adm({ action: 'imporUnit', rows: [{ c: 'Mesin Amplas', n: 'Amplas Baru', b: 'Makita', m: 'X1', u: '5' }] }); return x.unit === 0 && x.nSkipped === 1 && rows('Unit').length === n; })());
 
 // ---- tanpa login / setup ulang
-ok('new actions need a token', raw({ action: 'addTempat', nama: 'X' }).error === 'pin' && raw({ action: 'stok', mat: 'MAT-001' }).error === 'pin' && raw({ action: 'fotoGet', ids: ['J0001'] }).error === 'pin');
+ok('new actions need a token', raw({ action: 'addTempat', nama: 'X' }).error === 'pin' && raw({ action: 'stok', mat: 'MAT-002' }).error === 'pin' && raw({ action: 'fotoGet', ids: ['J0001'] }).error === 'pin');
 env.setup();
-ok('setup again keeps all data', rows('Tempat').length >= 3 && rows('Material').length === 2 && rows('Panduan').length >= 2);
+ok('setup again keeps all data', rows('Tempat').length >= 3 && rows('Material').length === 3 && rows('Panduan').length >= 2);
 ok('Harga never sent', !JSON.stringify(boot().unit).includes('Harga'));
 
 console.log(t.join('\n')); const f = t.filter(x => x.startsWith('FAIL')).length; console.log(f ? f + ' GAGAL' : 'SEMUA LULUS (' + t.length + ')'); process.exit(f ? 1 : 0);

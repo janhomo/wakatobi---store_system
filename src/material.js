@@ -10,7 +10,7 @@ function matRow(m) {
   const t = isLok(m.loc) ? T[m.loc] : null;
   return '<button class="mrow2" data-action="stokopen" data-id="' + esc(m.id) + '" aria-label="Ubah stok ' + esc(m.n) + '">' + matIcon() +
     '<span class="nm"><b>' + esc(m.n) + '</b><small>' + esc([m.b, m.c, t ? t.n : ''].filter(Boolean).join(' · ') || m.id) + '</small>' +
-    (isLow(m) ? '<span class="pills"><span class="pill warn">Menipis</span></span>' : '') + (m.off ? '<span class="pills"><span class="pill unk">Nonaktif</span></span>' : '') + '</span>' +
+    (isLow(m) ? '<span class="pills"><span class="pill warn">Menipis</span></span>' : '') + (m.pj > 0 ? '<span class="pills"><span class="pill warn">Dipinjam ' + esc(fmtQty(m.pj)) + '</span></span>' : '') + (m.off ? '<span class="pills"><span class="pill unk">Nonaktif</span></span>' : '') + '</span>' +
     '<span class="qty' + (isLow(m) ? ' low' : '') + '"><b>' + esc(fmtQty(m.q)) + '</b><small>' + esc(m.s) + (m.pending ? ' · menunggu' : '') + '</small></span></button>';
 }
 function renderMatList() {
@@ -33,7 +33,9 @@ function viewMat() {
   const t = isLok(m.loc) ? T[m.loc] : null, row = (l, v) => '<div class="drow"><dt>' + l + '</dt><dd>' + v + '</dd></div>';
   return '<div class="matbig"><span class="qn' + (isLow(m) ? ' low' : '') + '">' + esc(fmtQty(m.q)) + '</span><span class="qs">' + esc(m.s) + (m.pending ? ' · menunggu terkirim' : '') + '</span>' +
     '<div class="pills" style="justify-content:center">' + (isLow(m) ? '<span class="pill warn">Menipis</span>' : '<span class="pill ok">Stok cukup</span>') + (m.off ? '<span class="pill unk">Nonaktif</span>' : '') + '</div></div>' +
+    (m.pj > 0 ? '<p class="note warn" style="margin:0 0 12px">Dipinjam, belum dikembalikan: <b>' + esc(fmtQty(m.pj)) + ' ' + esc(m.s) + '</b></p>' : '') +
     (m.off ? '' : '<div class="two" style="margin:12px 0"><button class="btn" data-action="stokopen" data-id="' + esc(m.id) + '" data-t="Keluar">' + ic('minus', 20) + 'Kurangi</button><button class="btn ghost" data-action="stokopen" data-id="' + esc(m.id) + '" data-t="Masuk">' + ic('plus', 20) + 'Tambah</button></div>') +
+    (m.off ? '' : '<div class="two"><button class="btn ghost small" data-action="stokopen" data-id="' + esc(m.id) + '" data-t="Pinjam">' + ic('minus', 20) + 'Dipinjam</button><button class="btn ghost small" data-action="stokopen" data-id="' + esc(m.id) + '" data-t="Kembali">' + ic('plus', 20) + 'Dikembalikan</button></div>') +
     '<dl class="dl">' + row('Kode', '<span class="code">' + esc(m.id) + '</span>') + row('Kategori', esc(m.c) || '—') + row('Merek', esc(m.b) || '—') + row('Satuan', esc(m.s)) +
     row('Batas menipis', m.lo ? esc(fmtQty(m.lo)) + ' ' + esc(m.s) : 'Tidak diatur') + row('Tempat', t ? '<button class="ulink" data-action="opentempat" data-id="' + esc(t.id) + '">' + esc(t.n) + '</button>' : 'Belum punya tempat') + '</dl>' +
     '<div class="two" style="margin-top:12px"><button class="btn ghost small" data-action="matedit">' + ic('edit', 20) + 'Ubah data</button><a class="btn ghost small" href="label.html?kode=' + esc(m.id) + '">' + ic('print', 20) + 'Cetak label QR</a></div>' +
@@ -50,7 +52,10 @@ function liveStokLog() {
   const key = S.mid, pend = Q.items.filter(i => i.action === 'stok' && i.payload.mat === key);
   if (!S.sl || S.sl.key !== key || S.sl.list === null) return '<p class="muted">Memuat…</p>';
   const m = M[key], u = m ? m.s : '';
-  const line = (tipe, j, q, o, t, cat, wait) => '<li><span class="sg ' + tipe + '">' + (tipe === 'Keluar' ? '−' : tipe === 'Masuk' ? '+' : '=') + esc(fmtQty(j)) + '</span><span class="tx"><b>' + esc(tipe === 'Koreksi' ? 'Koreksi jadi ' + fmtQty(j) : tipe) + ' ' + esc(u) + '</b><br><small class="muted">' + esc(o || '—') + ' · ' + esc(fmtDT(t)) + (q !== null ? ' · sisa ' + esc(fmtQty(q)) : '') + (wait ? ' · menunggu terkirim' : '') + (cat ? ' · ' + esc(cat) : '') + '</small></span></li>';
+  const line = (tipe, j, q, o, t, cat, wait) => {
+    const neg = tipe === 'Keluar' || tipe === 'Pinjam', pos = tipe === 'Masuk' || tipe === 'Kembali', cls = neg ? 'Keluar' : pos ? 'Masuk' : 'Koreksi';
+    return '<li><span class="sg ' + cls + '">' + (neg ? '−' : pos ? '+' : '=') + esc(fmtQty(j)) + '</span><span class="tx"><b>' + esc(tipe === 'Koreksi' ? 'Koreksi jadi ' + fmtQty(j) : tipe) + ' ' + esc(u) + '</b><br><small class="muted">' + esc(o || '—') + ' · ' + esc(fmtDT(t)) + (q !== null ? ' · sisa ' + esc(fmtQty(q)) : '') + (wait ? ' · menunggu terkirim' : '') + (cat ? ' · ' + esc(cat) : '') + '</small></span></li>';
+  };
   let h = pend.map(i => line(i.payload.tipe, i.payload.jumlah, null, i.payload.nama, i.payload.waktu, i.payload.cat, true)).join('');
   if (S.sl.error) h += '<li class="muted">Riwayat belum bisa dimuat. Cek sinyal.</li>';
   else h += S.sl.list.map(r => line(r.tipe, r.j, r.q, r.o, r.t, r.cat, false)).join('');
@@ -67,34 +72,44 @@ function openStok(id, tipe) {
   $('#stokSheet').hidden = false; pushOv('stok'); renderStok();
 }
 const stokNum = () => { const v = Number(String(S.stokEd.jumlah).replace(',', '.')); return isFinite(v) ? v : NaN; };
+const STOK_KURANG = ['Keluar', 'Pinjam'], STOK_TAMBAH = ['Masuk', 'Kembali'];
 function stokAfter(m) {
   const f = S.stokEd, j = stokNum();
   if (!(j >= 0)) return NaN;
-  return f.tipe === 'Keluar' ? Math.round((m.q - j) * 1000) / 1000 : f.tipe === 'Masuk' ? Math.round((m.q + j) * 1000) / 1000 : j;
+  if (STOK_KURANG.includes(f.tipe)) return Math.round((m.q - j) * 1000) / 1000;
+  if (STOK_TAMBAH.includes(f.tipe)) return Math.round((m.q + j) * 1000) / 1000;
+  return j;
 }
 function stokBtnText(m) {
   const f = S.stokEd, j = stokNum(), n = isFinite(j) ? fmtQty(j) : '…';
-  return f.tipe === 'Keluar' ? 'Kurangi ' + n + ' ' + m.s : f.tipe === 'Masuk' ? 'Tambah ' + n + ' ' + m.s : 'Setel stok jadi ' + n + ' ' + m.s;
+  if (f.tipe === 'Keluar') return 'Kurangi ' + n + ' ' + m.s;
+  if (f.tipe === 'Masuk') return 'Tambah ' + n + ' ' + m.s;
+  if (f.tipe === 'Pinjam') return 'Catat dipinjam ' + n + ' ' + m.s;
+  if (f.tipe === 'Kembali') return 'Catat dikembalikan ' + n + ' ' + m.s;
+  return 'Setel stok jadi ' + n + ' ' + m.s;
 }
 function stokPreview() {
   const f = S.stokEd, m = stokMat(); if (!f || !m || !$('#stokAfter')) return;
   const a = stokAfter(m), j = stokNum();
-  const bad = !(j >= 0) || (f.tipe !== 'Koreksi' && !(j > 0)) || (f.tipe === 'Keluar' && a < 0) || !f.nama;
+  const bad = !(j >= 0) || (f.tipe !== 'Koreksi' && !(j > 0)) || (STOK_KURANG.includes(f.tipe) && a < 0) || !f.nama;
   $('#stokAfter').innerHTML = 'Sisa stok setelah ini: <b class="' + (a < 0 ? 'neg' : isLow({ ...m, q: a }) ? 'lowt' : '') + '">' + (isFinite(a) ? esc(fmtQty(a)) : '—') + ' ' + esc(m.s) + '</b>' +
-    (f.tipe === 'Keluar' && a < 0 ? '<br><small class="neg">Stok tidak cukup. Sekarang ' + esc(fmtQty(m.q)) + ' ' + esc(m.s) + '.</small>' : '');
+    (STOK_KURANG.includes(f.tipe) && a < 0 ? '<br><small class="neg">Stok tidak cukup. Sekarang ' + esc(fmtQty(m.q)) + ' ' + esc(m.s) + '.</small>' : '');
   const b = $('#stokGo'); b.textContent = stokBtnText(m); b.disabled = bad;
 }
 function renderStok() {
   const f = S.stokEd; if (!f) return;
   const m = stokMat(); if (!m) { closeTop(); return; }
-  const seg = ['Keluar', 'Masuk', 'Koreksi'].map(t => '<button role="tab" data-action="stoktipe" data-t="' + t + '" aria-selected="' + (f.tipe === t) + '">' + t + '</button>').join('');
+  const segLabel = { Keluar: 'Keluar', Masuk: 'Masuk', Pinjam: 'Dipinjam', Kembali: 'Dikembalikan', Koreksi: 'Koreksi' };
+  const seg = ['Keluar', 'Masuk', 'Pinjam', 'Kembali', 'Koreksi'].map(t => '<button role="tab" data-action="stoktipe" data-t="' + t + '" aria-selected="' + (f.tipe === t) + '">' + esc(segLabel[t]) + '</button>').join('');
+  const siapaQ = { Keluar: 'Siapa yang mengambil?', Masuk: 'Siapa yang menerima?', Pinjam: 'Siapa yang meminjam (boleh nama resort/orangnya)?', Kembali: 'Siapa yang mengembalikan (boleh nama resort/orangnya)?', Koreksi: 'Siapa yang menghitung?' }[f.tipe];
   $('#stokSheet').innerHTML = '<button class="dbg" data-action="stokclose" aria-label="Tutup"></button><section class="fsheet" role="dialog" aria-label="Ubah stok"><div class="grab"></div>' +
     '<div class="sh-row"><div class="sh-t">' + esc(m.n) + '</div><button class="x" data-action="stokclose" aria-label="Tutup">' + ic('x', 22) + '</button></div><p class="muted" style="margin:-6px 0 0;font-size:14px"><span class="code">' + esc(m.id) + '</span> · stok sekarang <b>' + esc(fmtQty(m.q)) + ' ' + esc(m.s) + '</b>' + (m.b ? ' · ' + esc(m.b) : '') + '</p>' +
+    (m.pj > 0 ? '<p class="note warn" style="margin:4px 0 0">Dipinjam, belum dikembalikan: <b>' + esc(fmtQty(m.pj)) + ' ' + esc(m.s) + '</b></p>' : '') +
     '<div class="utabs" role="tablist">' + seg + '</div>' +
     '<div><label class="lbl" for="stokJ">' + (f.tipe === 'Koreksi' ? 'Stok yang benar (hasil hitung)' : 'Jumlah (' + esc(m.s) + ')') + '</label><div class="stepper"><button class="rnd big" data-action="stokstep" data-d="-1" aria-label="Kurangi satu">−</button>' +
     '<input id="stokJ" class="field" type="text" inputmode="decimal" value="' + esc(f.jumlah) + '" autocomplete="off" aria-label="Jumlah"><button class="rnd big" data-action="stokstep" data-d="1" aria-label="Tambah satu">+</button></div></div>' +
     (f.tipe === 'Koreksi' ? '' : '<div class="fchips qchips">' + [1, 5, 10, 25, 50].map(n => '<button class="fchip" data-action="stokq" data-n="' + n + '">' + n + '</button>').join('') + '</div>') +
-    '<div><label class="lbl">Siapa yang ' + (f.tipe === 'Keluar' ? 'mengambil' : f.tipe === 'Masuk' ? 'menerima' : 'menghitung') + '?</label><button type="button" class="namebar' + (f.nama ? '' : ' need') + '" data-action="stoknama"><span class="g">' + (f.nama ? esc(f.nama) : 'Pilih nama pekerja') + '</span>' + ic('chev', 18) + '</button></div>' +
+    '<div><label class="lbl">' + esc(siapaQ) + '</label><button type="button" class="namebar' + (f.nama ? '' : ' need') + '" data-action="stoknama"><span class="g">' + (f.nama ? esc(f.nama) : 'Pilih nama pekerja') + '</span>' + ic('chev', 18) + '</button></div>' +
     '<div><label class="lbl" for="stokC">Catatan (boleh kosong)</label><input id="stokC" class="field" type="text" value="' + esc(f.cat) + '" autocomplete="off" placeholder="contoh: untuk lantai 2"></div>' +
     '<p class="after" id="stokAfter"></p>' +
     '<button class="btn" id="stokGo" data-action="stokgo">…</button>' +
@@ -106,10 +121,11 @@ function stokSubmit() {
   const j = stokNum(), a = stokAfter(m);
   if (!f.nama) { toast('Pilih nama pekerja dulu.'); return; }
   if (!(j >= 0) || (f.tipe !== 'Koreksi' && !(j > 0))) { toast('Isi jumlah dengan angka.'); return; }
-  if (f.tipe === 'Keluar' && a < 0) { toast('Stok tidak cukup.'); return; }
+  if (STOK_KURANG.includes(f.tipe) && a < 0) { toast('Stok tidak cukup.'); return; }
   lsSet('qrg.stokNama', f.nama);
   enqueue('stok', { id: uid(), mat: m.id, tipe: f.tipe, jumlah: j, nama: f.nama, cat: clean(f.cat), waktu: nowIso() });
-  const txt = f.tipe === 'Keluar' ? 'Dikurangi ' + fmtQty(j) + ' ' + m.s : f.tipe === 'Masuk' ? 'Ditambah ' + fmtQty(j) + ' ' + m.s : 'Stok disetel ' + fmtQty(j) + ' ' + m.s;
+  const txt = f.tipe === 'Keluar' ? 'Dikurangi ' + fmtQty(j) + ' ' + m.s : f.tipe === 'Masuk' ? 'Ditambah ' + fmtQty(j) + ' ' + m.s :
+    f.tipe === 'Pinjam' ? 'Dicatat dipinjam ' + fmtQty(j) + ' ' + m.s : f.tipe === 'Kembali' ? 'Dicatat dikembalikan ' + fmtQty(j) + ' ' + m.s : 'Stok disetel ' + fmtQty(j) + ' ' + m.s;
   closeTop(); toast(txt + '. Sisa ' + fmtQty(a) + '.'); refresh();
 }
 
