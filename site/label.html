@@ -51,13 +51,14 @@ a{color:var(--accent)}
     <div><label for="to">Sampai nomor</label><input id="to" type="text" placeholder="Contoh: LOK-050 atau 50" autocomplete="off"></div>
     <div><label for="copies">Jumlah salinan tiap label</label><input id="copies" type="number" min="1" max="20" value="1"></div>
   </div>
-  <button class="go" id="print">Cetak</button>
+  <div class="row"><button class="go" id="print">Cetak</button><button class="go" id="unduh" type="button">Unduh PNG</button><button class="go" id="unduhpdf" type="button">Unduh PDF</button><button class="go" id="unduhword" type="button">Unduh Word</button></div>
   <p class="msg" id="rollnote" hidden>Roll stiker: satu label per halaman. Di jendela cetak pilih printer label, ukuran kertas sama dengan ukuran roll, margin tidak ada (None), skala 100%.</p>
   <p class="msg" id="info">Memuat daftar mesin…</p>
 </div>
 <div class="sheet" id="sheet"></div>
 <script src="config.js"></script>
 <script src="lib/qrcode.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
 <script>
 const CFG = window.CONFIG || {}, API_URL = CFG.API_URL || '';
 const $ = s => document.querySelector(s);
@@ -90,10 +91,10 @@ function svg(text, px) {
   const n = qr.getModuleCount(), m = 2; let d = '';
   for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) d += 'M' + (c + m) + ' ' + (r + m) + 'h1v1h-1z';
   const v = n + 2 * m;
-  return '<svg width="' + px + '" height="' + px + '" viewBox="0 0 ' + v + ' ' + v + '" shape-rendering="crispEdges"><rect width="' + v + '" height="' + v + '" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + px + '" height="' + px + '" viewBox="0 0 ' + v + ' ' + v + '" shape-rendering="crispEdges"><rect width="' + v + '" height="' + v + '" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>';
 }
 function labHtml(size, qrPx, code, l1, l2, l3) {
-  return '<div class="lab" style="width:' + size + 'cm;height:' + size + 'cm;padding-top:' + (size * 0.05) + 'cm">' + svg(code, qrPx) +
+  return '<div class="lab" data-code="' + esc(code) + '" style="width:' + size + 'cm;height:' + size + 'cm;padding-top:' + (size * 0.05) + 'cm">' + svg(code, qrPx) +
     '<b style="font-size:' + Math.round(size * 2.6) + 'pt;margin-top:.05cm">' + esc(code) + '</b>' +
     '<small style="font-size:' + Math.max(6, Math.round(size * 1.5)) + 'pt"><strong>' + esc(l1) + '</strong></small>' +
     (l2 ? '<small style="font-size:' + Math.max(5, Math.round(size * 1.2)) + 'pt">' + esc(l2) + '</small>' : '') +
@@ -102,10 +103,11 @@ function labHtml(size, qrPx, code, l1, l2, l3) {
 /* label roll: kotak QR di kiri, teks di kanan, satu label per halaman */
 function rollHtml(w, h, code, l1, l2) {
   const q = h - 3, big = Math.max(8, Math.round(h * 0.34)), mid = Math.max(6, Math.round(h * 0.22)), sm = Math.max(5, Math.round(h * 0.18));
-  return '<div class="lab" style="width:' + w + 'mm;height:' + h + 'mm">' + svg(code, q + 'mm').replace('width="' + q + 'mm" height="' + q + 'mm"', 'width="' + q + 'mm" height="' + q + 'mm" style="flex-shrink:0"') +
+  return '<div class="lab" data-code="' + esc(code) + '" style="width:' + w + 'mm;height:' + h + 'mm">' + svg(code, q + 'mm').replace('width="' + q + 'mm" height="' + q + 'mm"', 'width="' + q + 'mm" height="' + q + 'mm" style="flex-shrink:0"') +
     '<div class="tx"><b style="font-size:' + big + 'pt">' + esc(code) + '</b><small style="font-size:' + mid + 'pt"><strong>' + esc(l1) + '</strong></small>' + (l2 ? '<small style="font-size:' + sm + 'pt">' + esc(l2) + '</small>' : '') + '</div></div>';
 }
 const numOf = v => { const m = /(\d+)\s*$/.exec(String(v || '')); return m ? Number(m[1]) : null; };
+let CUR = []; // daftar label unik yang sedang tampil: {code,l1,l2,l3}, dipakai bareng oleh Cetak dan ketiga tombol Unduh
 function draw() {
   const roll = $('#kertas').value === 'roll', [rw, rh] = $('#rsize').value.split('x').map(Number);
   $('#boxSize').hidden = roll; $('#boxRoll').hidden = !roll; $('#rollnote').hidden = !roll;
@@ -118,33 +120,126 @@ function draw() {
   const inRange = c => { const n = numOf(c); return (nf === null || (n !== null && n >= nf)) && (nt === null || (n !== null && n <= nt)); };
   const cm = 37.795, qrPx = Math.round(size * 0.62 * cm), want = c => (!codes.length || codes.includes(c)) && inRange(c);
   const mk = (code, l1, l2, l3) => { const one = roll ? rollHtml(rw, rh, code, l1, l2) : labHtml(size, qrPx, code, l1, l2, l3); return one.repeat(copies); };
-  let html = '', n = 0, have = 0;
+  let n = 0, have = 0;
   if (tipe === 'tempat') {
     have = tempat.length;
     const l = tempat.filter(t => want(t.id)).sort((a, b) => a.id.localeCompare(b.id)); n = l.length;
-    html = l.map(t => mk(t.id, t.n, t.l, '')).join('');
+    CUR = l.map(t => ({ code: t.id, l1: t.n, l2: t.l, l3: '' }));
   } else if (tipe === 'material') {
     have = material.length;
     const l = material.filter(m => (!cat || m.c === cat) && want(m.id)).sort((a, b) => a.id.localeCompare(b.id)); n = l.length;
-    html = l.map(m => mk(m.id, m.n, [m.b, m.s].filter(Boolean).join(' · '), '')).join('');
+    CUR = l.map(m => ({ code: m.id, l1: m.n, l2: [m.b, m.s].filter(Boolean).join(' · '), l3: '' }));
   } else {
     have = units.length;
     const J = Object.fromEntries(jenis.map(j => [j.id, j]));
     const kondisi = $('#kondisi').value;
     const kondisiOk = u => kondisi === 'kecualirusak' ? u.sl !== 'Rusak' : (!kondisi || u.sl === kondisi);
     const l = units.filter(u => J[u.j] && (!cat || J[u.j].c === cat) && kondisiOk(u) && want(u.k)).sort((a, b) => a.k.localeCompare(b.k)); n = l.length;
-    html = l.map(u => { const j = J[u.j]; return mk(u.k, j.n + ' · Unit ' + u.u, [j.b, j.m].filter(Boolean).join(' ') + (u.pm ? ' · ' + u.pm : ''), ''); }).join('');
+    CUR = l.map(u => { const j = J[u.j]; return { code: u.k, l1: j.n + ' · Unit ' + u.u, l2: [j.b, j.m].filter(Boolean).join(' ') + (u.pm ? ' · ' + u.pm : ''), l3: '' }; });
   }
-  $('#sheet').innerHTML = html;
+  $('#sheet').innerHTML = CUR.map(x => mk(x.code, x.l1, x.l2, x.l3)).join('');
   $('#print').textContent = n ? 'Cetak ' + (n * copies) + ' label' : 'Cetak';
+  $('#print').disabled = !n;
+  ['#unduh', '#unduhpdf', '#unduhword'].forEach(id => { $(id).disabled = !n; });
+  $('#unduh').textContent = n ? 'Unduh ' + n + ' PNG' : 'Unduh PNG';
+  $('#unduhpdf').textContent = n ? 'Unduh PDF' : 'Unduh PDF';
+  $('#unduhword').textContent = n ? 'Unduh Word' : 'Unduh Word';
   $('#info').textContent = have ? n * copies + ' label' + (roll ? ' (' + rw + ' x ' + rh + ' mm).' : '. Pilih ukuran kertas A4, skala 100%, tanpa margin saat mencetak.') :
     'Daftar belum ada. Buka aplikasi dulu dan masukkan PIN, lalu kembali ke halaman ini.';
 }
+/* satu QR jadi data-URL PNG, dipakai bareng oleh ketiga tombol Unduh */
+function qrPng(code, px) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = px; c.height = px;
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, px, px); ctx.drawImage(img, 0, 0, px, px);
+      resolve(c.toDataURL('image/png'));
+    };
+    img.onerror = reject;
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg(code, px))));
+  });
+}
+function withBusyBtn(btn, run) {
+  return async () => {
+    if (!CUR.length || btn.disabled) return;
+    const orig = btn.textContent; btn.disabled = true;
+    try { await run(orig); } finally { btn.textContent = orig; btn.disabled = !CUR.length; }
+  };
+}
+/* unduh tiap QR yang tampil sebagai file PNG terpisah, nama file = kode */
+const unduhSemua = withBusyBtn($('#unduh'), async orig => {
+  const btn = $('#unduh');
+  for (let i = 0; i < CUR.length; i++) {
+    btn.textContent = 'Mengunduh ' + (i + 1) + '/' + CUR.length + '…';
+    try {
+      const url = await qrPng(CUR[i].code, 600);
+      const a = document.createElement('a'); a.href = url; a.download = CUR[i].code + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) { /* lewati kalau satu gagal */ }
+    await new Promise(r => setTimeout(r, 180));
+  }
+});
+/* satu file PDF berisi semua label, tata letak mengikuti pengaturan Kertas saat ini */
+const unduhPDF = withBusyBtn($('#unduhpdf'), async () => {
+  const btn = $('#unduhpdf'), { jsPDF } = window.jspdf;
+  const roll = $('#kertas').value === 'roll';
+  if (roll) {
+    const [rw, rh] = $('#rsize').value.split('x').map(Number);
+    const q = rh - 3, big = Math.max(8, Math.round(rh * 0.34)), mid = Math.max(6, Math.round(rh * 0.22)), sm = Math.max(5, Math.round(rh * 0.18));
+    const doc = new jsPDF({ unit: 'mm', format: [rw, rh] });
+    for (let i = 0; i < CUR.length; i++) {
+      btn.textContent = 'Membuat PDF ' + (i + 1) + '/' + CUR.length + '…';
+      if (i) doc.addPage([rw, rh]);
+      const x = CUR[i], png = await qrPng(x.code, 600);
+      doc.addImage(png, 'PNG', 1.5, 1.5, q, q);
+      let ty = 1.5 + q * 0.22; doc.setFont(undefined, 'bold'); doc.setFontSize(big); doc.text(x.code, q + 3, ty);
+      ty += mid * 0.4; doc.setFont(undefined, 'normal'); doc.setFontSize(mid); doc.text(x.l1 || '', q + 3, ty);
+      if (x.l2) { ty += sm * 0.4; doc.setFontSize(sm); doc.text(x.l2, q + 3, ty); }
+    }
+    doc.save('label.pdf');
+  } else {
+    const sizeMM = Number($('#size').value) * 10, m = 5, usableW = 210 - m * 2, usableH = 297 - m * 2;
+    const cols = Math.max(1, Math.floor(usableW / sizeMM)), rowsPp = Math.max(1, Math.floor(usableH / sizeMM)), perPage = cols * rowsPp;
+    const codePt = Math.round(sizeMM / 10 * 2.6), l1Pt = Math.max(6, Math.round(sizeMM / 10 * 1.5)), l23Pt = Math.max(5, Math.round(sizeMM / 10 * 1.2));
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    for (let i = 0; i < CUR.length; i++) {
+      btn.textContent = 'Membuat PDF ' + (i + 1) + '/' + CUR.length + '…';
+      if (i > 0 && i % perPage === 0) doc.addPage('a4');
+      const pos = i % perPage, col = pos % cols, row = Math.floor(pos / cols), cx = m + col * sizeMM, cy = m + row * sizeMM;
+      const x = CUR[i], png = await qrPng(x.code, 600), qSide = sizeMM * 0.62, qx = cx + (sizeMM - qSide) / 2;
+      doc.addImage(png, 'PNG', qx, cy + sizeMM * 0.05, qSide, qSide);
+      let ty = cy + sizeMM * 0.05 + qSide + codePt * 0.4;
+      doc.setFont(undefined, 'bold'); doc.setFontSize(codePt); doc.text(x.code, cx + sizeMM / 2, ty, { align: 'center' });
+      ty += l1Pt * 0.4; doc.setFont(undefined, 'normal'); doc.setFontSize(l1Pt); doc.text(doc.splitTextToSize(x.l1 || '', sizeMM - 1), cx + sizeMM / 2, ty, { align: 'center' });
+      if (x.l2) { ty += l23Pt * 0.4; doc.setFontSize(l23Pt); doc.text(doc.splitTextToSize(x.l2, sizeMM - 1), cx + sizeMM / 2, ty, { align: 'center' }); }
+    }
+    doc.save('label.pdf');
+  }
+});
+/* satu file Word (format HTML, dibuka Word sebagai dokumen) berisi semua label */
+const unduhWord = withBusyBtn($('#unduhword'), async () => {
+  const btn = $('#unduhword'), cells = [];
+  for (let i = 0; i < CUR.length; i++) {
+    btn.textContent = 'Membuat Word ' + (i + 1) + '/' + CUR.length + '…';
+    const x = CUR[i], png = await qrPng(x.code, 300);
+    cells.push('<td style="text-align:center;padding:8px;border:1px dashed #999;vertical-align:top"><img src="' + png + '" width="120" height="120"><br><b>' + esc(x.code) + '</b><br><span style="font-size:11px">' + esc(x.l1 || '') + '</span>' + (x.l2 ? '<br><span style="font-size:10px">' + esc(x.l2) + '</span>' : '') + '</td>');
+  }
+  const rows = []; for (let i = 0; i < cells.length; i += 3) rows.push('<tr>' + cells.slice(i, i + 3).join('') + '</tr>');
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
+    '<head><meta charset="utf-8"><title>Label QR</title></head><body><table style="border-collapse:collapse;width:100%">' + rows.join('') + '</table></body></html>';
+  const blob = new Blob(['﻿' + html], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = 'label.doc';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+});
 ['size', 'cat', 'kertas', 'rsize', 'kondisi'].forEach(i => $('#' + i).addEventListener('change', draw));
 ['from', 'to', 'copies'].forEach(i => $('#' + i).addEventListener('input', draw));
 $('#tipe').addEventListener('change', () => { $('#codes').value = ''; $('#from').value = ''; $('#to').value = ''; fillCats(); draw(); });
 $('#codes').addEventListener('input', draw);
 $('#print').addEventListener('click', () => window.print());
+$('#unduh').addEventListener('click', unduhSemua);
+$('#unduhpdf').addEventListener('click', unduhPDF);
+$('#unduhword').addEventListener('click', unduhWord);
 load();
 </script>
 </body>
