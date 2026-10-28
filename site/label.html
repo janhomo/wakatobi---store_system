@@ -42,9 +42,10 @@ a{color:var(--accent)}
   <div class="row">
     <div><label for="tipe">Jenis label</label><select id="tipe"><option value="mesin">Mesin</option><option value="tempat">Tempat (rak, lemari)</option><option value="material">Material</option></select></div>
     <div><label for="kertas">Kertas</label><select id="kertas"><option value="a4">Lembar A4</option><option value="roll">Roll stiker (printer label)</option></select></div>
-    <div id="boxSize"><label for="size">Ukuran label</label><select id="size"><option value="4">4 x 4 cm</option><option value="5" selected>5 x 5 cm</option><option value="6">6 x 6 cm</option></select></div>
+    <div id="boxSize"><label for="size">Ukuran label</label><select id="size"><option value="3">3 x 3 cm</option><option value="4">4 x 4 cm</option><option value="5" selected>5 x 5 cm</option><option value="6">6 x 6 cm</option></select></div>
     <div id="boxRoll" hidden><label for="rsize">Ukuran roll (lebar x tinggi)</label><select id="rsize"><option value="50x30" selected>50 x 30 mm</option><option value="40x30">40 x 30 mm</option><option value="60x40">60 x 40 mm</option><option value="70x50">70 x 50 mm</option></select></div>
     <div><label for="cat">Kategori</label><select id="cat"><option value="">Semua kategori</option></select></div>
+    <div id="boxKondisi"><label for="kondisi">Kondisi mesin</label><select id="kondisi"><option value="kecualirusak" selected>Kecuali rusak</option><option value="">Semua kondisi</option><option value="Normal">Normal saja</option><option value="Servis">Servis saja</option><option value="Rusak">Rusak saja</option></select></div>
     <div><label for="codes">Kode tertentu (pisahkan dengan koma)</label><input id="codes" type="text" placeholder="Contoh: BOR-001, LOK-001, MAT-003"></div>
     <div><label for="from">Dari nomor (rentang)</label><input id="from" type="text" placeholder="Contoh: LOK-001 atau 1" autocomplete="off"></div>
     <div><label for="to">Sampai nomor</label><input id="to" type="text" placeholder="Contoh: LOK-050 atau 50" autocomplete="off"></div>
@@ -81,6 +82,7 @@ function fillCats() {
   const cats = [...new Set((t === 'material' ? material.map(m => m.c) : t === 'mesin' ? jenis.map(j => j.c) : []).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'id'));
   $('#cat').innerHTML = '<option value="">Semua kategori</option>' + cats.map(c => '<option' + (c === cur ? ' selected' : '') + '>' + esc(c) + '</option>').join('');
   $('#cat').disabled = t === 'tempat';
+  $('#boxKondisi').hidden = t !== 'mesin';
 }
 /* isi QR hanya kode unit, contoh BOR-014. Kode kecil sehingga kotak QR besar dan mudah dibaca. */
 function svg(text, px) {
@@ -128,7 +130,9 @@ function draw() {
   } else {
     have = units.length;
     const J = Object.fromEntries(jenis.map(j => [j.id, j]));
-    const l = units.filter(u => J[u.j] && (!cat || J[u.j].c === cat) && want(u.k)).sort((a, b) => a.k.localeCompare(b.k)); n = l.length;
+    const kondisi = $('#kondisi').value;
+    const kondisiOk = u => kondisi === 'kecualirusak' ? u.sl !== 'Rusak' : (!kondisi || u.sl === kondisi);
+    const l = units.filter(u => J[u.j] && (!cat || J[u.j].c === cat) && kondisiOk(u) && want(u.k)).sort((a, b) => a.k.localeCompare(b.k)); n = l.length;
     html = l.map(u => { const j = J[u.j]; return mk(u.k, j.n + ' · Unit ' + u.u, [j.b, j.m].filter(Boolean).join(' ') + (u.pm ? ' · ' + u.pm : ''), ''); }).join('');
   }
   $('#sheet').innerHTML = html;
@@ -136,7 +140,7 @@ function draw() {
   $('#info').textContent = have ? n * copies + ' label' + (roll ? ' (' + rw + ' x ' + rh + ' mm).' : '. Pilih ukuran kertas A4, skala 100%, tanpa margin saat mencetak.') :
     'Daftar belum ada. Buka aplikasi dulu dan masukkan PIN, lalu kembali ke halaman ini.';
 }
-['size', 'cat', 'kertas', 'rsize'].forEach(i => $('#' + i).addEventListener('change', draw));
+['size', 'cat', 'kertas', 'rsize', 'kondisi'].forEach(i => $('#' + i).addEventListener('change', draw));
 ['from', 'to', 'copies'].forEach(i => $('#' + i).addEventListener('input', draw));
 $('#tipe').addEventListener('change', () => { $('#codes').value = ''; $('#from').value = ''; $('#to').value = ''; fillCats(); draw(); });
 $('#codes').addEventListener('input', draw);

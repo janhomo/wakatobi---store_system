@@ -291,7 +291,13 @@ const jenisId = bor.jenisId;
   await lab.goto('http://localhost:8125/label.html?kode=MAT-001'); await lab.waitForSelector('.lab');
   check('label material: MAT-001 with name and unit', (await txt(lab, '.lab')).includes('Kabel NYM') && (await txt(lab, '.lab')).includes('meter'), await txt(lab, '.lab'));
   await lab.goto('http://localhost:8125/label.html'); await lab.waitForSelector('.lab');
-  check('label default type mesin lists all units', (await lab.locator('.lab').count()) >= 9, await lab.locator('.lab').count());
+  const nKecualiRusak = await lab.locator('.lab').count();
+  await lab.selectOption('#kondisi', ''); await lab.waitForTimeout(100);
+  const nSemua = await lab.locator('.lab').count();
+  check('label default type mesin lists all units with Semua kondisi', nSemua >= 9, nSemua);
+  check('default "Kecuali rusak" prints fewer than "Semua kondisi" (at least 1 unit is Rusak)', nKecualiRusak < nSemua, { nKecualiRusak, nSemua });
+  await lab.selectOption('#size', '3'); await lab.waitForTimeout(100);
+  check('label size 3x3 cm applies', (await lab.getAttribute('.lab', 'style')).includes('width:3cm'), await lab.getAttribute('.lab', 'style'));
   await lab.screenshot({ path: OUT + '/n_label.png' });
 
   check('no JS errors', errors.length === 0, errors.join(' | '));

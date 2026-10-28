@@ -370,6 +370,7 @@ const jenisId = bor.jenisId;
   check('QR decodes to the code only (BOR-002)', decoded === 'BOR-002', decoded);
   await lab.screenshot({ path: OUT + '/v3_label.png', fullPage: true });
   await lab.fill('#codes', ''); await lab.waitForTimeout(100);
+  await lab.selectOption('#kondisi', ''); await lab.waitForTimeout(100);
   check('label page without filter lists all active units (8)', (await lab.locator('.lab').count()) === 8, await lab.locator('.lab').count());
 
   check('no page errors in console', errors.length === 0, errors.join(' | '));
