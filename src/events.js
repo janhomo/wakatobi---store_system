@@ -35,6 +35,14 @@ function saveJenis() {
   if (!f.n) { toast('Isi nama mesin.'); return; }
   callEdit('editJenis', { id: j.id, f }, r => r.changed ? 'Jenis diubah. Berlaku untuk ' + r.unit + ' unit.' : 'Tidak ada yang berubah.');
 }
+function saveSkema() {
+  const jid = curJid(); if (!jid) return;
+  const label = clean(val('skLabel')), tipe = val('skTipe');
+  if (!label) { toast('Isi nama kolom.'); return; }
+  const f = S.skForm || {};
+  if (f.id) callEdit('skemaEditKolom', { jenisId: jid, kolomId: f.id, label, tipe }, r => r.changed ? 'Kolom diubah.' : 'Tidak ada yang berubah.', () => { S.skForm = null; render(); });
+  else callEdit('skemaAddKolom', { jenisId: jid, label, tipe }, 'Kolom ditambahkan.', () => { S.skForm = null; render(); });
+}
 function gabungJenis() {
   const ke = val('jgab'); if (!ke) { toast('Pilih jenis tujuan.'); return; }
   callEdit('gabungJenis', { dari: curJid(), ke }, r => 'Digabung. ' + r.moved + ' unit dipindah.', r => go('jenis', { jid: r.ke, replace: true }));
@@ -219,6 +227,18 @@ document.addEventListener('click', async e => {
     case 'maintopen': $('#maintForm').hidden = false; t.hidden = true; $('#mCat').focus(); break;
     case 'maintcancel': $('#maintForm').hidden = true; $('#maintOpenBtn').hidden = false; break;
     case 'delmaint': if (S.confirmDel === t.dataset.id) { S.confirmDel = null; enqueue('deleteMaintenance', { id: t.dataset.id }); renderLive(); } else armConfirm(t.dataset.id); break;
+    /* kolom maintenance custom per jenis */
+    case 'skemaopen': go('skema', { jid: t.dataset.id }); break;
+    case 'skadd': S.skForm = { label: '', tipe: 'teks' }; render(); break;
+    case 'skedit': { const f = skemaFor(curJid()).find(x => x.id === t.dataset.id); if (f) { S.skForm = { ...f }; render(); } break; }
+    case 'skcancel': S.skForm = null; render(); break;
+    case 'sksave': saveSkema(); break;
+    case 'skdel': {
+      const key = 'sk:' + t.dataset.id;
+      if (S.confirmDel === key) { S.confirmDel = null; callEdit('skemaHapusKolom', { jenisId: curJid(), kolomId: t.dataset.id }, 'Kolom dihapus.', () => render()); }
+      else { S.confirmDel = key; render(); setTimeout(() => { if (S.confirmDel === key) { S.confirmDel = null; render(); } }, 4000); }
+      break;
+    }
     /* pengambilan */
     case 'uambil': openScanPreset('ambil', t.dataset.k); break;
     case 'uret': openScanPreset('kembali', t.dataset.k); break;
@@ -291,8 +311,16 @@ document.addEventListener('submit', async e => {
     const tgl = val('mDate'), next = val('mNext'), oleh = clean(val('mOleh'));
     if (!tgl) { toast('Isi tanggal maintenance.'); return; }
     lsSet('qrg.mOleh', oleh);
-    enqueue('addMaintenance', { id: uid(), kode: S.kode, tgl, jenis: val('mJenis'), oleh, cat: val('mCat').trim(), next });
-    $('#maintForm').hidden = true; $('#maintOpenBtn').hidden = false; $('#mCat').value = ''; $('#mNext').value = '';
+    const u = U[S.kode], jid = u ? u.j : '', cols = skemaFor(jid), data = {};
+    cols.forEach(f => {
+      const el = $('#mx_' + f.id); if (!el) return;
+      if (f.tipe === 'centang') { if (el.checked) data[f.id] = true; }
+      else { const v = clean(el.value); if (v) data[f.id] = v; }
+    });
+    const lampiran = clean(val('mPdf'));
+    enqueue('addMaintenance', { id: uid(), kode: S.kode, tgl, jenis: val('mJenis'), oleh, cat: val('mCat').trim(), next, data, lampiran });
+    $('#maintForm').hidden = true; $('#maintOpenBtn').hidden = false; $('#mCat').value = ''; $('#mNext').value = ''; $('#mPdf').value = '';
+    cols.forEach(f => { const el = $('#mx_' + f.id); if (el) { if (f.tipe === 'centang') el.checked = false; else el.value = ''; } });
     renderLive(); toast('Maintenance dicatat.');
   }
 });

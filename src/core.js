@@ -72,9 +72,9 @@ const KONDISI = ['Normal', 'Servis', 'Rusak', 'Rusak total', 'Belum dicek'];
 const MJENIS = ['Servis rutin', 'Ganti sparepart', 'Perbaikan', 'Kalibrasi', 'Pengecekan', 'Lainnya'];
 const S = {
   view: 'mesin', nm: null, wj: null, jid: null, kode: null, tid: null, mid: null, tab: 'unit', filter: '', q: '',
-  jenis: [], units: [], kategori: [], tempat: [], material: [], pekerja: [], maintServer: [], pengServer: [], pengDate: null, belumServer: [], cfg: { jamPulang: '17:00', pengedit: ['Abidin', 'Vikar', 'La Ode Riyan Syaputra'] },
+  jenis: [], units: [], kategori: [], tempat: [], material: [], pekerja: [], maintServer: [], pengServer: [], pengDate: null, belumServer: [], skema: {}, cfg: { jamPulang: '17:00', pengedit: ['Abidin', 'Vikar', 'La Ode Riyan Syaputra'] },
   loaded: false, loadError: null, tok: lsGet('qrg.tok', ''), me: lsGet('qrg.me', ''),
-  ov: [], pending: null, form: null, confirmDel: null,
+  ov: [], pending: null, form: null, confirmDel: null, skForm: null,
   rwDate: null, rw: { list: null, error: false }, riw: { key: null, list: null, error: false }, logs: { list: null, error: false },
   scan: null, picker: null, justAdded: null, focus: null
 };
@@ -102,7 +102,7 @@ function applyData(d) {
   S.jenis = d.jenis || []; S.kategori = d.kategori || []; S.tempat = d.tempat || []; S.material = d.material || [];
   setUnits(d.unit || []);
   buildMaps();
-  S.pekerja = d.pekerja || []; S.maintServer = d.maintenance || d.maint || []; S.belumServer = d.belum || []; S.cfg = { ...S.cfg, ...(d.cfg || {}) };
+  S.pekerja = d.pekerja || []; S.maintServer = d.maintenance || d.maint || []; S.belumServer = d.belum || []; S.skema = d.skema || {}; S.cfg = { ...S.cfg, ...(d.cfg || {}) };
   if (!S.cfg.pengedit || !S.cfg.pengedit.length) S.cfg.pengedit = ['Abidin', 'Vikar', 'La Ode Riyan Syaputra'];
   S.loaded = true;
   if (typeof syncFoto === 'function') syncFoto();
@@ -303,9 +303,10 @@ function maintAll() {
   const ids = new Set(S.maintServer.map(e => e.id));
   const out = S.maintServer.filter(e => !del.has(e.id));
   Q.items.filter(i => i.action === 'addMaintenance' && !ids.has(i.payload.id) && !del.has(i.payload.id))
-    .forEach(i => out.push({ id: i.payload.id, k: i.payload.kode, tgl: i.payload.tgl, jenis: i.payload.jenis, oleh: i.payload.oleh, cat: i.payload.cat, next: i.payload.next, pending: true }));
+    .forEach(i => out.push({ id: i.payload.id, k: i.payload.kode, tgl: i.payload.tgl, jenis: i.payload.jenis, oleh: i.payload.oleh, cat: i.payload.cat, next: i.payload.next, data: i.payload.data || {}, lampiran: i.payload.lampiran || '', pending: true }));
   return out;
 }
+const skemaFor = jid => S.skema[jid] || [];
 const maintFor = k => maintAll().filter(m => m.k === k).sort((a, b) => b.tgl.localeCompare(a.tgl));
 function maintSummary(k) {
   const l = maintFor(k); if (!l.length) return { n: 0 };
@@ -333,7 +334,7 @@ async function loadAll(silent) {
 /* ---------- navigasi dengan riwayat browser (tombol Back Android) ---------- */
 const URL_ = location.pathname + location.search;
 function curState() { return { v: S.view, nm: S.nm, wj: S.wj, jid: S.jid, kode: S.kode, tid: S.tid, mid: S.mid, tab: S.tab, ovn: S.ov.length }; }
-function resetTransient() { S.confirmDel = null; S.form = null; S.justAdded = null; if (S.view !== 'panduan') S.pd = null; }
+function resetTransient() { S.confirmDel = null; S.form = null; S.justAdded = null; S.skForm = null; if (S.view !== 'panduan') S.pd = null; }
 function syncState() { try { history.replaceState({ ...curState(), d: (history.state && history.state.d) || 0 }, '', URL_); } catch (e) {} }
 function go(view, o = {}) {
   if (S.ov.length) { S.pending = () => go(view, o); history.go(-S.ov.length); return; }

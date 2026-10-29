@@ -298,6 +298,9 @@ details summary{cursor:pointer; min-height:44px; display:flex; align-items:cente
 /* tambahan */
 .kseg{grid-template-columns:repeat(auto-fit,minmax(88px,1fr))}
 .mrow{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:6px}
+.skrow{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:6px}
+.xfields{margin:6px 0 0;font-size:13px;color:var(--muted)}
+.xfields .xf{margin-right:4px}
 
 /* logo */
 .brand{display:block; width:min(240px,72%); height:auto; margin:0 auto 4px}

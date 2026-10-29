@@ -22,6 +22,7 @@ function hdrInfo() {
     case 'impor': return { root: 1, title: 'Impor Excel', sub: 'Tambah banyak mesin' };
     case 'unit': { const u = U[S.kode]; return { title: u ? u.k : 'Unit', sub: u ? unitTitle(u) : '' }; }
     case 'jedit': return { title: 'Ubah jenis', sub: j ? j.n : '' };
+    case 'skema': return { title: 'Atur kolom maintenance', sub: j ? j.n : '' };
     case 'tambah': return { title: 'Mesin baru', sub: 'Tambah unit' };
     case 'riwayat': return { root: 1, title: 'Riwayat', sub: S.rwDate ? fmtShort(S.rwDate) : 'Per tanggal' };
     case 'pekerja': return { root: 1, title: 'Pekerja', sub: S.pekerja.length + ' nama' };
@@ -79,7 +80,7 @@ function renderDrawer() {
 function openDrawer() { if (S.pinned || S.ov.includes('drawer')) return; renderDrawer(); $('#drawer').hidden = false; pushOv('drawer'); }
 
 /* ---------- render ---------- */
-const VIEWS = () => ({ mesin: viewMesin, nama: viewNama, saran: viewSaran, jenis: viewJenis, profil: viewProfil, unit: viewUnit, jedit: viewJedit, tambah: viewTambah, hari: viewHari, riwayat: viewRiwayat, pekerja: viewWorkers, log: viewLog, merek: viewMerek,
+const VIEWS = () => ({ mesin: viewMesin, nama: viewNama, saran: viewSaran, jenis: viewJenis, profil: viewProfil, unit: viewUnit, jedit: viewJedit, skema: viewSkema, tambah: viewTambah, hari: viewHari, riwayat: viewRiwayat, pekerja: viewWorkers, log: viewLog, merek: viewMerek,
   tempatlist: viewTempatList, tempat: viewTempat, tambahtempat: viewTambahTempat, tempatform: viewTempatForm, material: viewMaterial, mat: viewMat, matform: viewMatForm, panduan: viewPanduanEdit, impor: viewImpor,
   dasbor: viewDasbor, fotoimpor: viewFotoImpor, imporrak: viewImporRak });
 function render() {
@@ -231,7 +232,7 @@ function renderDetail() {
   const tabs = [['unit', 'Unit'], ['panduan', 'Maintenance'], ['riwayat', 'Riwayat']].map(([k, l]) => '<button role="tab" data-action="wtab" data-t="' + k + '" aria-selected="' + (tab === k) + '">' + l + '</button>').join('');
   let body;
   if (tab === 'riwayat') body = '<div id="live-riw">' + liveRiw() + '</div>';
-  else if (tab === 'panduan') body = '<div id="live-pd">' + livePanduan() + '</div><h2 class="h2">Catatan maintenance unit</h2>' + jenisMaintHtml(j.id);
+  else if (tab === 'panduan') body = '<div id="live-pd">' + livePanduan() + '</div>' + maintHeadingHtml(j.id) + jenisMaintHtml(j.id);
   else {
     const ms = maintSummaryJenis(j.id);
     body = '<div class="tblwrap"><table class="tbl"><thead><tr><th>Unit</th><th>Kode</th><th>Tempat</th><th>Pemilik</th><th>Dipegang oleh</th><th>Status</th><th>Aksi</th></tr></thead><tbody>' + unitRows(j.id, held) + '</tbody></table></div>' +
@@ -254,12 +255,48 @@ function maintSummaryJenis(jid) {
   (JU[jid] || []).forEach(u => { const m = maintSummary(u.k); n += m.n; const nx = nextService(u.k); if (nx && (!next || nx < next)) next = nx; });
   return { n, next };
 }
+function maintExtraHtml(m, jid) {
+  const parts = [];
+  skemaFor(jid).forEach(f => {
+    const v = m.data && m.data[f.id];
+    if (v === undefined || v === null || v === '') return;
+    const disp = f.tipe === 'centang' ? (v ? 'Ya' : null) : f.tipe === 'tanggal' ? fmtShort(v) : String(v);
+    if (disp === null) return;
+    parts.push('<span class="xf">' + esc(f.label) + ': ' + esc(disp) + '</span>');
+  });
+  let html = parts.length ? '<p class="xfields">' + parts.join(' · ') + '</p>' : '';
+  if (m.lampiran) html += '<p><a href="' + esc(m.lampiran) + '" target="_blank" rel="noopener noreferrer">' + ic('book', 18) + 'Lihat laporan PDF</a></p>';
+  return html;
+}
+const SKEMA_TIPE_L = { teks: 'Teks', angka: 'Angka', tanggal: 'Tanggal', centang: 'Centang' };
+function viewSkema() {
+  const jid = curJid(), j = J[jid];
+  if (!j) return '<p class="empty">' + (S.loaded ? 'Jenis tidak ditemukan.' : 'Memuat…') + '</p>';
+  const cols = skemaFor(jid);
+  const rows = cols.map(f => '<div class="skrow"><div style="flex:1;min-width:0"><b>' + esc(f.label) + '</b><br><span class="pill ok" style="margin-top:3px;display:inline-block">' + SKEMA_TIPE_L[f.tipe] + '</span></div>' +
+    '<button class="btn small ghost" data-action="skedit" data-id="' + esc(f.id) + '" aria-label="Ubah kolom ' + esc(f.label) + '">' + ic('edit', 18) + '</button>' +
+    '<button class="x' + (S.confirmDel === 'sk:' + f.id ? ' confirm' : '') + '" data-action="skdel" data-id="' + esc(f.id) + '" aria-label="Hapus kolom ' + esc(f.label) + '">' + (S.confirmDel === 'sk:' + f.id ? 'Yakin?' : '✕') + '</button></div>').join('');
+  const form = S.skForm ? skFormHtml(S.skForm) : '<a class="dashed" href="#" data-action="skadd">' + ic('plus', 20) + 'Tambah kolom</a>';
+  return '<p class="muted" style="margin:0 0 12px">Kolom ini muncul saat mengisi riwayat maintenance untuk ' + esc(j.n) + ' saja.</p>' +
+    (cols.length ? '<div class="stack">' + rows + '</div>' : '<p class="muted">Belum ada kolom khusus.</p>') +
+    '<div style="margin-top:14px">' + form + '</div>';
+}
+function skFormHtml(f) {
+  return '<section class="card"><h3>' + (f.id ? 'Ubah kolom' : 'Kolom baru') + '</h3><div class="stack">' +
+    fld('skLabel', 'Nama kolom', f.label || '', { ph: 'contoh: Jam operasi' }) +
+    '<div><label class="lbl" for="skTipe">Tipe</label><select id="skTipe" class="field">' + Object.keys(SKEMA_TIPE_L).map(k => '<option value="' + k + '"' + (f.tipe === k ? ' selected' : '') + '>' + SKEMA_TIPE_L[k] + '</option>').join('') + '</select></div>' +
+    '<div class="two"><button class="btn" data-action="sksave">Simpan</button><button class="btn ghost" data-action="skcancel">Batal</button></div></div></section>';
+}
+function maintHeadingHtml(jid) {
+  return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 class="h2" style="margin:0">Catatan maintenance unit</h2>' +
+    '<button class="btn ghost small" data-action="skemaopen" data-id="' + esc(jid) + '">' + ic('edit', 18) + 'Atur kolom</button></div>';
+}
 function jenisMaintHtml(jid) {
   const rows = [];
   (JU[jid] || []).forEach(u => maintFor(u.k).forEach(m => rows.push({ u, m })));
   rows.sort((a, b) => b.m.tgl.localeCompare(a.m.tgl));
   if (!rows.length) return '<p class="muted">Belum ada catatan maintenance untuk jenis ini.</p>';
-  return '<ul class="mlist">' + rows.slice(0, 20).map(({ u, m }) => '<li><div class="top2"><span class="jenis">' + esc(m.jenis || 'Maintenance') + ' · <span class="code">' + esc(u.k) + '</span></span></div><div class="meta">Unit ' + esc(u.u) + ' · ' + esc(fmtShort(m.tgl)) + (m.oleh ? ' · ' + esc(m.oleh) : '') + (m.next ? ' · berikutnya ' + esc(fmtShort(m.next)) : '') + '</div>' + (m.cat ? '<p>' + esc(m.cat) + '</p>' : '') + '</li>').join('') + '</ul>';
+  return '<ul class="mlist">' + rows.slice(0, 20).map(({ u, m }) => '<li><div class="top2"><span class="jenis">' + esc(m.jenis || 'Maintenance') + ' · <span class="code">' + esc(u.k) + '</span></span></div><div class="meta">Unit ' + esc(u.u) + ' · ' + esc(fmtShort(m.tgl)) + (m.oleh ? ' · ' + esc(m.oleh) : '') + (m.next ? ' · berikutnya ' + esc(fmtShort(m.next)) : '') + '</div>' + (m.cat ? '<p>' + esc(m.cat) + '</p>' : '') + maintExtraHtml(m, jid) + '</li>').join('') + '</ul>';
 }
 
 /* ---------- Jenis: daftar unit ---------- */
@@ -288,7 +325,7 @@ function viewJenis() {
   const tabs = [['unit', 'Unit (' + (JU[jid] || []).length + ')'], ['panduan', 'Maintenance'], ['riwayat', 'Riwayat']].map(([k, l]) => '<button role="tab" data-action="jtab" data-t="' + k + '" aria-selected="' + (S.tab === k) + '">' + l + '</button>').join('');
   let body;
   if (S.tab === 'riwayat') body = '<div id="live-riw">' + liveRiw() + '</div>';
-  else if (S.tab === 'panduan') body = '<div id="live-pd">' + livePanduan() + '</div><h2 class="h2">Catatan maintenance unit</h2>' + jenisMaintHtml(jid);
+  else if (S.tab === 'panduan') body = '<div id="live-pd">' + livePanduan() + '</div>' + maintHeadingHtml(jid) + jenisMaintHtml(jid);
   else body = (JU[jid] || []).map(u => unitCard(u, held)).join('') +
     '<a class="dashed" href="#" data-action="tambahunit" data-id="' + esc(jid) + '">' + ic('plus', 20) + 'Tambah unit ' + esc(j.n) + '</a>';
   return heroHtml(jid) +
@@ -431,7 +468,7 @@ function liveMaint() {
     '<ul class="mlist">' + l.map(r => '<li><div class="top2"><span class="jenis">' + esc(r.jenis || 'Maintenance') + (r.pending ? ' <span class="muted">(menunggu terkirim)</span>' : '') + '</span>' +
       '<button class="x' + (S.confirmDel === r.id ? ' confirm' : '') + '" data-action="delmaint" data-id="' + esc(r.id) + '" aria-label="Hapus catatan">' + (S.confirmDel === r.id ? 'Yakin?' : '✕') + '</button></div>' +
       '<div class="meta">' + esc(fmtShort(r.tgl)) + (r.oleh ? ' · ' + esc(r.oleh) : '') + (r.next ? ' · berikutnya ' + esc(fmtShort(r.next)) : '') + '</div>' +
-      (r.cat ? '<p>' + esc(r.cat) + '</p>' : '') + '</li>').join('') + '</ul>';
+      (r.cat ? '<p>' + esc(r.cat) + '</p>' : '') + maintExtraHtml(r, u.j) + '</li>').join('') + '</ul>';
 }
 
 /* ---------- Ubah jenis ---------- */
@@ -587,13 +624,22 @@ function liveLog() {
 
 
 /* ---------- profil unit (hasil scan Lihat, atau ketuk kode unit) ---------- */
-function maintBlock() {
+function maintFieldHtml(f) {
+  const id = 'mx_' + f.id;
+  if (f.tipe === 'centang') return '<label style="display:flex;align-items:center;gap:10px;min-height:40px"><input type="checkbox" id="' + id + '"> <span>' + esc(f.label) + '</span></label>';
+  const type = f.tipe === 'tanggal' ? 'date' : f.tipe === 'angka' ? 'number' : 'text';
+  return '<div><label class="lbl" for="' + id + '">' + esc(f.label) + '</label><input id="' + id + '" class="field" type="' + type + '"' + (type === 'number' ? ' step="any"' : '') + '></div>';
+}
+function maintBlock(jid) {
+  const custom = skemaFor(jid);
   return '<section class="card"><h3>Maintenance</h3><div id="live-maint"></div>' +
     '<button class="btn" style="width:100%;margin-top:14px" data-action="maintopen" id="maintOpenBtn">Catat maintenance</button>' +
     '<form class="stack" id="maintForm" hidden style="margin-top:14px"><div class="two stk"><div><label class="lbl" for="mDate">Tanggal</label><input id="mDate" class="field" type="date" value="' + today() + '" required></div>' +
     '<div><label class="lbl" for="mJenis">Jenis</label><select id="mJenis" class="field">' + MJENIS.map(x => '<option>' + x + '</option>').join('') + '</select></div></div>' +
     '<div><label class="lbl" for="mOleh">Dikerjakan oleh</label><input id="mOleh" class="field" type="text" value="' + esc(lsGet('qrg.mOleh', S.me)) + '" autocomplete="off"></div>' +
     '<div><label class="lbl" for="mCat">Catatan</label><textarea id="mCat" class="field" placeholder="Contoh: ganti karbon brush, oli gearbox"></textarea></div>' +
+    (custom.length ? '<div class="h2" style="margin-top:4px">Kolom khusus</div>' + custom.map(maintFieldHtml).join('') : '') +
+    '<div><label class="lbl" for="mPdf">Link PDF laporan servis (boleh kosong)</label><input id="mPdf" class="field" type="text" placeholder="Tempel link PDF di sini"></div>' +
     '<div><label class="lbl" for="mNext">Jadwal berikutnya (boleh kosong)</label><input id="mNext" class="field" type="date"></div>' +
     '<div class="two"><button class="btn" type="submit">Simpan</button><button class="btn ghost" type="button" data-action="maintcancel">Batal</button></div></form></section>';
 }
@@ -605,7 +651,7 @@ function viewProfil() {
   const sv = serviceText(u.k);
   const row = (l, v) => '<div class="drow"><dt>' + l + '</dt><dd>' + v + '</dd></div>';
   let body;
-  if (tab === 'maint') body = maintBlock();
+  if (tab === 'maint') body = maintBlock(u.j);
   else if (tab === 'riw') body = '<div id="live-riwu">' + liveRiwUnit() + '</div>';
   else {
     const gs = u.gs ? esc(fmtShort(u.gs)) + (daysFromToday(u.gs) < 0 ? ' <span class="pill late">Habis</span>' : ' <span class="pill ok">Berlaku</span>') : '—';
