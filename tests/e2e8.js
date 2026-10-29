@@ -92,6 +92,16 @@ const u1 = srv({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 'Genset 5000W',
   check('riwayat menunjukkan nilai kolom khusus (2140)', maintTxt.includes('Jam operasi mesin: 2140'), maintTxt);
   check('riwayat menunjukkan tautan laporan PDF', await page.isVisible('#live-maint a:has-text("Lihat laporan PDF")'));
 
+  // ===== terjemahan EN untuk fitur baru
+  await page.evaluate(() => setLang('en'));
+  await page.waitForFunction(() => document.querySelector('#live-maint').textContent.includes('View PDF report'));
+  check('EN: tautan laporan PDF diterjemahkan', (await txt(page, '#live-maint')).includes('View PDF report'));
+  await page.evaluate(jid => go('skema', { jid }), u1.jenisId);
+  await page.waitForSelector('.skrow');
+  check('EN: judul halaman -> Edit maintenance columns', (await txt(page, '#hdr')).includes('Edit maintenance columns'));
+  check('EN: kolom tipe Angka -> Number', (await txt(page, '.skrow')).includes('Number'));
+  await page.evaluate(() => setLang('id'));
+
   check('no console/page errors the whole run', errors.length === 0, errors.join(' | '));
   await browser.close(); server.close();
   console.log(log.join('\n'));

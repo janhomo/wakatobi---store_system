@@ -1165,7 +1165,17 @@ const DICT_EN = {
   'Belum ada catatan maintenance untuk unit ini.': 'No maintenance entries for this unit yet.',
   'Pilih tanggal untuk melihat, mencetak, atau mengarsipkan catatan.': 'Choose a date to view, print, or archive entries.',
   'Tidak ada catatan pada tanggal ini.': 'No entries on this date.', 'Arsipkan tanggal ini': 'Archive this date',
-  'Arsipkan': 'Archive', 'Hapus catatan': 'Delete entry'
+  'Arsipkan': 'Archive', 'Hapus catatan': 'Delete entry',
+  /* --- kolom maintenance custom per jenis + link PDF laporan servis --- */
+  'Atur kolom': 'Edit columns', 'Atur kolom maintenance': 'Edit maintenance columns', 'Kolom khusus': 'Custom columns',
+  'Link PDF laporan servis (boleh kosong)': 'Service report PDF link (optional)',
+  'Tempel link PDF di sini': 'Paste PDF link here', 'Lihat laporan PDF': 'View PDF report',
+  'Belum ada kolom khusus.': 'No custom columns yet.', 'Tambah kolom': 'Add column',
+  'Kolom baru': 'New column', 'Ubah kolom': 'Edit column', 'Nama kolom': 'Column name',
+  'Tipe': 'Type', 'Teks': 'Text', 'Angka': 'Number', 'Centang': 'Checkbox',
+  'Isi nama kolom.': 'Enter a column name.', 'Kolom ditambahkan.': 'Column added.',
+  'Kolom diubah.': 'Column changed.', 'Kolom dihapus.': 'Column deleted.',
+  'Link terlalu panjang.': 'Link is too long.'
 };
 /* potongan kalimat yang digabung dengan data (nama, kode, tanggal, angka) — dicari dan ditukar
    di mana pun munculnya di dalam satu node teks, bukan hanya di awal. */
@@ -1200,7 +1210,9 @@ const DICT_FRAG = {
   'Satu catatan ditolak server: ': 'One entry was rejected by the server: ',
   'Belum ada yang mengambil mesin ini.': 'No one has taken this machine yet.',
   'Riwayat belum bisa dimuat. Cek sinyal.': "History couldn't be loaded. Check your signal.",
-  'Baik)': 'Good)', 'Rusak)': 'Broken)', 'memindahkan catatan tanggal ini ke sheet Arsip di Google Sheet. Datanya tetap tersimpan, hanya hilang dari daftar Riwayat.': ' moves this date’s entries to the Arsip sheet in the Google Sheet. The data stays saved, it just disappears from the History list.'
+  'Baik)': 'Good)', 'Rusak)': 'Broken)', 'memindahkan catatan tanggal ini ke sheet Arsip di Google Sheet. Datanya tetap tersimpan, hanya hilang dari daftar Riwayat.': ' moves this date’s entries to the Arsip sheet in the Google Sheet. The data stays saved, it just disappears from the History list.',
+  'Kolom ini muncul saat mengisi riwayat maintenance untuk ': 'These columns appear when filling in maintenance history for ',
+  'Ubah kolom ': 'Edit column ', 'Hapus kolom ': 'Delete column '
 };
 const FRAG_KEYS = Object.keys(DICT_FRAG).sort((a, b) => b.length - a.length);
 /* kata status yang hanya ditukar kalau langsung mengikuti angka (hindari mengubah kata yang sama
