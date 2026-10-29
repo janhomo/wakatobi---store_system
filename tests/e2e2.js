@@ -211,7 +211,7 @@ const jenisId = bor.jenisId;
   await page.click('[data-action="stokq"][data-n="5"]'); await page.click('#stokGo'); await page.waitForTimeout(500);
   check('offline stok: shows 85 locally, server still 90', (await txt(page, '.trow.mat .qty')).includes('85') && rows('Material').find(r => r[0] === 'MAT-002')[5] === 90, await txt(page, '.trow.mat .qty'));
   offline = false; await page.evaluate(() => window.dispatchEvent(new Event('online'))); await page.waitForTimeout(1500);
-  check('stok flushed once: server 85, one log row', rows('Material').find(r => r[0] === 'MAT-002')[5] === 85 && rows('Stok Log').filter(r => r[3] === 'Keluar').length === 2, JSON.stringify(rows('Stok Log')));
+  check('stok flushed once: server 85, one log row', rows('Material').find(r => r[0] === 'MAT-002')[5] === 85 && rows('Stok Log').filter(r => r[2] === 'MAT-002' && r[3] === 'Keluar').length === 2, JSON.stringify(rows('Stok Log').filter(r => r[2] === 'MAT-002')));
   // stok melebihi sisa: tombol mati
   await page.click('.trow.mat [data-action="stokopen"][data-t="Keluar"]'); await page.waitForSelector('#stokJ');
   await page.fill('#stokJ', '500'); await page.waitForTimeout(100);

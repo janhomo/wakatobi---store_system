@@ -92,6 +92,7 @@ function setup() {
   var ms10 = migrasiSubRak10_();
   if (ms10.dibuat) made.push(ms10.dibuat + ' sub rak dibuat (tiap rak minimal 10)');
   if (tambahSemenAwal_()) made.push('Material Semen dibuat, stok awal 562 sak');
+  if (tambahRiwayatSemenAwal_()) made.push('Riwayat stok Semen Juni-Oktober diimpor (123 transaksi)');
   var msg = 'Siap. ' + (made.length ? made.join('. ') + '. Catat PIN ini dan bagikan ke penjaga. ' : 'Pengaturan lama dipertahankan. ') +
     'PIN dan jam pulang ada di sheet Pengaturan.';
   Logger.log(msg);
@@ -917,6 +918,51 @@ function tambahSemenAwal_() {
   var ada = filled_('Material').some(function (r) { return same_(r[1], 'Semen'); });
   if (ada) return false;
   addMaterial_({ nama: 'Semen', kategori: 'Bahan Bangunan', satuan: 'sak', stok: 562, oleh: 'Sistem' });
+  return true;
+}
+// Riwayat transaksi stok Semen Juni-Oktober 2026, dari catatan manual lapangan (Google Sheet).
+// Dibuat sekali lewat setup(): koreksi stok awal ke 1378 (30 Juni), lalu catat tiap transaksi harian.
+// Data sumber punya selisih 36 sak yang tak terjelaskan antara 30 Sep (akhir 781) dan 1 Okt (awal 817);
+// dicatat sebagai satu entri Masuk 1 Okt dengan catatan penjelasan, bukan "diperbaiki" diam-diam.
+var RIWAYAT_SEMEN_ = [
+  ["2026-06-30","Keluar",38], ["2026-07-01","Keluar",16], ["2026-07-02","Keluar",3], ["2026-07-03","Keluar",20], ["2026-07-04","Keluar",15], ["2026-07-06","Keluar",7],
+  ["2026-07-07","Keluar",20], ["2026-07-08","Keluar",59], ["2026-07-09","Keluar",30], ["2026-07-10","Keluar",33], ["2026-07-11","Keluar",7], ["2026-07-12","Keluar",7],
+  ["2026-07-14","Keluar",1], ["2026-07-15","Keluar",35], ["2026-07-16","Keluar",15], ["2026-07-20","Keluar",30], ["2026-07-21","Keluar",5], ["2026-07-23","Pinjam",7],
+  ["2026-07-24","Keluar",18], ["2026-07-24","Pinjam",4], ["2026-07-25","Keluar",21], ["2026-07-25","Pinjam",20], ["2026-07-26","Keluar",10], ["2026-07-27","Keluar",15],
+  ["2026-07-28","Keluar",20], ["2026-07-29","Keluar",4], ["2026-07-31","Pinjam",25], ["2026-08-01","Pinjam",39], ["2026-08-02","Pinjam",44], ["2026-08-03","Keluar",1],
+  ["2026-08-03","Pinjam",22], ["2026-08-04","Pinjam",35], ["2026-08-05","Pinjam",38], ["2026-08-06","Pinjam",61], ["2026-08-07","Pinjam",41], ["2026-08-08","Keluar",1],
+  ["2026-08-08","Pinjam",40], ["2026-08-09","Pinjam",37], ["2026-08-10","Pinjam",14], ["2026-08-11","Pinjam",21], ["2026-08-12","Pinjam",20], ["2026-08-13","Pinjam",16],
+  ["2026-08-14","Keluar",4], ["2026-08-14","Pinjam",22], ["2026-08-15","Keluar",2], ["2026-08-15","Pinjam",14], ["2026-08-16","Pinjam",12], ["2026-08-17","Keluar",3],
+  ["2026-08-17","Pinjam",12], ["2026-08-18","Keluar",9], ["2026-08-18","Pinjam",6], ["2026-08-19","Keluar",17], ["2026-08-19","Pinjam",14], ["2026-08-20","Pinjam",13],
+  ["2026-08-21","Keluar",1], ["2026-08-21","Pinjam",16], ["2026-08-22","Keluar",2], ["2026-08-22","Pinjam",10], ["2026-08-23","Pinjam",20], ["2026-08-24","Keluar",5],
+  ["2026-08-24","Pinjam",16], ["2026-08-25","Keluar",5], ["2026-08-25","Pinjam",5], ["2026-08-26","Keluar",4], ["2026-08-26","Pinjam",5], ["2026-08-27","Pinjam",9],
+  ["2026-08-28","Pinjam",9], ["2026-08-29","Pinjam",10], ["2026-08-31","Keluar",5], ["2026-08-31","Pinjam",100], ["2026-09-01","Keluar",6], ["2026-09-02","Keluar",5],
+  ["2026-09-03","Keluar",7], ["2026-09-04","Keluar",8], ["2026-09-06","Pinjam",10], ["2026-09-07","Pinjam",15], ["2026-09-08","Pinjam",15], ["2026-09-09","Masuk",760],
+  ["2026-09-09","Pinjam",30], ["2026-09-10","Masuk",40], ["2026-09-10","Pinjam",30], ["2026-09-11","Keluar",1], ["2026-09-11","Pinjam",35], ["2026-09-11","Kembali",450],
+  ["2026-09-12","Keluar",3], ["2026-09-17","Keluar",19], ["2026-09-18","Keluar",71], ["2026-09-19","Keluar",7], ["2026-09-22","Keluar",11], ["2026-09-23","Keluar",104],
+  ["2026-09-24","Keluar",73], ["2026-09-25","Keluar",78], ["2026-09-26","Keluar",18], ["2026-09-30","Keluar",36], ["2026-10-04","Pinjam",3], ["2026-10-05","Keluar",8],
+  ["2026-10-07","Pinjam",25], ["2026-10-08","Keluar",34], ["2026-10-08","Pinjam",4], ["2026-10-09","Keluar",58], ["2026-10-09","Pinjam",4], ["2026-10-10","Keluar",32],
+  ["2026-10-10","Pinjam",4], ["2026-10-11","Pinjam",4], ["2026-10-12","Keluar",44], ["2026-10-12","Pinjam",6], ["2026-10-13","Keluar",24], ["2026-10-13","Pinjam",5],
+  ["2026-10-14","Keluar",1], ["2026-10-14","Pinjam",4], ["2026-10-15","Keluar",1], ["2026-10-15","Pinjam",5], ["2026-10-16","Masuk",1000], ["2026-10-19","Keluar",1],
+  ["2026-10-20","Keluar",50], ["2026-10-21","Keluar",78], ["2026-10-22","Keluar",67], ["2026-10-22","Pinjam",18], ["2026-10-23","Keluar",6], ["2026-10-23","Pinjam",2],
+  ["2026-10-24","Pinjam",3], ["2026-10-25","Pinjam",8], ["2026-10-01","Masuk",36]
+];
+function tambahRiwayatSemenAwal_() {
+  if (findRow_('Stok Log', 'semen-riwayat-awal')) return false;
+  var mat = filled_('Material').filter(function (r) { return same_(r[1], 'Semen'); })[0];
+  if (!mat) return false;
+  var id = str_(mat[0]);
+  var seen = {};
+  stok_({ id: 'semen-riwayat-awal', mat: id, tipe: 'Koreksi', jumlah: 1378, nama: 'Sistem', waktu: '2026-06-29T12:00:00', cat: 'Stok awal riwayat (catatan lapangan, 30 Juni)' });
+  RIWAYAT_SEMEN_.forEach(function (op) {
+    var tgl = op[0], tipe = op[1], jml = op[2];
+    seen[tgl] = (seen[tgl] || 0) + 1;
+    var rid = 'semen-riwayat-' + tgl + '-' + tipe.toLowerCase() + (seen[tgl] > 1 ? '-' + seen[tgl] : '');
+    var cat = (tgl === '2026-10-01' && tipe === 'Masuk' && jml === 36)
+      ? 'Penyesuaian selisih tercatat di sumber data (36 sak)'
+      : 'Impor riwayat (catatan lapangan)';
+    stok_({ id: rid, mat: id, tipe: tipe, jumlah: jml, nama: 'Sistem', waktu: tgl + 'T12:00:00', cat: cat });
+  });
   return true;
 }
 function addMaterial_(r) {

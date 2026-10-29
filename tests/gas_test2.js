@@ -13,6 +13,10 @@ const boot = () => call({ action: 'bootstrap' });
 
 ok('new sheets exist after setup', ['Foto', 'Tempat', 'Panduan', 'Material', 'Stok Log'].every(n => ss.getSheetByName(n)));
 ok('bootstrap has tempat (empty) + material (Semen awal)', boot().tempat.length === 0 && boot().material.length === 1 && boot().material[0].n === 'Semen');
+ok('riwayat Semen: stok akhir 1318 sak setelah impor riwayat Juni-Oktober', boot().material.find(x => x.n === 'Semen').q === 1318);
+ok('riwayat Semen: Pinjam 23 Juli 7 sak tercatat', rows('Stok Log').some(r => r[2] === 'MAT-001' && String(r[1]).slice(0, 10) === '2026-07-23' && r[3] === 'Pinjam' && Number(r[4]) === 7));
+ok('riwayat Semen: penyesuaian 36 sak 1 Oktober tercatat dengan catatan', rows('Stok Log').some(r => r[2] === 'MAT-001' && String(r[1]).slice(0, 10) === '2026-10-01' && r[3] === 'Masuk' && Number(r[4]) === 36 && /selisih/.test(r[7])));
+ok('riwayat Semen: dijalankan sekali, setup lagi tidak menambah log', (() => { const n0 = rows('Stok Log').length; env.setup(); return rows('Stok Log').length === n0; })());
 
 // ---- data awal
 const bor = adm({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 'Bor Breaker 550W', b: 'Bosch', m: 'GBH 2-28' }, f: { sl: 'Normal' } });
