@@ -251,8 +251,19 @@ function openScanPreset(mode, kode) { openScan({ mode, preset: [kode] }); }
 
 /* popup isi tempat (hasil scan QR tempat LOK-xxx). Mesin yang ada di rak bisa diambil langsung dari
    sini (tombol Ambil per mesin), tanpa scan ulang ke QR mesinnya. */
+/* kalau yang discan rak utama (punya sub rak), isinya adalah daftar sub rak - bukan mesin.
+   Mesin cuma muncul kalau yang discan sub raknya sendiri (atau rak tanpa pembagian sub rak). */
+function placeSubsHtml(t) {
+  const subs = childRaks(t.id);
+  return '<div class="grab"></div><div class="sh-h"><span class="t">' + esc(t.n) + '</span><span class="n">' + subs.length + '</span></div>' +
+    '<p class="muted" style="margin:-4px 0 0;font-size:14px"><span class="code">' + esc(t.id) + '</span>' + (t.l ? ' · ' + esc(t.l) : '') + ' · ' + subs.length + ' sub rak</p>' +
+    '<div class="tbox scroll">' + subs.sort((a, b) => byName(a.n, b.n)).map(s => '<div class="trow"><b>' + esc(s.n) + '</b><span class="muted code">' + esc(s.id) + '</span></div>').join('') + '</div>' +
+    '<p class="muted" style="margin:0;font-size:14px">Scan QR sub raknya untuk lihat mesin di dalamnya.</p>' +
+    '<div class="yn"><button class="no" data-action="placeclose">Scan lagi</button><button class="yes" data-action="placeopen" data-id="' + esc(t.id) + '">Buka semua</button></div>';
+}
 function placePopup(tid) {
   const t = T[tid]; if (!t) return '';
+  if (!t.ind && childRaks(t.id).length) return placeSubsHtml(t);
   const sc = S.scan, sm = placeSummary(tid), held = heldMap();
   const inBasket = k => sc.basket.find(b => b.kode === k);
   const urow = u => {

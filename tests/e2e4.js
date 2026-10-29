@@ -27,7 +27,7 @@ srv({ action: 'savePekerja', pekerja: [{ n: 'Budi', d: 'Karpenter' }] });
 srv({ action: 'buatRak', dari: 1, sampai: 3 });
 const u1 = srv({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 'Bor', b: 'Bosch', m: 'GBH 2-28' }, f: { sl: 'Normal' } }); // BOR-001
 const u2 = srv({ action: 'addUnit', jenisId: u1.jenisId, f: { sl: 'Normal' } }); // BOR-002
-srv({ action: 'setTempat', tempat: 'LOK-001', kodes: [u1.kode, u2.kode] }); // keduanya di Rak 001
+srv({ action: 'setTempat', tempat: 'LOK-001-A', kodes: [u1.kode, u2.kode] }); // keduanya di Rak 001 > Sub A
 
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] });
@@ -67,8 +67,15 @@ srv({ action: 'setTempat', tempat: 'LOK-001', kodes: [u1.kode, u2.kode] }); // k
   await page.evaluate(() => onCode('BOR-001'));
   check('scan mesin selagi switch QR rak: ditolak', (await txt(page, '#sheet')).includes('Pindahkan switch ke QR mesin'));
 
-  // ===== scan rak -> Ambil langsung (tanpa scan ulang ke mesin)
+  // ===== scan rak utama -> isinya daftar sub rak (bukan mesin), bukan Ambil langsung
   await page.evaluate(() => onCode('LOK-001'));
+  await page.waitForSelector('#sheet .tbox');
+  check('scan rak utama menampilkan daftar sub rak', (await txt(page, '#sheet')).includes('Sub A') && (await txt(page, '#sheet')).includes('Sub J'));
+  check('scan rak utama tidak menampilkan tombol Ambil (bukan mesin)', (await page.locator('[data-action="rakambil"]').count()) === 0);
+  await page.click('[data-action="placeclose"]');
+
+  // ===== scan sub rak -> Ambil langsung (tanpa scan ulang ke mesin)
+  await page.evaluate(() => onCode('LOK-001-A'));
   await page.waitForSelector('[data-action="rakambil"]');
   check('rack popup shows Ambil button per unit', (await page.locator('[data-action="rakambil"]').count()) === 2);
   await page.click('[data-action="rakambil"][data-k="' + u1.kode + '"]');
