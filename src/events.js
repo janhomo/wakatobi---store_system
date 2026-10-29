@@ -120,6 +120,8 @@ document.addEventListener('click', async e => {
     case 'jgab': gabungJenis(); break;
     case 'uoff': { const alasan = clean(val('ualasan')); if (!alasan) { toast('Isi alasan menonaktifkan.'); break; } callEdit('nonaktifUnit', { kode: S.kode, alasan }, 'Unit dinonaktifkan.'); break; }
     case 'uon': callEdit('aktifkanUnit', { kode: S.kode }, 'Unit diaktifkan kembali.'); break;
+    case 'uhapus': { const u = U[S.kode]; if (!u) break; const jid = u.j; callEdit('hapusUnit', { kode: u.k }, 'Unit dihapus.', () => go('jenis', { jid })); break; }
+    case 'jhapus': { const jid = curJid(); if (!jid) break; callEdit('hapusJenis', { id: jid }, 'Jenis dihapus.', () => go('mesin', { root: true })); break; }
     case 'kpick': t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === t))); break;
     case 'mrekedit': {
       const m = merekList().find(x => x.name === t.dataset.m); if (!m) break;

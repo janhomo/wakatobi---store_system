@@ -59,5 +59,27 @@ ok('maintenance tanpa data/lampiran tetap jalan', adm({ action: 'addMaintenance'
 ok('default data kosong object, lampiran kosong', (() => { const m = boot().maintenance.find(x => x.id === 'm2'); return JSON.stringify(m.data) === '{}' && m.lampiran === ''; })());
 ok('lampiran terlalu panjang ditolak', adm({ action: 'addMaintenance', id: 'm3', kode: u1, tgl: '2026-10-31', lampiran: 'x'.repeat(501) }).ok === false);
 
+// ---- hapus permanen unit + jenis
+const u2res = adm({ action: 'addUnit', jenisId: jid, f: { sl: 'Normal' } });
+const u2 = u2res.kode;
+ok('unit kedua dibuat', u2res.ok === true);
+ok('non-editor tidak bisa hapus unit', call({ oleh: 'Budi', action: 'hapusUnit', kode: u2 }).ok === false);
+adm({ action: 'addPengambilan', id: 'p1', tgl: '2026-10-29', nama: 'Budi', kode: u2, waktu: '2026-10-29T08:00:00' });
+ok('unit yang sedang dibawa tidak bisa dihapus', (() => { const x = adm({ action: 'hapusUnit', kode: u2 }); return x.ok === false && /dibawa/.test(x.error); })());
+adm({ action: 'returnPengambilan', id: 'p1', waktu: '2026-10-29T10:00:00', kondisi: 'Baik' });
+ok('tidak bisa hapus jenis selagi masih ada unit', (() => { const x = adm({ action: 'hapusJenis', id: jid }); return x.ok === false && /unit/.test(x.error); })());
+ok('hapus unit kedua berhasil setelah dikembalikan', adm({ action: 'hapusUnit', kode: u2 }).ok === true);
+ok('unit kedua benar-benar hilang dari Unit sheet', !rows('Unit').some(r => r[0] === u2));
+ok('hapus unit yang sudah tidak ada: aman (missing)', adm({ action: 'hapusUnit', kode: u2 }).missing === true);
+ok('riwayat pengambilan lama tetap ada (tidak ikut terhapus)', rows('Pengambilan').some(r => r[0] === 'p1'));
+ok('hapus unit tercatat di Log Perubahan', call({ action: 'logList' }).log.some(x => x.a === 'Hapus unit' && x.k === u2));
+ok('masih tidak bisa hapus jenis, 1 unit tersisa', adm({ action: 'hapusJenis', id: jid }).ok === false);
+ok('hapus unit pertama', adm({ action: 'hapusUnit', kode: u1 }).ok === true);
+ok('sekarang jenis bisa dihapus (0 unit)', adm({ action: 'hapusJenis', id: jid }).ok === true);
+ok('jenis hilang dari bootstrap', !boot().jenis.some(x => x.id === jid));
+ok('skema maintenance jenis ini ikut terhapus', !rows('Skema Maintenance').some(r => r[0] === jid));
+ok('hapus jenis yang tidak ada ditolak', adm({ action: 'hapusJenis', id: jid }).ok === false);
+ok('hapus jenis yang benar-benar tidak pernah ada ditolak', adm({ action: 'hapusJenis', id: 'J999' }).ok === false);
+
 console.log(t.join('\n')); const f = t.filter(x => x.startsWith('FAIL')).length;
 console.log(f ? f + ' GAGAL' : 'SEMUA LULUS (' + t.length + ')'); process.exit(f ? 1 : 0);

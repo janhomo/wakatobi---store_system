@@ -149,7 +149,11 @@ const DICT_EN = {
   'Tipe': 'Type', 'Teks': 'Text', 'Angka': 'Number', 'Centang': 'Checkbox',
   'Isi nama kolom.': 'Enter a column name.', 'Kolom ditambahkan.': 'Column added.',
   'Kolom diubah.': 'Column changed.', 'Kolom dihapus.': 'Column deleted.',
-  'Link terlalu panjang.': 'Link is too long.'
+  'Link terlalu panjang.': 'Link is too long.',
+  /* --- hapus permanen unit & jenis --- */
+  'Hapus unit': 'Delete unit', 'Hapus jenis': 'Delete type',
+  'Ya, hapus permanen': 'Yes, delete permanently',
+  'Unit dihapus.': 'Unit deleted.', 'Jenis dihapus.': 'Type deleted.'
 };
 /* potongan kalimat yang digabung dengan data (nama, kode, tanggal, angka) — dicari dan ditukar
    di mana pun munculnya di dalam satu node teks, bukan hanya di awal. */

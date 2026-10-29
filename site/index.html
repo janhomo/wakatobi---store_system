@@ -1175,7 +1175,11 @@ const DICT_EN = {
   'Tipe': 'Type', 'Teks': 'Text', 'Angka': 'Number', 'Centang': 'Checkbox',
   'Isi nama kolom.': 'Enter a column name.', 'Kolom ditambahkan.': 'Column added.',
   'Kolom diubah.': 'Column changed.', 'Kolom dihapus.': 'Column deleted.',
-  'Link terlalu panjang.': 'Link is too long.'
+  'Link terlalu panjang.': 'Link is too long.',
+  /* --- hapus permanen unit & jenis --- */
+  'Hapus unit': 'Delete unit', 'Hapus jenis': 'Delete type',
+  'Ya, hapus permanen': 'Yes, delete permanently',
+  'Unit dihapus.': 'Unit deleted.', 'Jenis dihapus.': 'Type deleted.'
 };
 /* potongan kalimat yang digabung dengan data (nama, kode, tanggal, angka) — dicari dan ditukar
    di mana pun munculnya di dalam satu node teks, bukan hanya di awal. */
@@ -1709,6 +1713,11 @@ function viewUnit() {
     (u.off ? '<p class="muted" style="margin:0">Unit ini disembunyikan dari pengambilan. Riwayatnya tetap tersimpan.</p><button class="btn ghost" data-action="uon">Aktifkan kembali</button>'
       : '<p class="muted" style="margin:0;font-size:15px">Untuk mesin yang hilang, dijual, atau rusak total. Data dan riwayat <b>tidak dihapus</b>. Kodenya tidak dipakai ulang.</p>' +
         (held ? '<p class="note warn">Unit masih dibawa ' + esc(held.nama) + '. Kembalikan dulu.</p>' : fld('ualasan', 'Alasan', '', { ph: 'contoh: hilang, dijual, rusak total' }) + '<button class="btn ghost redo" data-action="uoff">Nonaktifkan</button>')) +
+    '</div></section>' +
+    '<section class="card"><h3>Hapus unit</h3><div class="stack">' +
+    (held ? '<p class="note warn">Unit masih dibawa ' + esc(held.nama) + '. Kembalikan dulu.</p>' :
+      '<p class="muted" style="margin:0;font-size:15px">Menghapus permanen dari sistem, termasuk riwayat pengambilan dan maintenance unit ini. Tidak bisa dibatalkan. Bisa ditambahkan lagi kalau perlu.</p>' +
+      '<button class="btn ghost redo" data-action="uhapus" data-confirm="Ya, hapus permanen">Hapus unit</button>') +
     '</div></section></div>';
 }
 function liveMaint() {
@@ -1743,7 +1752,12 @@ function viewJedit() {
     '<button class="btn" data-action="jsave" data-confirm="Ya, simpan untuk ' + n + ' unit">Simpan perubahan</button></div></section>' +
     '<section class="card"><h3>Gabungkan jenis</h3><p class="muted" style="margin:0 0 10px;font-size:15px">Kalau dua jenis sebenarnya sama, pindahkan semua unit jenis ini ke jenis lain. Jenis ini lalu disembunyikan. Nomor unit tidak boleh bentrok.</p>' +
     '<div class="stack"><select id="jgab" class="field" aria-label="Gabung ke"><option value="">Pilih jenis tujuan</option>' + others.map(x => '<option value="' + esc(x.id) + '">' + esc(x.n + (x.b || x.m ? ' · ' + subText(x) : '') + ' (' + (JU[x.id] || []).length + ' unit)') + '</option>').join('') + '</select>' +
-    '<button class="btn ghost redo" data-action="jgab" data-confirm="Ya, pindahkan ' + n + ' unit">Gabungkan ke jenis itu</button></div></section></div>';
+    '<button class="btn ghost redo" data-action="jgab" data-confirm="Ya, pindahkan ' + n + ' unit">Gabungkan ke jenis itu</button></div></section>' +
+    '<section class="card"><h3>Hapus jenis</h3>' +
+    (n ? '<p class="muted" style="margin:0;font-size:15px">Masih ada ' + n + ' unit. Hapus semua unit jenis ini dulu sebelum menghapus jenisnya.</p>'
+      : '<p class="muted" style="margin:0 0 10px;font-size:15px">Menghapus permanen jenis ini beserta panduan dan kolom maintenance khususnya. Tidak bisa dibatalkan. Bisa ditambahkan lagi kalau perlu.</p>' +
+        '<button class="btn ghost redo" data-action="jhapus" data-confirm="Ya, hapus permanen">Hapus jenis</button>') +
+    '</section></div>';
 }
 
 /* ---------- Merek ---------- */
@@ -3312,6 +3326,8 @@ document.addEventListener('click', async e => {
     case 'jgab': gabungJenis(); break;
     case 'uoff': { const alasan = clean(val('ualasan')); if (!alasan) { toast('Isi alasan menonaktifkan.'); break; } callEdit('nonaktifUnit', { kode: S.kode, alasan }, 'Unit dinonaktifkan.'); break; }
     case 'uon': callEdit('aktifkanUnit', { kode: S.kode }, 'Unit diaktifkan kembali.'); break;
+    case 'uhapus': { const u = U[S.kode]; if (!u) break; const jid = u.j; callEdit('hapusUnit', { kode: u.k }, 'Unit dihapus.', () => go('jenis', { jid })); break; }
+    case 'jhapus': { const jid = curJid(); if (!jid) break; callEdit('hapusJenis', { id: jid }, 'Jenis dihapus.', () => go('mesin', { root: true })); break; }
     case 'kpick': t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === t))); break;
     case 'mrekedit': {
       const m = merekList().find(x => x.name === t.dataset.m); if (!m) break;

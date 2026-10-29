@@ -187,7 +187,7 @@ function login_(req) {
 var BUTUH_NAMA = ['addUnit', 'editUnit', 'editJenis', 'nonaktifUnit', 'aktifkanUnit', 'renameMerek', 'gabungJenis',
   'addTempat', 'editTempat', 'nonaktifTempat', 'aktifTempat', 'setTempat', 'fotoSet', 'fotoHapus', 'panduanSimpan',
   'addMaterial', 'editMaterial', 'statusMaterial', 'imporUnit', 'imporRak', 'buatRak', 'saranTolak',
-  'skemaAddKolom', 'skemaEditKolom', 'skemaHapusKolom'];
+  'skemaAddKolom', 'skemaEditKolom', 'skemaHapusKolom', 'hapusUnit', 'hapusJenis'];
 function route_(req) {
   if (BUTUH_NAMA.indexOf(req.action) >= 0 && !clean_(req.oleh)) return { ok: false, error: 'Pilih nama Anda dulu.' };
   if (BUTUH_NAMA.indexOf(req.action) >= 0 && !PENGEDIT.some(function (n) { return same_(n, req.oleh); })) return { ok: false, error: 'Hanya Abidin, Vikar, dan La Ode Riyan Syaputra yang boleh mengubah data.' };
@@ -217,6 +217,8 @@ function route_(req) {
     case 'editJenis': return editJenis_(req);
     case 'nonaktifUnit': return statusUnit_(req, true);
     case 'aktifkanUnit': return statusUnit_(req, false);
+    case 'hapusUnit': return hapusUnit_(req);
+    case 'hapusJenis': return hapusJenis_(req);
     case 'renameMerek': return renameMerek_(req);
     case 'gabungJenis': return gabungJenis_(req);
     case 'arsipkan': return arsipkan_(req.tgl);
@@ -674,6 +676,18 @@ function statusUnit_(r, off) {
   log_(kode, off ? 'Nonaktifkan' : 'Aktifkan kembali', alasan, r.oleh);
   return { ok: true, kode: kode };
 }
+// Hapus permanen satu unit. Riwayat pengambilan/maintenance lama tetap di sheetnya masing-masing
+// (menunjuk ke kode yang sudah tidak ada), tapi baris Unit-nya sendiri dihapus.
+function hapusUnit_(r) {
+  var kode = clean_(r.kode), f = findRow_('Unit', kode);
+  if (!f) return { ok: true, missing: true };
+  var open = filled_('Pengambilan').filter(function (x) { return str_(x[3]) === kode && ts_(x[7]) === ''; });
+  if (open.length) return err_('Unit masih dibawa ' + str_(open[0][2]) + '. Kembalikan dulu.');
+  var jf = findRow_('Jenis', str_(f.row[1]));
+  sheet_('Unit').deleteRow(f.i + 2);
+  log_(kode, 'Hapus unit', (jf ? clean_(jf.row[2]) + ' · ' : '') + 'Unit ' + str_(f.row[2]), r.oleh);
+  return { ok: true };
+}
 
 // Ganti nama merek di semua jenis. Dipakai juga untuk menggabung dua merek (ganti ke nama merek yang sudah ada).
 function renameMerek_(r) {
@@ -705,6 +719,27 @@ function gabungJenis_(r) {
   sheet_('Jenis').getRange(a.i + 2, 6, 1, 1).setValues([['Digabung ke ' + idB]]);
   log_(idA, 'Gabung jenis', clean_(a.row[2]) + ' (' + idA + ') > ' + clean_(b.row[2]) + ' (' + idB + '), ' + moved + ' unit pindah', r.oleh);
   return { ok: true, moved: moved, ke: idB };
+}
+// Hapus semua baris di sheet 'name' yang cocok dengan match(row), dari bawah ke atas (indeks aman).
+function deleteMatching_(name, match) {
+  var sh = sheet_(name), rows = rows_(name), n = 0;
+  for (var i = rows.length - 1; i >= 0; i--) { if (rows[i][0] !== '' && match(rows[i])) { sh.deleteRow(i + 2); n++; } }
+  return n;
+}
+// Hapus permanen jenis. Ditolak kalau masih ada unit (apa pun kondisinya) supaya tidak menghapus
+// banyak unit sekaligus tanpa sadar. Panduan, Skema Maintenance, dan Foto jenis ini ikut dihapus.
+function hapusJenis_(r) {
+  var id = clean_(r.id), f = findRow_('Jenis', id);
+  if (!f || isMerged_(f.row)) return err_('Jenis tidak ditemukan.');
+  var n = filled_('Unit').filter(function (x) { return str_(x[1]) === id; }).length;
+  if (n > 0) return err_('Masih ada ' + n + ' unit. Hapus semua unit dulu.');
+  var nama = clean_(f.row[2]);
+  sheet_('Jenis').deleteRow(f.i + 2);
+  deleteMatching_('Panduan', function (x) { return str_(x[0]) === id; });
+  deleteMatching_('Skema Maintenance', function (x) { return str_(x[0]) === id; });
+  deleteMatching_('Foto', function (x) { return str_(x[0]) === id; });
+  log_(id, 'Hapus jenis', nama, r.oleh);
+  return { ok: true };
 }
 
 /* ---------- tempat penyimpanan (LOK-xxx, sub rak LOK-xxx-A) ---------- */
