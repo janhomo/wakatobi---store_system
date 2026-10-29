@@ -27,7 +27,7 @@ srv({ action: 'buatRak', dari: 1, sampai: 3 }); // LOK-001=Rak 001, LOK-002=Rak 
 const u1 = srv({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 'Bor', b: 'Bosch', m: 'GBH 2-28' }, f: { sl: 'Normal' } });
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox'] });
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] });
   const ctx = await browser.newContext({ viewport: { width: 400, height: 860 } });
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
@@ -72,6 +72,16 @@ const u1 = srv({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 'Bor', b: 'Bosc
   // ===== balik ke Rak 001, sub rak kini muncul sebagai kartu
   await page.click('[data-action="opentempat"]'); await page.waitForSelector('.jlist');
   check('Rak 001 now lists Tingkat 1 as a sub rak card', (await txt(page, '#app')).includes('Tingkat 1'));
+
+  // ===== scan QR sub rak harus muncul isinya (bug lama: isLok di frontend tidak kenal kode sub rak)
+  check('mesin yang dipindah ke sub rak: tempatnya terbaca benar (bukan "Belum punya tempat")', await page.evaluate(k => placeText(U[k]), u1.kode) === 'Tingkat 1');
+  await page.evaluate(() => openScan({ mode: 'ambil' }));
+  await page.evaluate(() => onCode('LOK-001-K'));
+  await page.waitForSelector('[data-action="rakambil"]');
+  check('scan QR sub rak membuka popup isi rak (bukan error "bukan mesin gudang")', (await txt(page, '#sheet')).includes('Tingkat 1'));
+  check('popup sub rak menampilkan mesin di dalamnya', await page.isVisible('[data-action="rakambil"][data-k="' + u1.kode + '"]'));
+  await page.evaluate(() => closeTop());
+  await page.waitForSelector('#scan', { state: 'hidden' });
 
   // ===== label QR sub rak benar-benar mencetak, bukan cuma link kosong
   await page.goto('http://localhost:8128/label.html?kode=LOK-001-K'); await page.waitForSelector('.lab');

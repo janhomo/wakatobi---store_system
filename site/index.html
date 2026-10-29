@@ -731,7 +731,7 @@ function patchUnit(kode, kondisi) {
 }
 
 /* ---------- tempat penyimpanan ---------- */
-const isLok = v => /^LOK-\d{3}$/.test(String(v || ''));
+const isLok = v => /^LOK-\d{3}(-[A-Z]+)?$/.test(String(v || '').toUpperCase());
 const placeOf = u => (u && isLok(u.loc) ? T[u.loc] : null);
 const hasPlace = u => !!placeOf(u);
 const placeName = u => { const t = placeOf(u); return t ? t.n : ''; };
