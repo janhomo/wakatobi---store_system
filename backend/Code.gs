@@ -31,7 +31,7 @@ var HEADERS = {
   'Kategori': ['Kategori', 'Awalan'],
   'Pengambilan': ['ID', 'Tanggal', 'Nama', 'Kode Aset', 'Mesin', 'Model', 'Jam Ambil', 'Jam Kembali', 'Kondisi Kembali', 'Catatan', 'Departemen'],
   'Arsip': ['ID', 'Tanggal', 'Nama', 'Kode Aset', 'Mesin', 'Model', 'Jam Ambil', 'Jam Kembali', 'Kondisi Kembali', 'Catatan', 'Departemen', 'Diarsipkan'],
-  'Maintenance': ['ID', 'Kode Aset', 'Tanggal', 'Jenis', 'Dikerjakan Oleh', 'Catatan', 'Jadwal Berikutnya', 'Dicatat'],
+  'Maintenance': ['ID', 'Kode Aset', 'Tanggal', 'Jenis', 'Dikerjakan Oleh', 'Catatan', 'Jadwal Berikutnya', 'Dicatat', 'Data Tambahan', 'Lampiran'],
   'Pekerja': ['Nama', 'Departemen'],
   'Log Perubahan': ['Waktu', 'Kode Aset', 'Aksi', 'Detail', 'Oleh'],
   'Pengaturan': ['Kunci', 'Nilai'],
@@ -39,20 +39,22 @@ var HEADERS = {
   'Tempat': ['ID Tempat', 'Nama', 'Lokasi', 'Status', 'Induk'],
   'Panduan': ['ID Jenis', 'Versi', 'Peringatan', 'Alat dan Bahan', 'Langkah', 'Interval (bulan)', 'Tautan Manual', 'Oleh', 'Waktu'],
   'Material': ['ID Material', 'Nama', 'Kategori', 'Merek', 'Satuan', 'Stok', 'Batas Menipis', 'Tempat', 'Status'],
-  'Stok Log': ['ID', 'Waktu', 'ID Material', 'Jenis', 'Jumlah', 'Stok Sesudah', 'Oleh', 'Catatan']
+  'Stok Log': ['ID', 'Waktu', 'ID Material', 'Jenis', 'Jumlah', 'Stok Sesudah', 'Oleh', 'Catatan'],
+  'Skema Maintenance': ['ID Jenis', 'ID Kolom', 'Label', 'Tipe', 'Status', 'Oleh', 'Waktu']
 };
 var TEXT_COLS = {
   'Unit': ['E:F', 'G:H', 'I:I', 'L:L'],
   'Pengambilan': ['B:B', 'G:H'],
   'Arsip': ['B:B', 'G:H', 'L:L'],
-  'Maintenance': ['C:C', 'G:H'],
+  'Maintenance': ['C:C', 'G:H', 'I:J'],
   'Log Perubahan': ['A:A'],
   'Pengaturan': ['B:B'],
   'Foto': ['C:C'],
   'Panduan': ['C:E', 'G:G', 'I:I'],
   'Tempat': ['B:C', 'E:E'],
   'Material': ['B:E'],
-  'Stok Log': ['B:B', 'G:H']
+  'Stok Log': ['B:B', 'G:H'],
+  'Skema Maintenance': ['A:G']
 };
 var KATEGORI_AWAL = [
   ['Bor/Breker', 'BOR'], ['Gurinda/Mesin Potong', 'GRD'], ['Mesin Amplas', 'AMP'], ['Mesin Karpenter', 'KRP'],
@@ -184,14 +186,15 @@ function login_(req) {
 
 var BUTUH_NAMA = ['addUnit', 'editUnit', 'editJenis', 'nonaktifUnit', 'aktifkanUnit', 'renameMerek', 'gabungJenis',
   'addTempat', 'editTempat', 'nonaktifTempat', 'aktifTempat', 'setTempat', 'fotoSet', 'fotoHapus', 'panduanSimpan',
-  'addMaterial', 'editMaterial', 'statusMaterial', 'imporUnit', 'imporRak', 'buatRak', 'saranTolak'];
+  'addMaterial', 'editMaterial', 'statusMaterial', 'imporUnit', 'imporRak', 'buatRak', 'saranTolak',
+  'skemaAddKolom', 'skemaEditKolom', 'skemaHapusKolom'];
 function route_(req) {
   if (BUTUH_NAMA.indexOf(req.action) >= 0 && !clean_(req.oleh)) return { ok: false, error: 'Pilih nama Anda dulu.' };
   if (BUTUH_NAMA.indexOf(req.action) >= 0 && !PENGEDIT.some(function (n) { return same_(n, req.oleh); })) return { ok: false, error: 'Hanya Abidin, Vikar, dan La Ode Riyan Syaputra yang boleh mengubah data.' };
   switch (req.action) {
     case 'bootstrap':
       return { ok: true, jenis: listJenis_(), unit: listUnit_(), kategori: listKategori_(), pekerja: listPekerja_(), maintenance: listMaintenance_(),
-               tempat: listTempat_(), material: listMaterial_(),
+               tempat: listTempat_(), material: listMaterial_(), skema: skemaAll_(),
                pengambilan: listPengambilan_(req.tgl), belum: listBelum_(), cfg: { jamPulang: getSetting_('JAM PULANG') || '17:00', saranTolak: getSetting_('SARAN DITOLAK') || '', pengedit: PENGEDIT }, serverDate: today_() };
     case 'pengambilan': return { ok: true, pengambilan: listPengambilan_(req.tgl) };
     case 'ringkasan': return { ok: true, ringkasan: ringkasan_() };
@@ -204,6 +207,10 @@ function route_(req) {
     case 'cancelPengambilan': return deleteById_('Pengambilan', req.id);
     case 'addMaintenance': return addMaintenance_(req);
     case 'deleteMaintenance': return deleteById_('Maintenance', req.id);
+    case 'skemaList': return { ok: true, skema: skemaList_(clean_(req.id)) };
+    case 'skemaAddKolom': return addSkemaKolom_(req);
+    case 'skemaEditKolom': return editSkemaKolom_(req);
+    case 'skemaHapusKolom': return hapusSkemaKolom_(req);
     case 'savePekerja': return savePekerja_(req.pekerja);
     case 'addUnit': return addUnit_(req);
     case 'editUnit': return editUnit_(req);
@@ -297,10 +304,81 @@ function listKategori_() { return filled_('Kategori').map(function (r) { return 
 function listPekerja_() {
   return rows_('Pekerja').map(function (r) { return { n: clean_(r[0]), d: clean_(r[1]) }; }).filter(function (p) { return p.n; });
 }
+function parseData_(s) {
+  s = str_(s).trim();
+  if (!s) return {};
+  try { var o = JSON.parse(s); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; }
+}
 function listMaintenance_() {
   return filled_('Maintenance').map(function (r) {
-    return { id: str_(r[0]), k: str_(r[1]), tgl: ds_(r[2]), jenis: str_(r[3]), oleh: str_(r[4]), cat: str_(r[5]), next: ds_(r[6]), ts: ts_(r[7]) };
+    return { id: str_(r[0]), k: str_(r[1]), tgl: ds_(r[2]), jenis: str_(r[3]), oleh: str_(r[4]), cat: str_(r[5]), next: ds_(r[6]), ts: ts_(r[7]), data: parseData_(r[8]), lampiran: str_(r[9]) };
   });
+}
+// Kolom tambahan khusus per jenis mesin untuk mengisi riwayat maintenance.
+function skemaList_(jid) {
+  return filled_('Skema Maintenance').filter(function (r) { return str_(r[0]) === jid && str_(r[4]) !== 'nonaktif'; })
+    .map(function (r) { return { id: str_(r[1]), label: clean_(r[2]), tipe: clean_(r[3]) }; });
+}
+function skemaAll_() {
+  var map = {};
+  filled_('Skema Maintenance').forEach(function (r) {
+    if (str_(r[4]) === 'nonaktif') return;
+    var jid = str_(r[0]);
+    (map[jid] = map[jid] || []).push({ id: str_(r[1]), label: clean_(r[2]), tipe: clean_(r[3]) });
+  });
+  return map;
+}
+var SKEMA_TIPE_ = ['teks', 'angka', 'tanggal', 'centang'];
+function findSkema_(jid, kid) {
+  var rows = rows_('Skema Maintenance');
+  for (var i = 0; i < rows.length; i++) if (str_(rows[i][0]) === jid && str_(rows[i][1]) === kid) return { i: i, row: rows[i] };
+  return null;
+}
+function maxSkemaId_(jid) {
+  var m = 0;
+  rows_('Skema Maintenance').forEach(function (r) {
+    if (str_(r[0]) !== jid) return;
+    var x = /^k(\d+)$/.exec(str_(r[1])); if (x) m = Math.max(m, Number(x[1]));
+  });
+  return m;
+}
+function addSkemaKolom_(r) {
+  var jid = clean_(r.jenisId), label = clean_(r.label), tipe = clean_(r.tipe);
+  if (!findRow_('Jenis', jid)) return err_('Jenis mesin tidak ditemukan.');
+  if (!label || label.length > 40) return err_('Nama kolom wajib diisi, maksimal 40 huruf.');
+  if (SKEMA_TIPE_.indexOf(tipe) < 0) return err_('Tipe kolom tidak dikenal.');
+  var dup = filled_('Skema Maintenance').some(function (x) { return str_(x[0]) === jid && str_(x[4]) !== 'nonaktif' && same_(x[2], label); });
+  if (dup) return err_('Kolom ini sudah ada.');
+  var aktif = filled_('Skema Maintenance').filter(function (x) { return str_(x[0]) === jid && str_(x[4]) !== 'nonaktif'; }).length;
+  if (aktif >= 20) return err_('Maksimal 20 kolom per jenis mesin.');
+  var id = 'k' + (maxSkemaId_(jid) + 1);
+  sheet_('Skema Maintenance').appendRow([jid, id, label, tipe, '', clean_(r.oleh), stamp_()]);
+  log_(jid, 'Tambah kolom maintenance', label + ' (' + tipe + ')', r.oleh);
+  return { ok: true, id: id };
+}
+function editSkemaKolom_(r) {
+  var jid = clean_(r.jenisId), kid = clean_(r.kolomId), label = clean_(r.label), tipe = clean_(r.tipe);
+  var f = findSkema_(jid, kid);
+  if (!f || str_(f.row[4]) === 'nonaktif') return err_('Kolom tidak ditemukan.');
+  if (!label || label.length > 40) return err_('Nama kolom wajib diisi, maksimal 40 huruf.');
+  if (SKEMA_TIPE_.indexOf(tipe) < 0) return err_('Tipe kolom tidak dikenal.');
+  var dup = filled_('Skema Maintenance').some(function (x) { return str_(x[0]) === jid && str_(x[1]) !== kid && str_(x[4]) !== 'nonaktif' && same_(x[2], label); });
+  if (dup) return err_('Kolom ini sudah ada.');
+  var diffs = [];
+  if (label !== clean_(f.row[2])) diffs.push('Nama: ' + clean_(f.row[2]) + ' > ' + label);
+  if (tipe !== clean_(f.row[3])) diffs.push('Tipe: ' + clean_(f.row[3]) + ' > ' + tipe);
+  if (!diffs.length) return { ok: true, changed: 0 };
+  sheet_('Skema Maintenance').getRange(f.i + 2, 3, 1, 2).setValues([[label, tipe]]);
+  log_(jid, 'Ubah kolom maintenance', diffs.join('; '), r.oleh);
+  return { ok: true, changed: diffs.length };
+}
+function hapusSkemaKolom_(r) {
+  var jid = clean_(r.jenisId), kid = clean_(r.kolomId);
+  var f = findSkema_(jid, kid);
+  if (!f || str_(f.row[4]) === 'nonaktif') return { ok: true, missing: true };
+  sheet_('Skema Maintenance').getRange(f.i + 2, 5, 1, 1).setValues([['nonaktif']]);
+  log_(jid, 'Hapus kolom maintenance', clean_(f.row[2]), r.oleh);
+  return { ok: true };
 }
 function listPengambilan_(tgl) {
   tgl = tgl || today_();
@@ -378,7 +456,10 @@ function addMaintenance_(r) {
   if (!id || !kode || !/^\d{4}-\d{2}-\d{2}$/.test(tgl)) return err_('data maintenance tidak lengkap');
   if (next && !/^\d{4}-\d{2}-\d{2}$/.test(next)) return err_('tanggal berikutnya tidak valid');
   if (findRow_('Maintenance', id)) return { ok: true, duplicate: true };
-  sheet_('Maintenance').appendRow([id, kode, tgl, clean_(r.jenis), clean_(r.oleh), str_(r.cat).trim(), next, stamp_()]);
+  var data = (r.data && typeof r.data === 'object') ? r.data : {};
+  var lampiran = clean_(r.lampiran);
+  if (lampiran.length > 500) return err_('Link lampiran terlalu panjang.');
+  sheet_('Maintenance').appendRow([id, kode, tgl, clean_(r.jenis), clean_(r.oleh), str_(r.cat).trim(), next, stamp_(), JSON.stringify(data), lampiran]);
   return { ok: true };
 }
 function deleteById_(name, id) {
