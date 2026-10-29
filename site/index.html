@@ -246,6 +246,10 @@ details summary{cursor:pointer; min-height:44px; display:flex; align-items:cente
 #scan .mode{display:flex; gap:0; border:1.5px solid #fff8; border-radius:22px; overflow:hidden}
 #scan .mode button{border:0; border-radius:0; background:#0008}
 #scan .mode button[aria-selected="true"]{background:#fff; color:#000}
+#scan .qrtypebar{position:relative; z-index:2; display:flex; justify-content:center; padding:0 12px 10px}
+#scan .qrtype{display:flex; gap:0; border:1.5px solid #fff8; border-radius:22px; overflow:hidden}
+#scan .qrtype button{border:0; border-radius:0; background:#0008; min-height:38px; padding:5px 14px; color:#fff; font-weight:600; font-size:13px}
+#scan .qrtype button[aria-selected="true"]{background:#fff; color:#000}
 #scan .mid{position:relative; z-index:2; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:34px; gap:14px; min-height:0}
 #scan .frame{width:min(46vw,200px); aspect-ratio:1; border:4px solid #fffc; border-radius:18px; box-shadow:0 0 0 100vmax #0004; transition:border-color .15s}
 #scan .frame.ok{border-color:#3DDC84}
@@ -566,6 +570,12 @@ body.pinned .top .in:has(+ .prog){max-width:none}
       <button data-action="scanmode" data-mode="lihat" aria-selected="false">Lihat</button>
     </div>
     <button data-action="torch" id="torchBtn" hidden>Lampu</button>
+  </div>
+  <div class="qrtypebar">
+    <div class="qrtype" role="tablist" aria-label="Jenis QR">
+      <button data-action="scanqrtype" data-type="mesin" aria-selected="true">QR mesin</button>
+      <button data-action="scanqrtype" data-type="rak" aria-selected="false">QR rak</button>
+    </div>
   </div>
   <div class="mid"><div class="frame" id="frame"></div><p class="hint" id="hint"></p></div>
   <section class="sheet" id="sheet" aria-label="Daftar scan"></section>
@@ -1054,6 +1064,9 @@ const DICT_EN = {
   'Terlambat': 'Late', 'Dipakai': 'In use', 'Menipis': 'Low', 'Hampir habis': 'Almost empty',
   'Mesin baru': 'New machine', 'Tempat baru': 'New place', 'Material baru': 'New material',
   'Ambil': 'Take', 'Kembalikan': 'Return', 'Scan lagi': 'Scan again', 'Buka semua': 'Open all',
+  'QR mesin': 'Machine QR', 'QR rak': 'Rack QR',
+  'Itu bukan QR rak. Pindahkan switch ke QR mesin.': 'That is not a rack QR. Switch to Machine QR.',
+  'Itu QR rak. Pindahkan switch ke QR rak.': 'That is a rack QR. Switch to Rack QR.',
   'Tambah mesin': 'Add machine', 'Ubah': 'Edit', 'Ubah mesin': 'Edit machine',
   'Ubah jenis': 'Edit type', 'Ubah unit': 'Edit unit', 'Ubah material': 'Edit material',
   'Ubah tempat': 'Edit place', 'Ubah panduan': 'Edit guide', 'Cetak ringkasan': 'Print summary',
@@ -2950,7 +2963,7 @@ async function scanLoop() {
 async function openScan(o = {}) {
   if (S.scan) return;
   try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume && audioCtx.resume(); } catch (e) {}
-  S.scan = { mode: o.mode || 'ambil', basket: [], done: null, paused: false, fb: null };
+  S.scan = { mode: o.mode || 'ambil', basket: [], done: null, paused: false, fb: null, qrType: 'mesin' };
   $('#scan').hidden = false; pushOv('scan');
   (o.preset || []).forEach(k => addToBasket(k));
   if (S.scan.basket.length) S.scan.paused = true;
@@ -2978,11 +2991,14 @@ function onCode(text) {
     if (f && !f.sel.includes(code)) f.sel.push(code);
     beep(true); setFb({ type: 'ok', text: code + ' dipilih. ' + (f ? f.sel.length : 0) + ' mesin terpilih.' }); return;
   }
+  const mat = /^MAT-\d{3}$/.test(code);
+  if (sc.qrType === 'rak' && !isLok(code) && !mat) { setFb({ type: 'bad', text: 'Itu bukan QR rak. Pindahkan switch ke QR mesin.' }); beep(false); return; }
+  if (sc.qrType === 'mesin' && isLok(code)) { setFb({ type: 'bad', text: 'Itu QR rak. Pindahkan switch ke QR rak.' }); beep(false); return; }
   if (isLok(code)) {
     if (!T[code]) { setFb({ type: 'bad', text: code + ' tidak ada di daftar tempat.' }); beep(false); return; }
     beep(true); sc.place = code; sc.paused = true; sc.fb = null; renderScan(); return;
   }
-  if (/^MAT-\d{3}$/.test(code)) {
+  if (mat) {
     if (!M[code]) { setFb({ type: 'bad', text: code + ' tidak ada di daftar material.' }); beep(false); return; }
     beep(true); openStok(code, 'Keluar'); return;
   }
@@ -3041,10 +3057,12 @@ function bitemHtml(b, i) {
 function renderScan() {
   const sc = S.scan; if (!sc) return;
   document.querySelectorAll('#scan .mode button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === sc.mode)));
+  document.querySelectorAll('#scan .qrtype button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.type === sc.qrType)));
   $('#frame').className = 'frame' + (sc.fb && sc.fb.type !== 'info' ? ' ' + sc.fb.type : '');
-  $('#hint').textContent = sc.place ? '' : sc.mode === 'tambah' ? 'Arahkan kamera ke QR mesin.' : sc.done ? '' : sc.paused ? 'Daftar siap. Tekan Tambah mesin untuk scan lagi.' : sc.mode === 'lihat' ? 'Arahkan kamera ke QR. Detail mesin akan terbuka.' : 'Arahkan kamera ke QR mesin.';
+  $('#hint').textContent = sc.place ? '' : sc.mode === 'tambah' ? 'Arahkan kamera ke QR mesin.' : sc.done ? '' : sc.paused ? 'Daftar siap. Tekan Tambah mesin untuk scan lagi.' : sc.mode === 'lihat' ? 'Arahkan kamera ke QR. Detail mesin akan terbuka.' : sc.qrType === 'rak' ? 'Arahkan kamera ke QR rak.' : 'Arahkan kamera ke QR mesin.';
   const sh = $('#sheet');
-  $('#scan .mode').hidden = sc.mode === 'tambah';
+  $('#scan .mode').hidden = sc.mode === 'tambah' || sc.qrType === 'rak';
+  $('#scan .qrtypebar').hidden = sc.mode === 'tambah';
   if (sc.place) { sh.innerHTML = placePopup(sc.place); return; }
   if (sc.mode === 'tambah') {
     const n = S.form ? S.form.sel.length : 0;
@@ -3077,6 +3095,10 @@ function renderScan() {
 function scanSetMode(m) {
   const sc = S.scan; if (!sc || sc.mode === m) return;
   sc.mode = m; sc.basket = []; sc.done = null; sc.paused = false; sc.fb = null; renderScan();
+}
+function scanSetQrType(ty) {
+  const sc = S.scan; if (!sc || sc.qrType === ty) return;
+  sc.qrType = ty; sc.fb = null; renderScan();
 }
 function scanYes() {
   const sc = S.scan; if (!sc || !sc.basket.length) return;
@@ -3456,6 +3478,7 @@ document.addEventListener('click', async e => {
     case 'scan': openScan({ mode: 'ambil' }); break;
     case 'scanclose': closeTop(); break;
     case 'scanmode': scanSetMode(t.dataset.mode); break;
+    case 'scanqrtype': scanSetQrType(t.dataset.type); break;
     case 'scanmore': if (S.scan) { S.scan.paused = false; S.scan.fb = null; lastCode = ''; renderScan(); if (!stream) startCamera(); } break;
     case 'bremove': if (S.scan) { S.scan.basket = S.scan.basket.filter(b => b.kode !== t.dataset.k); if (!S.scan.basket.length) S.scan.paused = false; renderScan(); } break;
     case 'bkond': { const b = S.scan && S.scan.basket.find(x => x.kode === t.dataset.k); if (b) { b.kondisi = t.dataset.v; renderScan(); } break; }

@@ -76,6 +76,7 @@ const u1 = srv({ action: 'addUnit', jenis: { c: 'Bor/Breker', n: 'Bor', b: 'Bosc
   // ===== scan QR sub rak harus muncul isinya (bug lama: isLok di frontend tidak kenal kode sub rak)
   check('mesin yang dipindah ke sub rak: tempatnya terbaca benar (bukan "Belum punya tempat")', await page.evaluate(k => placeText(U[k]), u1.kode) === 'Tingkat 1');
   await page.evaluate(() => openScan({ mode: 'ambil' }));
+  await page.evaluate(() => scanSetQrType('rak'));
   await page.evaluate(() => onCode('LOK-001-K'));
   await page.waitForSelector('[data-action="rakambil"]');
   check('scan QR sub rak membuka popup isi rak (bukan error "bukan mesin gudang")', (await txt(page, '#sheet')).includes('Tingkat 1'));

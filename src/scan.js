@@ -65,7 +65,7 @@ async function scanLoop() {
 async function openScan(o = {}) {
   if (S.scan) return;
   try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume && audioCtx.resume(); } catch (e) {}
-  S.scan = { mode: o.mode || 'ambil', basket: [], done: null, paused: false, fb: null };
+  S.scan = { mode: o.mode || 'ambil', basket: [], done: null, paused: false, fb: null, qrType: 'mesin' };
   $('#scan').hidden = false; pushOv('scan');
   (o.preset || []).forEach(k => addToBasket(k));
   if (S.scan.basket.length) S.scan.paused = true;
@@ -93,11 +93,14 @@ function onCode(text) {
     if (f && !f.sel.includes(code)) f.sel.push(code);
     beep(true); setFb({ type: 'ok', text: code + ' dipilih. ' + (f ? f.sel.length : 0) + ' mesin terpilih.' }); return;
   }
+  const mat = /^MAT-\d{3}$/.test(code);
+  if (sc.qrType === 'rak' && !isLok(code) && !mat) { setFb({ type: 'bad', text: 'Itu bukan QR rak. Pindahkan switch ke QR mesin.' }); beep(false); return; }
+  if (sc.qrType === 'mesin' && isLok(code)) { setFb({ type: 'bad', text: 'Itu QR rak. Pindahkan switch ke QR rak.' }); beep(false); return; }
   if (isLok(code)) {
     if (!T[code]) { setFb({ type: 'bad', text: code + ' tidak ada di daftar tempat.' }); beep(false); return; }
     beep(true); sc.place = code; sc.paused = true; sc.fb = null; renderScan(); return;
   }
-  if (/^MAT-\d{3}$/.test(code)) {
+  if (mat) {
     if (!M[code]) { setFb({ type: 'bad', text: code + ' tidak ada di daftar material.' }); beep(false); return; }
     beep(true); openStok(code, 'Keluar'); return;
   }
@@ -156,10 +159,12 @@ function bitemHtml(b, i) {
 function renderScan() {
   const sc = S.scan; if (!sc) return;
   document.querySelectorAll('#scan .mode button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === sc.mode)));
+  document.querySelectorAll('#scan .qrtype button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.type === sc.qrType)));
   $('#frame').className = 'frame' + (sc.fb && sc.fb.type !== 'info' ? ' ' + sc.fb.type : '');
-  $('#hint').textContent = sc.place ? '' : sc.mode === 'tambah' ? 'Arahkan kamera ke QR mesin.' : sc.done ? '' : sc.paused ? 'Daftar siap. Tekan Tambah mesin untuk scan lagi.' : sc.mode === 'lihat' ? 'Arahkan kamera ke QR. Detail mesin akan terbuka.' : 'Arahkan kamera ke QR mesin.';
+  $('#hint').textContent = sc.place ? '' : sc.mode === 'tambah' ? 'Arahkan kamera ke QR mesin.' : sc.done ? '' : sc.paused ? 'Daftar siap. Tekan Tambah mesin untuk scan lagi.' : sc.mode === 'lihat' ? 'Arahkan kamera ke QR. Detail mesin akan terbuka.' : sc.qrType === 'rak' ? 'Arahkan kamera ke QR rak.' : 'Arahkan kamera ke QR mesin.';
   const sh = $('#sheet');
-  $('#scan .mode').hidden = sc.mode === 'tambah';
+  $('#scan .mode').hidden = sc.mode === 'tambah' || sc.qrType === 'rak';
+  $('#scan .qrtypebar').hidden = sc.mode === 'tambah';
   if (sc.place) { sh.innerHTML = placePopup(sc.place); return; }
   if (sc.mode === 'tambah') {
     const n = S.form ? S.form.sel.length : 0;
@@ -192,6 +197,10 @@ function renderScan() {
 function scanSetMode(m) {
   const sc = S.scan; if (!sc || sc.mode === m) return;
   sc.mode = m; sc.basket = []; sc.done = null; sc.paused = false; sc.fb = null; renderScan();
+}
+function scanSetQrType(ty) {
+  const sc = S.scan; if (!sc || sc.qrType === ty) return;
+  sc.qrType = ty; sc.fb = null; renderScan();
 }
 function scanYes() {
   const sc = S.scan; if (!sc || !sc.basket.length) return;

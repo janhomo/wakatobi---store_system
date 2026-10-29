@@ -233,6 +233,10 @@ details summary{cursor:pointer; min-height:44px; display:flex; align-items:cente
 #scan .mode{display:flex; gap:0; border:1.5px solid #fff8; border-radius:22px; overflow:hidden}
 #scan .mode button{border:0; border-radius:0; background:#0008}
 #scan .mode button[aria-selected="true"]{background:#fff; color:#000}
+#scan .qrtypebar{position:relative; z-index:2; display:flex; justify-content:center; padding:0 12px 10px}
+#scan .qrtype{display:flex; gap:0; border:1.5px solid #fff8; border-radius:22px; overflow:hidden}
+#scan .qrtype button{border:0; border-radius:0; background:#0008; min-height:38px; padding:5px 14px; color:#fff; font-weight:600; font-size:13px}
+#scan .qrtype button[aria-selected="true"]{background:#fff; color:#000}
 #scan .mid{position:relative; z-index:2; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:34px; gap:14px; min-height:0}
 #scan .frame{width:min(46vw,200px); aspect-ratio:1; border:4px solid #fffc; border-radius:18px; box-shadow:0 0 0 100vmax #0004; transition:border-color .15s}
 #scan .frame.ok{border-color:#3DDC84}

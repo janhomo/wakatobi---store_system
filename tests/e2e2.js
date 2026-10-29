@@ -175,6 +175,7 @@ const jenisId = bor.jenisId;
   // ===== SCAN tempat / material / pilih mesin
   await page.goto('http://localhost:8125/'); await page.waitForSelector('#jlist .jcard');
   await page.click('[data-action="menu"]'); await page.click('#drawer [data-action="dscan"]'); await page.waitForSelector('#scan:not([hidden])');
+  await page.evaluate(() => scanSetQrType('rak'));
   await page.evaluate(() => onCode('LOK-002')); await page.waitForSelector('[data-action="placeopen"]');
   const pp = await txt(page, '#sheet');
   check('scan LOK popup: place, machines, material', pp.includes('Rak 1') && pp.includes('BOR-001') && pp.includes('Kabel NYM'), pp);

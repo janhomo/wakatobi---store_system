@@ -54,9 +54,20 @@ srv({ action: 'setTempat', tempat: 'LOK-001', kodes: [u1.kode, u2.kode] }); // k
   check('dasbor mentions baca saja', dasborTxt.includes('baca saja') || dasborTxt.includes('Baca saja'));
   await page.screenshot({ path: OUT + '/v5_dasbor.png' });
 
-  // ===== scan rak -> Ambil langsung (tanpa scan ulang ke mesin)
+  // ===== switch QR mesin/QR rak: default mesin, tolak kalau salah jenis, lalu baru pindah ke rak
   await page.evaluate(() => { openScan({ mode: 'ambil' }); });
   await page.waitForSelector('#scan:not([hidden])');
+  check('switch default: QR mesin terpilih', await page.evaluate(() => S.scan.qrType) === 'mesin');
+  check('tab Ambil/Kembali/Lihat masih tampil di mode QR mesin', await page.isVisible('#scan .mode'));
+  await page.evaluate(() => onCode('LOK-001'));
+  check('scan rak selagi switch QR mesin: ditolak', (await txt(page, '#sheet')).includes('Pindahkan switch ke QR rak'));
+  await page.click('[data-action="scanqrtype"][data-type="rak"]');
+  check('switch pindah ke QR rak', await page.evaluate(() => S.scan.qrType) === 'rak');
+  check('tab Ambil/Kembali/Lihat disembunyikan di mode QR rak', !(await page.isVisible('#scan .mode')));
+  await page.evaluate(() => onCode('BOR-001'));
+  check('scan mesin selagi switch QR rak: ditolak', (await txt(page, '#sheet')).includes('Pindahkan switch ke QR mesin'));
+
+  // ===== scan rak -> Ambil langsung (tanpa scan ulang ke mesin)
   await page.evaluate(() => onCode('LOK-001'));
   await page.waitForSelector('[data-action="rakambil"]');
   check('rack popup shows Ambil button per unit', (await page.locator('[data-action="rakambil"]').count()) === 2);

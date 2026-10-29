@@ -250,6 +250,7 @@ document.addEventListener('click', async e => {
     case 'scan': openScan({ mode: 'ambil' }); break;
     case 'scanclose': closeTop(); break;
     case 'scanmode': scanSetMode(t.dataset.mode); break;
+    case 'scanqrtype': scanSetQrType(t.dataset.type); break;
     case 'scanmore': if (S.scan) { S.scan.paused = false; S.scan.fb = null; lastCode = ''; renderScan(); if (!stream) startCamera(); } break;
     case 'bremove': if (S.scan) { S.scan.basket = S.scan.basket.filter(b => b.kode !== t.dataset.k); if (!S.scan.basket.length) S.scan.paused = false; renderScan(); } break;
     case 'bkond': { const b = S.scan && S.scan.basket.find(x => x.kode === t.dataset.k); if (b) { b.kondisi = t.dataset.v; renderScan(); } break; }
