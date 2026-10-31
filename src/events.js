@@ -273,6 +273,7 @@ document.addEventListener('click', async e => {
     case 'rwback': S.rwDate = null; render(); loadRingkasan(); break;
     case 'print': printDay(); break;
     case 'export': exportXlsx(); break;
+    case 'exportmat': exportMaterialXlsx(); break;
     case 'arsip':
       try { const j = await api('arsipkan', { tgl: S.rwDate }); toast('Diarsipkan: ' + j.jumlah + ' catatan.'); S.rwDate = null; render(); loadRingkasan(); loadAll(true); }
       catch (err) { toast(err.message || (err.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal mengarsipkan.')); }

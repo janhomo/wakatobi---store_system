@@ -4,7 +4,25 @@ function matCats() { return [...new Set(S.material.filter(m => !m.off).map(m => 
 function viewMaterial() {
   if (!S.loaded && !S.material.length) return '<p class="empty">' + (S.loadError ? 'Data belum bisa dimuat. Cek sinyal lalu buka lagi.' : 'Memuat…') + '</p>';
   return '<input id="mq" class="field" type="search" placeholder="Cari material" value="' + esc(S.mqq || '') + '" autocomplete="off" aria-label="Cari material" style="margin-bottom:10px">' +
-    '<div class="fchips" id="mchips" role="group" aria-label="Kategori"></div><p class="stats" id="mstats"></p><div class="mlistw" id="mlist"></div><div id="moff"></div>';
+    '<div class="fchips" id="mchips" role="group" aria-label="Kategori"></div><p class="stats" id="mstats"></p>' +
+    '<button class="btn ghost small" style="margin-bottom:10px" data-action="exportmat">Unduh Excel</button>' +
+    '<div class="mlistw" id="mlist"></div><div id="moff"></div>';
+}
+// Excel material: daftar material (stok sekarang) + riwayat stok per material (dari Stok Log, 60 transaksi terakhir per material).
+async function exportMaterialXlsx() {
+  toast('Menyiapkan Excel…');
+  const mats = allMaterial();
+  const a1 = [['ID', 'Nama', 'Kategori', 'Merek', 'Satuan', 'Stok', 'Batas Menipis', 'Tempat', 'Dipinjam', 'Status']];
+  mats.forEach(m => a1.push([m.id, m.n, m.c || '', m.b || '', m.s, m.q, m.lo || 0, (m.loc && T[m.loc]) ? T[m.loc].n : (m.loc || ''), m.pj || 0, m.off ? 'Nonaktif' : '']));
+  const a2 = [['Waktu', 'ID Material', 'Nama Material', 'Jenis', 'Jumlah', 'Stok Sesudah', 'Oleh', 'Catatan']];
+  for (const m of mats) {
+    let log = [];
+    try { log = (await api('stokLog', { id: m.id })).log || []; } catch (e) { /* lewati kalau gagal */ }
+    log.slice().reverse().forEach(r => a2.push([String(r.t || '').replace('T', ' '), m.id, m.n, r.tipe, r.j, r.q, r.o, r.cat || '']));
+  }
+  const wb = XLSX.utils.book_new(), s1 = XLSX.utils.aoa_to_sheet(a1), s2 = XLSX.utils.aoa_to_sheet(a2);
+  XLSX.utils.book_append_sheet(wb, s1, 'Material'); XLSX.utils.book_append_sheet(wb, s2, 'Riwayat Stok (60 terakhir/material)');
+  XLSX.writeFile(wb, 'Material_' + today() + '.xlsx');
 }
 function matRow(m) {
   const t = isLok(m.loc) ? T[m.loc] : null;
