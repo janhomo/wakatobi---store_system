@@ -564,10 +564,10 @@ function liveRw() {
 function dayRows(d) { return entriesFor(d).sort((a, b) => byName(norm(a.nama), norm(b.nama)) || byTs(a, b)); }
 function printDay() {
   const rows = dayRows(S.rwDate);
-  const tr = rows.map((e, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(e.nama) + (e.dept || deptOf(e.nama) ? '<br><small>' + esc(e.dept || deptOf(e.nama)) + '</small>' : '') + '</td><td>' + esc(e.kode) + '</td><td>' + esc(e.mesin) + '</td><td>' + esc(fmtHM(e.ts)) + '</td><td class="ttd"></td><td>' + (e.kembali ? esc(fmtHM(e.kembali)) : '') + '</td><td>' + esc(e.kondisi || '') + '</td><td class="ttd"></td></tr>').join('');
+  const tr = rows.map((e, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(e.nama) + (e.dept || deptOf(e.nama) ? '<br><small>' + esc(e.dept || deptOf(e.nama)) + '</small>' : '') + '</td><td>' + esc(e.kode) + '</td><td>' + esc(e.mesin) + '</td><td>' + esc(fmtHM(e.ts)) + '</td><td>' + (e.kembali ? esc(fmtHM(e.kembali)) : '') + '</td><td>' + esc(e.kondisi || '') + '</td></tr>').join('');
   $('#printArea').innerHTML = '<h1>Catatan Pengambilan dan Pengembalian Mesin</h1><p>Construction site · ' + esc(fmtDate(S.rwDate)) + '</p>' +
-    '<table><thead><tr><th>No</th><th>Nama / Departemen</th><th>Kode</th><th>Mesin</th><th>Jam Ambil</th><th class="ttd">Paraf Pengambil</th><th>Jam Kembali</th><th>Kondisi</th><th class="ttd">Paraf Penjaga</th></tr></thead><tbody>' + tr + '</tbody></table>' +
-    '<div class="foot"><span>Dicetak: ' + esc(fmtDate(today())) + ' ' + esc(nowHM()) + '</span><span>Mengetahui: ______________________</span></div>';
+    '<table><thead><tr><th>No</th><th>Nama / Departemen</th><th>Kode</th><th>Mesin</th><th>Jam Ambil</th><th>Jam Kembali</th><th>Kondisi</th></tr></thead><tbody>' + tr + '</tbody></table>' +
+    '<div class="foot"><span>Mengetahui: ______________________</span></div>';
   setTimeout(() => window.print(), 50);
 }
 function exportXlsx() {
