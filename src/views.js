@@ -27,6 +27,8 @@ function hdrInfo() {
     case 'riwayat': return { root: 1, title: 'Riwayat', sub: S.rwDate ? fmtShort(S.rwDate) : 'Per tanggal' };
     case 'pekerja': return { root: 1, title: 'Pekerja', sub: S.pekerja.length + ' nama' };
     case 'log': return { root: 1, title: 'Log perubahan', sub: 'Siapa mengubah apa' };
+    case 'matriw': { const m = M[S.mrId]; return { title: m ? 'Riwayat ' + m.n : 'Riwayat Material', sub: S.mrBulan ? labelBulanId(S.mrBulan) : 'Per bulan' }; }
+    case 'sampah': return { root: 1, title: 'Sampah', sub: 'Pulihkan atau hapus permanen' };
     case 'merek': return { root: 1, title: 'Merek', sub: merekList().length + ' merek' };
   }
   return { title: 'QR Aset Gudang', sub: '' };
@@ -67,7 +69,7 @@ function renderDrawer() {
     it('hari', 'clock', 'Hari Ini', open ? '<span class="cnt">' + open + '</span>' : '') + it('riwayat', 'list', 'Riwayat per tanggal') +
     '<button class="it" data-action="dscan">' + ic('qr', 24) + '<span>Scan QR</span></button>' +
     '<div class="sec">Admin</div>' + it('saran', 'alert', 'Saran', saranList().length ? '<span class="cnt soft">' + saranList().length + '</span>' : '') + it('merek', 'tag', 'Merek') + it('pekerja', 'users', 'Pekerja') +
-    it('impor', 'upload', 'Impor Excel') + it('imporrak', 'box', 'Impor isi rak') + it('fotoimpor', 'cam', 'Impor foto massal') + it('log', 'doc', 'Log perubahan') +
+    it('impor', 'upload', 'Impor Excel') + it('imporrak', 'box', 'Impor isi rak') + it('fotoimpor', 'cam', 'Impor foto massal') + it('log', 'doc', 'Log perubahan') + it('sampah', 'trash', 'Sampah') +
     '<a class="it" href="label.html">' + ic('qr', 24) + '<span>Cetak label QR</span></a>' +
     '</nav><div class="foot">' +
     '<button class="it" data-action="dme">' + ic('user', 24) + '<span>Nama saya: ' + (S.me ? esc(S.me) : '<i>belum dipilih</i>') + '</span></button>' +
@@ -82,7 +84,7 @@ function openDrawer() { if (S.pinned || S.ov.includes('drawer')) return; renderD
 /* ---------- render ---------- */
 const VIEWS = () => ({ mesin: viewMesin, nama: viewNama, saran: viewSaran, jenis: viewJenis, profil: viewProfil, unit: viewUnit, jedit: viewJedit, skema: viewSkema, tambah: viewTambah, hari: viewHari, riwayat: viewRiwayat, pekerja: viewWorkers, log: viewLog, merek: viewMerek,
   tempatlist: viewTempatList, tempat: viewTempat, tambahtempat: viewTambahTempat, tempatform: viewTempatForm, material: viewMaterial, mat: viewMat, matform: viewMatForm, panduan: viewPanduanEdit, impor: viewImpor,
-  dasbor: viewDasbor, fotoimpor: viewFotoImpor, imporrak: viewImporRak });
+  dasbor: viewDasbor, fotoimpor: viewFotoImpor, imporrak: viewImporRak, matriw: viewMatRiwayat, sampah: viewSampah });
 function render() {
   const f = VIEWS()[S.view] || viewMesin;
   $('#app').innerHTML = f();
@@ -101,6 +103,8 @@ function renderLive() {
   else if (S.view === 'tambahtempat') renderTambahTempat();
   else if (S.view === 'mat') set('live-stoklog', liveStokLog());
   else if (S.view === 'log') set('live-log', liveLog());
+  else if (S.view === 'matriw') set('live-mriw', liveMatRiwayat());
+  else if (S.view === 'sampah') set('live-sampah', liveSampah());
 }
 /* dipanggil setelah data baru datang: form yang sedang diisi tidak boleh terhapus */
 function refresh() {
@@ -533,21 +537,47 @@ function liveHari() {
 
 /* ---------- Riwayat per tanggal ---------- */
 function viewRiwayat() {
-  if (!S.rwDate) return '<p class="stats">Pilih tanggal untuk melihat, mencetak, atau mengarsipkan catatan.</p><div id="live-rw"></div>';
-  return '<button class="btn ghost small" style="margin-bottom:8px" data-action="rwback">← Semua tanggal</button><div class="big">' + esc(fmtDate(S.rwDate)) + '</div><div id="live-rw"></div>';
+  if (!S.rwDate) return '<p class="stats">Dikelompokkan per bulan. Pilih tanggal untuk melihat, mencetak, atau mengarsipkan catatan.</p><div id="live-rw"></div>';
+  return '<button class="btn ghost small" style="margin-bottom:8px" data-action="rwback">← Semua tanggal</button><div class="big">' + esc(fmtDate(S.rwDate)) + (S.rwArsip ? ' <span class="pill unk">Arsip</span>' : '') + '</div><div id="live-rw"></div>';
 }
 async function loadRingkasan() {
   S.rw = { list: null, error: false }; renderLive();
-  try { S.rw.list = (await api('ringkasan')).ringkasan; } catch (e) { S.rw.list = []; S.rw.error = true; }
+  try { S.rw.list = (await api('riwayatBulan')).bulan; } catch (e) { S.rw.list = []; S.rw.error = true; }
   renderLive();
 }
+async function loadArsipHari() {
+  S.rwArsipData = { list: null, error: false }; renderLive();
+  try { S.rwArsipData.list = (await api('listArsipTgl', { tgl: S.rwDate })).pengambilan; } catch (e) { S.rwArsipData.list = []; S.rwArsipData.error = true; }
+  renderLive();
+}
+function curBulanStr() { return today().slice(0, 7); }
 function liveRw() {
   if (!S.rwDate) {
     if (S.rw.list === null) return '<p class="empty">Memuat…</p>';
     if (S.rw.error) return '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
     if (!S.rw.list.length) return '<p class="empty">Belum ada riwayat.</p>';
-    return '<div class="dategrid">' + S.rw.list.map(d => '<button class="daterow2" data-action="rwopen" data-tgl="' + esc(d.tgl) + '"><span><b>' + esc(fmtDate(d.tgl)) + '</b><br><small class="muted">' + d.jumlah + ' pengambilan</small></span>' +
-      (d.belum ? '<span class="pill late">' + d.belum + ' belum kembali</span>' : '<span class="pill ok">Lengkap</span>') + '</button>').join('') + '</div>';
+    const selN = Object.values(S.rwSel).filter(Boolean).length;
+    let h = S.rw.list.map(b => {
+      const open = !!S.rwOpenM[b.bulan];
+      const hariHtml = !open ? '' : '<div class="days">' + b.hari.map(d => {
+        const disabled = !d.arsip; // hanya yang sudah diarsipkan yang boleh dipindah ke Sampah
+        return '<div class="dayrow"><input type="checkbox" class="rwchk" data-tgl="' + esc(d.tgl) + '" aria-label="Pilih ' + esc(fmtShort(d.tgl)) + '"' + (disabled ? ' disabled' : '') + (S.rwSel[d.tgl] ? ' checked' : '') + '>' +
+          '<button class="nm" data-action="rwopen" data-tgl="' + esc(d.tgl) + '" data-arsip="' + (d.arsip ? 1 : 0) + '"><b>' + esc(fmtShort(d.tgl)) + '</b><small>' + d.jumlah + ' pengambilan' + (d.belum ? ' · ' + d.belum + ' belum kembali' : d.arsip ? ' · sudah diarsipkan' : ' · sudah kembali semua') + '</small></button></div>';
+      }).join('') + '</div>';
+      return '<div class="card"><button class="mhead" aria-expanded="' + open + '" data-action="rwbulan" data-b="' + esc(b.bulan) + '">' + esc(b.label) + ' <span class="cnt">' + b.hari.length + ' hari</span>' + ic('chev', 20) + '</button>' + hariHtml + '</div>';
+    }).join('');
+    h += '<div class="actionbar"><button class="btn" data-action="rwkesampah"' + (selN ? '' : ' disabled') + '>Pindahkan' + (selN ? ' ' + selN : '') + ' ke Sampah</button></div>';
+    return h;
+  }
+  if (S.rwArsip) {
+    if (!S.rwArsipData || S.rwArsipData.list === null) return '<p class="empty">Memuat…</p>';
+    if (S.rwArsipData.error) return '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
+    const list = S.rwArsipData.list, groups = groupBy(list);
+    if (!groups.length) return '<p class="empty">Tidak ada catatan pada tanggal ini.</p>';
+    return '<p class="stats">' + groups.length + ' pekerja · ' + list.length + ' pengambilan · sudah diarsipkan</p>' +
+      '<div style="margin-bottom:12px"><button class="btn" data-action="print">Cetak</button></div>' +
+      groups.map(g => '<section class="grp"><header><h3>' + esc(g.name) + (g.dept ? ' <small>' + esc(g.dept) + '</small>' : '') + '</h3><span class="muted">' + g.items.length + ' mesin</span></header><ul>' +
+        g.items.map(e => '<li>' + entryLines(e) + '</li>').join('') + '</ul></section>').join('');
   }
   if (S.pengDate !== S.rwDate) return '<p class="empty">Memuat…</p>';
   const list = entriesFor(S.rwDate), groups = groupBy(list), openN = list.filter(e => !e.kembali).length;
@@ -561,7 +591,7 @@ function liveRw() {
   else h += '<p class="muted" style="margin:0 0 10px;font-size:15px"><b>Arsipkan</b> memindahkan catatan tanggal ini ke sheet Arsip di Google Sheet. Datanya tetap tersimpan, hanya hilang dari daftar Riwayat.</p><button class="btn ghost block" data-action="arsip">Arsipkan tanggal ini</button>';
   return h + '</section>';
 }
-function dayRows(d) { return entriesFor(d).sort((a, b) => byName(norm(a.nama), norm(b.nama)) || byTs(a, b)); }
+function dayRows(d) { return (S.rwArsip ? (S.rwArsipData && S.rwArsipData.list || []) : entriesFor(d)).sort((a, b) => byName(norm(a.nama), norm(b.nama)) || byTs(a, b)); }
 function printDay() {
   const rows = dayRows(S.rwDate);
   const tr = rows.map((e, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(e.nama) + (e.dept || deptOf(e.nama) ? '<br><small>' + esc(e.dept || deptOf(e.nama)) + '</small>' : '') + '</td><td>' + esc(e.kode) + '</td><td>' + esc(e.mesin) + '</td><td>' + esc(fmtHM(e.ts)) + '</td><td>' + (e.kembali ? esc(fmtHM(e.kembali)) : '') + '</td><td>' + esc(e.kondisi || '') + '</td></tr>').join('');
@@ -630,6 +660,72 @@ function liveLog() {
   if (S.logs.error) return '<p class="empty">Log belum bisa dimuat. Cek sinyal.</p>';
   if (!S.logs.list.length) return '<p class="empty">Belum ada perubahan tercatat.</p>';
   return '<section class="card" style="padding:4px 16px">' + S.logs.list.map(r => '<div class="logrow"><b>' + esc(r.a) + '</b>' + (r.k ? ' · <span class="code">' + esc(r.k) + '</span>' : '') + '<br>' + esc(r.d) + '<div class="w">' + esc(r.o || '—') + ' · ' + esc(fmtDT(r.t)) + '</div></div>').join('') + '</section>';
+}
+
+/* ---------- Sampah: pulihkan atau hapus permanen. Manual semua, tidak ada batas waktu otomatis. ---------- */
+function viewSampah() { return '<p class="stats">Riwayat yang sudah dipindahkan dari Arsip/Stok Log/Log Perubahan. Pulihkan jika salah pindah, atau hapus permanen untuk membebaskan sel di Sheet.</p><div id="live-sampah"></div>'; }
+async function loadSampah() {
+  S.sampah = { list: null, error: false }; renderLive();
+  try { S.sampah.list = (await api('listSampah')).sampah; } catch (e) { S.sampah.list = []; S.sampah.error = true; }
+  renderLive();
+}
+function liveSampah() {
+  if (S.sampah.list === null) return '<p class="empty">Memuat…</p>';
+  if (S.sampah.error) return '<p class="empty">Sampah belum bisa dimuat. Cek sinyal.</p>';
+  if (!S.sampah.list.length) return '<p class="empty">Sampah kosong.</p>';
+  return '<section class="card" style="padding:0">' + S.sampah.list.map(r => {
+    const key = 'smp:' + r.id;
+    return '<div class="trashrow"><span class="nm"><b>' + esc(r.label) + '</b><small>' + r.jumlah + ' catatan · dipindahkan ' + esc(fmtDT(r.dipindahkan)) + (r.oleh ? ' oleh ' + esc(r.oleh) : '') + '</small></span>' +
+      '<span class="acts"><button class="icobtn" data-action="spulih" data-id="' + esc(r.id) + '" aria-label="Pulihkan ' + esc(r.label) + '">' + ic('undo', 20) + '</button>' +
+      '<button class="icobtn bad" data-action="shapus" data-id="' + esc(r.id) + '" aria-label="Hapus permanen ' + esc(r.label) + '">' + (S.confirmDel === key ? '<small><b>Yakin?</b></small>' : ic('trash', 20)) + '</button></span></div>';
+  }).join('') + '</section>';
+}
+function callSampah(action, payload, doneText, after) {
+  if (Busy.edit) { toast('Sedang menyimpan. Mohon tunggu.'); return; }
+  ensureMe(async () => {
+    Busy.edit = true; busyBegin(null, true);
+    let ok = false;
+    try {
+      const j = await api(action, { ...payload, oleh: S.me });
+      ok = true; toast(typeof doneText === 'function' ? doneText(j) : doneText);
+      after && after(j);
+    } catch (e) { failed(e); }
+    finally { Busy.edit = false; busyEnd(ok); }
+  });
+}
+function sampahPulihkan(id) { callSampah('pulihkanSampah', { id }, j => 'Dipulihkan: ' + (j.jumlah || 0) + ' catatan.', () => loadSampah()); }
+function sampahHapusMulai(id, label) {
+  if (S.sampahUndo) clearSampahUndo(true); // selesaikan dulu penghapusan sebelumnya yang masih menunggu
+  if (S.sampah.list) S.sampah.list = S.sampah.list.filter(r => r.id !== id); // sembunyikan selama jendela undo
+  renderLive();
+  S.sampahUndo = { id, label, remain: 10 };
+  renderUtoast();
+  S.sampahUndo.tick = setInterval(() => {
+    if (!S.sampahUndo) return;
+    S.sampahUndo.remain--;
+    if (S.sampahUndo.remain <= 0) { clearSampahUndo(true); return; }
+    renderUtoast();
+  }, 1000);
+}
+function renderUtoast() {
+  const u = S.sampahUndo, el = $('#utoast'); if (!el) return;
+  if (!u) { el.hidden = true; return; }
+  const R = 11, C = Math.round(2 * Math.PI * R * 100) / 100, off = Math.round(C * (1 - u.remain / 10) * 100) / 100;
+  el.hidden = false;
+  el.innerHTML = '<span class="ut-msg">Menghapus permanen: ' + esc(u.label) + '…</span>' +
+    '<button class="ut-undo" data-action="sundo"><svg class="ring" viewBox="0 0 28 28" aria-hidden="true"><circle class="bgc" cx="14" cy="14" r="' + R + '"/><circle class="fgc" cx="14" cy="14" r="' + R + '" stroke-dasharray="' + C + '" stroke-dashoffset="' + off + '"/></svg>URUNGKAN</button>';
+}
+function clearSampahUndo(commit) {
+  const u = S.sampahUndo; if (!u) return;
+  clearInterval(u.tick); S.sampahUndo = null;
+  const el = $('#utoast'); if (el) el.hidden = true;
+  if (commit) callSampah('hapusSampahPermanen', { id: u.id }, 'Dihapus permanen.', () => loadSampah());
+}
+function sampahUndo() {
+  if (!S.sampahUndo) return;
+  clearInterval(S.sampahUndo.tick); S.sampahUndo = null;
+  const el = $('#utoast'); if (el) el.hidden = true;
+  toast('Dibatalkan.'); loadSampah();
 }
 
 

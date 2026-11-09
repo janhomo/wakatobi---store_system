@@ -55,7 +55,9 @@ const IC = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
   alert: '<path d="M12 4l9 16H3zM12 10v4M12 17h.01"/>',
   chart: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
-  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>'
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13"/>',
+  undo: '<path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/>'
 };
 const ic = (n, s = 24) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
 
@@ -73,9 +75,11 @@ const MJENIS = ['Servis rutin', 'Ganti sparepart', 'Perbaikan', 'Kalibrasi', 'Pe
 const S = {
   view: 'mesin', nm: null, wj: null, jid: null, kode: null, tid: null, mid: null, tab: 'unit', filter: '', q: '',
   jenis: [], units: [], kategori: [], tempat: [], material: [], pekerja: [], maintServer: [], pengServer: [], pengDate: null, belumServer: [], skema: {}, cfg: { jamPulang: '17:00', pengedit: ['Abidin', 'Vikar', 'La Ode Riyan Syaputra'] },
-  loaded: false, loadError: null, tok: lsGet('qrg.tok', ''), me: lsGet('qrg.me', ''),
+  loaded: false, loadError: null, tok: lsGet('qrg.tok', ''), me: lsGet('qrg.me', ''), dkOpen: {},
   ov: [], pending: null, form: null, confirmDel: null, skForm: null,
-  rwDate: null, rw: { list: null, error: false }, riw: { key: null, list: null, error: false }, logs: { list: null, error: false },
+  rwDate: null, rwArsip: false, rwOpenM: {}, rwSel: {}, rw: { list: null, error: false }, riw: { key: null, list: null, error: false }, logs: { list: null, error: false },
+  mrId: null, mrBulan: null, mrMonths: null, mrLog: null,
+  sampah: { list: null, error: false }, sampahUndo: null,
   scan: null, picker: null, justAdded: null, focus: null
 };
 let J = {}, U = {}, JU = {}, T = {}, M = {};
@@ -382,6 +386,8 @@ function onEnter() {
   if (S.view === 'jenis' && S.tab === 'panduan') loadPanduan();
   if (S.view === 'riwayat') loadRingkasan();
   if (S.view === 'log') loadLogs();
+  if (S.view === 'matriw') { if (S.mrBulan) loadMatRiwayatBulan(); else loadMatRiwayat(); }
+  if (S.view === 'sampah') loadSampah();
   if (S.view === 'jenis' && S.tab === 'riwayat') loadRiwayatJenis();
   if (S.view === 'jenis' && S.tab === 'panduan') loadPanduan();
   if (S.view === 'jenis' && (S.focus || S.kode)) setTimeout(() => { const el = $('.ucard.focus'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' }); }, 30);

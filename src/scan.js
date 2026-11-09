@@ -317,7 +317,9 @@ function fillPicker() {
   h += [...g.entries()].sort((a, b) => byName(a[0], b[0])).map(([d, ps]) => '<div class="dept">' + esc(d) + '</div>' + ps.map(p => '<button class="row" data-action="pickname" data-n="' + esc(p.n) + '">' + esc(p.n) + '</button>').join('')).join('');
   if (!rows.length && !q) h += '<p class="empty">Daftar nama masih kosong. Ketik nama di kolom cari, lalu tambahkan.</p>';
   const exact = S.pekerja.some(p => norm(p.n) === q);
-  if (pk.allowNew !== false && q && !exact) h += '<button class="row" data-action="picknew" data-n="' + esc(clean(pk.q)) + '">+ Tambah “' + esc(clean(pk.q)) + '” sebagai nama baru</button>';
+  if (pk.allowNew !== false && q && !exact) h += pk.freeName ?
+    '<button class="row" data-action="pickname" data-n="' + esc(clean(pk.q)) + '">+ Pakai nama “' + esc(clean(pk.q)) + '”</button>' :
+    '<button class="row" data-action="picknew" data-n="' + esc(clean(pk.q)) + '">+ Tambah “' + esc(clean(pk.q)) + '” sebagai nama baru</button>';
   if (!h) h = '<p class="empty">Tidak ada yang cocok.</p>';
   el.innerHTML = h;
 }

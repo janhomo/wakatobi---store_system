@@ -108,6 +108,12 @@ label.lbl{display:block; font-size:14px; color:var(--muted); margin:0 0 4px}
 .kpi.warn{border-left-color:var(--warn)} .kpi.warn b{color:var(--warn)}
 .kpi.info{border-left-color:var(--accent)}
 @media (min-width:640px){.dkpi{grid-template-columns:repeat(3, 1fr)}}
+.kpi.kpiopen{width:100%; text-align:left; font:inherit; color:inherit; cursor:pointer}
+.kpi.kpiopen .top{display:flex; align-items:center; justify-content:space-between; gap:6px}
+.kpi.kpiopen .top svg{color:var(--muted); transition:transform .2s; flex-shrink:0}
+.kpi.kpiopen[aria-expanded="true"] .top svg{transform:rotate(90deg)}
+.kpanel{overflow:hidden; max-height:0; transition:max-height .25s ease}
+.kpanel.open{max-height:1000px; margin-top:8px}
 .card h3{margin:0 0 10px; font-family:var(--f-display); font-weight:700; font-size:22px; letter-spacing:.03em; text-transform:uppercase}
 .card h4{margin:14px 0 8px; font-size:15px}
 .h2{font-family:var(--f-display); font-weight:700; font-size:22px; letter-spacing:.03em; text-transform:uppercase; margin:18px 0 8px}
@@ -206,6 +212,39 @@ details summary{cursor:pointer; min-height:44px; display:flex; align-items:cente
 .dategrid{display:flex; flex-direction:column; gap:6px}
 .daterow2{width:100%; display:flex; justify-content:space-between; align-items:center; gap:12px; text-align:left; padding:12px 14px; min-height:56px; background:var(--surface); border:1px solid var(--line); border-radius:10px}
 .daterow2:hover{border-color:var(--accent)}
+.mhead{width:100%; display:flex; align-items:center; gap:8px; padding:14px; background:none; border:0; text-align:left; font-family:var(--f-display); font-weight:700; font-size:17px; text-transform:uppercase; letter-spacing:.02em}
+.mhead svg{margin-left:auto; color:var(--muted); transition:transform .2s; flex-shrink:0}
+.mhead[aria-expanded="true"] svg{transform:rotate(90deg)}
+.mhead .cnt{font-family:var(--f-body); text-transform:none; font-weight:500; font-size:13px; color:var(--muted)}
+.days{border-top:1px solid var(--line)}
+.dayrow{display:flex; align-items:center; gap:10px; padding:10px 14px 10px 30px; border-top:1px solid var(--line)}
+.dayrow:first-child{border-top:0}
+.dayrow input[type=checkbox]{width:19px; height:19px; flex-shrink:0; accent-color:var(--accent)}
+.dayrow .nm{flex:1; min-width:0; text-align:left; background:none; border:0; display:flex; flex-direction:column; overflow-wrap:anywhere}
+.dayrow .nm b{font-size:15px; font-weight:600}
+.dayrow .nm small{color:var(--muted); font-size:13px}
+.actionbar{position:sticky; bottom:0; padding:12px 0; margin-top:4px; background:linear-gradient(var(--bg) 60%, transparent 0), var(--bg)}
+.actionbar .btn{width:100%}
+
+/* ---------- Sampah ---------- */
+.trashrow{display:flex; align-items:center; gap:10px; padding:12px 14px; border-top:1px solid var(--line)}
+.trashrow:first-child{border-top:0}
+.trashrow .nm{flex:1; min-width:0; display:flex; flex-direction:column}
+.trashrow .nm b{font-size:15px; font-weight:600; overflow-wrap:anywhere}
+.trashrow .nm small{color:var(--muted); font-size:13px}
+.trashrow .acts{display:flex; gap:6px; flex-shrink:0}
+.icobtn{width:44px; height:44px; border-radius:12px; border:1px solid var(--line); background:var(--surface); color:inherit; display:flex; align-items:center; justify-content:center}
+.icobtn.bad{color:var(--bad); border-color:var(--bad-bg)}
+.icobtn:hover{border-color:var(--accent)}
+
+/* ---------- toast undo (hapus permanen) ---------- */
+#utoast{position:fixed; left:16px; right:16px; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); max-width:460px; margin:0 auto; z-index:90; background:var(--ink); color:var(--bg); border-radius:14px; padding:10px 10px 10px 14px; display:flex; align-items:center; gap:10px; box-shadow:0 6px 18px rgba(0,0,0,.3)}
+#utoast .ut-msg{flex:1; font-size:14px; min-width:0; overflow-wrap:anywhere}
+#utoast .ut-undo{display:flex; align-items:center; gap:6px; background:none; border:0; color:inherit; font-weight:700; font-size:14px; padding:8px 6px; flex-shrink:0}
+#utoast .ring{width:26px; height:26px; flex-shrink:0}
+#utoast .ring circle{fill:none; stroke-width:3}
+#utoast .ring .bgc{stroke:rgba(255,255,255,.25)}
+#utoast .ring .fgc{stroke:currentColor; stroke-linecap:round; transform:rotate(-90deg); transform-origin:center; transition:stroke-dashoffset 1s linear}
 .dept{margin:16px 0 6px; font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.06em}
 .logrow{padding:10px 0; border-top:1px solid var(--line); font-size:15px}
 .logrow:first-child{border-top:0}
@@ -406,6 +445,11 @@ textarea.field.tall{min-height:160px}
 .mrow2 .nm b{display:block; font-size:17px; font-weight:600; overflow-wrap:anywhere}
 .mrow2 .nm small{display:block; font-size:13px; color:var(--muted)}
 .mrow2 .pills{margin-top:4px}
+.mrowwrap{display:flex; gap:8px; align-items:stretch}
+.mrowwrap .mrow2.hasriw{flex:1}
+.mriw{flex-shrink:0; width:64px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border-radius:12px; border:1px solid var(--line); background:var(--surface); color:var(--accent)}
+.mriw small{font-size:11px; font-weight:600}
+.mriw:hover{border-color:var(--accent)}
 .matbig{text-align:center; padding:14px 8px; background:var(--surface); border:1px solid var(--line); border-radius:12px}
 .matbig .qn{display:block; font-family:var(--f-display); font-weight:700; font-size:64px; line-height:1}
 .matbig .qn.low{color:var(--warn)}
@@ -597,6 +641,7 @@ body.pinned .top .in:has(+ .prog){max-width:none}
 </div>
 <div id="printArea"></div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
+<div id="utoast" role="status" aria-live="polite" hidden></div>
 
 <script src="config.js"></script>
 <script src="lib/jsQR.js"></script>
@@ -660,7 +705,9 @@ const IC = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
   alert: '<path d="M12 4l9 16H3zM12 10v4M12 17h.01"/>',
   chart: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
-  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>'
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13"/>',
+  undo: '<path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/>'
 };
 const ic = (n, s = 24) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
 
@@ -678,9 +725,11 @@ const MJENIS = ['Servis rutin', 'Ganti sparepart', 'Perbaikan', 'Kalibrasi', 'Pe
 const S = {
   view: 'mesin', nm: null, wj: null, jid: null, kode: null, tid: null, mid: null, tab: 'unit', filter: '', q: '',
   jenis: [], units: [], kategori: [], tempat: [], material: [], pekerja: [], maintServer: [], pengServer: [], pengDate: null, belumServer: [], skema: {}, cfg: { jamPulang: '17:00', pengedit: ['Abidin', 'Vikar', 'La Ode Riyan Syaputra'] },
-  loaded: false, loadError: null, tok: lsGet('qrg.tok', ''), me: lsGet('qrg.me', ''),
+  loaded: false, loadError: null, tok: lsGet('qrg.tok', ''), me: lsGet('qrg.me', ''), dkOpen: {},
   ov: [], pending: null, form: null, confirmDel: null, skForm: null,
-  rwDate: null, rw: { list: null, error: false }, riw: { key: null, list: null, error: false }, logs: { list: null, error: false },
+  rwDate: null, rwArsip: false, rwOpenM: {}, rwSel: {}, rw: { list: null, error: false }, riw: { key: null, list: null, error: false }, logs: { list: null, error: false },
+  mrId: null, mrBulan: null, mrMonths: null, mrLog: null,
+  sampah: { list: null, error: false }, sampahUndo: null,
   scan: null, picker: null, justAdded: null, focus: null
 };
 let J = {}, U = {}, JU = {}, T = {}, M = {};
@@ -987,6 +1036,8 @@ function onEnter() {
   if (S.view === 'jenis' && S.tab === 'panduan') loadPanduan();
   if (S.view === 'riwayat') loadRingkasan();
   if (S.view === 'log') loadLogs();
+  if (S.view === 'matriw') { if (S.mrBulan) loadMatRiwayatBulan(); else loadMatRiwayat(); }
+  if (S.view === 'sampah') loadSampah();
   if (S.view === 'jenis' && S.tab === 'riwayat') loadRiwayatJenis();
   if (S.view === 'jenis' && S.tab === 'panduan') loadPanduan();
   if (S.view === 'jenis' && (S.focus || S.kode)) setTimeout(() => { const el = $('.ucard.focus'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' }); }, 30);
@@ -1299,6 +1350,8 @@ function hdrInfo() {
     case 'riwayat': return { root: 1, title: 'Riwayat', sub: S.rwDate ? fmtShort(S.rwDate) : 'Per tanggal' };
     case 'pekerja': return { root: 1, title: 'Pekerja', sub: S.pekerja.length + ' nama' };
     case 'log': return { root: 1, title: 'Log perubahan', sub: 'Siapa mengubah apa' };
+    case 'matriw': { const m = M[S.mrId]; return { title: m ? 'Riwayat ' + m.n : 'Riwayat Material', sub: S.mrBulan ? labelBulanId(S.mrBulan) : 'Per bulan' }; }
+    case 'sampah': return { root: 1, title: 'Sampah', sub: 'Pulihkan atau hapus permanen' };
     case 'merek': return { root: 1, title: 'Merek', sub: merekList().length + ' merek' };
   }
   return { title: 'QR Aset Gudang', sub: '' };
@@ -1339,7 +1392,7 @@ function renderDrawer() {
     it('hari', 'clock', 'Hari Ini', open ? '<span class="cnt">' + open + '</span>' : '') + it('riwayat', 'list', 'Riwayat per tanggal') +
     '<button class="it" data-action="dscan">' + ic('qr', 24) + '<span>Scan QR</span></button>' +
     '<div class="sec">Admin</div>' + it('saran', 'alert', 'Saran', saranList().length ? '<span class="cnt soft">' + saranList().length + '</span>' : '') + it('merek', 'tag', 'Merek') + it('pekerja', 'users', 'Pekerja') +
-    it('impor', 'upload', 'Impor Excel') + it('imporrak', 'box', 'Impor isi rak') + it('fotoimpor', 'cam', 'Impor foto massal') + it('log', 'doc', 'Log perubahan') +
+    it('impor', 'upload', 'Impor Excel') + it('imporrak', 'box', 'Impor isi rak') + it('fotoimpor', 'cam', 'Impor foto massal') + it('log', 'doc', 'Log perubahan') + it('sampah', 'trash', 'Sampah') +
     '<a class="it" href="label.html">' + ic('qr', 24) + '<span>Cetak label QR</span></a>' +
     '</nav><div class="foot">' +
     '<button class="it" data-action="dme">' + ic('user', 24) + '<span>Nama saya: ' + (S.me ? esc(S.me) : '<i>belum dipilih</i>') + '</span></button>' +
@@ -1354,7 +1407,7 @@ function openDrawer() { if (S.pinned || S.ov.includes('drawer')) return; renderD
 /* ---------- render ---------- */
 const VIEWS = () => ({ mesin: viewMesin, nama: viewNama, saran: viewSaran, jenis: viewJenis, profil: viewProfil, unit: viewUnit, jedit: viewJedit, skema: viewSkema, tambah: viewTambah, hari: viewHari, riwayat: viewRiwayat, pekerja: viewWorkers, log: viewLog, merek: viewMerek,
   tempatlist: viewTempatList, tempat: viewTempat, tambahtempat: viewTambahTempat, tempatform: viewTempatForm, material: viewMaterial, mat: viewMat, matform: viewMatForm, panduan: viewPanduanEdit, impor: viewImpor,
-  dasbor: viewDasbor, fotoimpor: viewFotoImpor, imporrak: viewImporRak });
+  dasbor: viewDasbor, fotoimpor: viewFotoImpor, imporrak: viewImporRak, matriw: viewMatRiwayat, sampah: viewSampah });
 function render() {
   const f = VIEWS()[S.view] || viewMesin;
   $('#app').innerHTML = f();
@@ -1373,6 +1426,8 @@ function renderLive() {
   else if (S.view === 'tambahtempat') renderTambahTempat();
   else if (S.view === 'mat') set('live-stoklog', liveStokLog());
   else if (S.view === 'log') set('live-log', liveLog());
+  else if (S.view === 'matriw') set('live-mriw', liveMatRiwayat());
+  else if (S.view === 'sampah') set('live-sampah', liveSampah());
 }
 /* dipanggil setelah data baru datang: form yang sedang diisi tidak boleh terhapus */
 function refresh() {
@@ -1805,21 +1860,47 @@ function liveHari() {
 
 /* ---------- Riwayat per tanggal ---------- */
 function viewRiwayat() {
-  if (!S.rwDate) return '<p class="stats">Pilih tanggal untuk melihat, mencetak, atau mengarsipkan catatan.</p><div id="live-rw"></div>';
-  return '<button class="btn ghost small" style="margin-bottom:8px" data-action="rwback">← Semua tanggal</button><div class="big">' + esc(fmtDate(S.rwDate)) + '</div><div id="live-rw"></div>';
+  if (!S.rwDate) return '<p class="stats">Dikelompokkan per bulan. Pilih tanggal untuk melihat, mencetak, atau mengarsipkan catatan.</p><div id="live-rw"></div>';
+  return '<button class="btn ghost small" style="margin-bottom:8px" data-action="rwback">← Semua tanggal</button><div class="big">' + esc(fmtDate(S.rwDate)) + (S.rwArsip ? ' <span class="pill unk">Arsip</span>' : '') + '</div><div id="live-rw"></div>';
 }
 async function loadRingkasan() {
   S.rw = { list: null, error: false }; renderLive();
-  try { S.rw.list = (await api('ringkasan')).ringkasan; } catch (e) { S.rw.list = []; S.rw.error = true; }
+  try { S.rw.list = (await api('riwayatBulan')).bulan; } catch (e) { S.rw.list = []; S.rw.error = true; }
   renderLive();
 }
+async function loadArsipHari() {
+  S.rwArsipData = { list: null, error: false }; renderLive();
+  try { S.rwArsipData.list = (await api('listArsipTgl', { tgl: S.rwDate })).pengambilan; } catch (e) { S.rwArsipData.list = []; S.rwArsipData.error = true; }
+  renderLive();
+}
+function curBulanStr() { return today().slice(0, 7); }
 function liveRw() {
   if (!S.rwDate) {
     if (S.rw.list === null) return '<p class="empty">Memuat…</p>';
     if (S.rw.error) return '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
     if (!S.rw.list.length) return '<p class="empty">Belum ada riwayat.</p>';
-    return '<div class="dategrid">' + S.rw.list.map(d => '<button class="daterow2" data-action="rwopen" data-tgl="' + esc(d.tgl) + '"><span><b>' + esc(fmtDate(d.tgl)) + '</b><br><small class="muted">' + d.jumlah + ' pengambilan</small></span>' +
-      (d.belum ? '<span class="pill late">' + d.belum + ' belum kembali</span>' : '<span class="pill ok">Lengkap</span>') + '</button>').join('') + '</div>';
+    const selN = Object.values(S.rwSel).filter(Boolean).length;
+    let h = S.rw.list.map(b => {
+      const open = !!S.rwOpenM[b.bulan];
+      const hariHtml = !open ? '' : '<div class="days">' + b.hari.map(d => {
+        const disabled = !d.arsip; // hanya yang sudah diarsipkan yang boleh dipindah ke Sampah
+        return '<div class="dayrow"><input type="checkbox" class="rwchk" data-tgl="' + esc(d.tgl) + '" aria-label="Pilih ' + esc(fmtShort(d.tgl)) + '"' + (disabled ? ' disabled' : '') + (S.rwSel[d.tgl] ? ' checked' : '') + '>' +
+          '<button class="nm" data-action="rwopen" data-tgl="' + esc(d.tgl) + '" data-arsip="' + (d.arsip ? 1 : 0) + '"><b>' + esc(fmtShort(d.tgl)) + '</b><small>' + d.jumlah + ' pengambilan' + (d.belum ? ' · ' + d.belum + ' belum kembali' : d.arsip ? ' · sudah diarsipkan' : ' · sudah kembali semua') + '</small></button></div>';
+      }).join('') + '</div>';
+      return '<div class="card"><button class="mhead" aria-expanded="' + open + '" data-action="rwbulan" data-b="' + esc(b.bulan) + '">' + esc(b.label) + ' <span class="cnt">' + b.hari.length + ' hari</span>' + ic('chev', 20) + '</button>' + hariHtml + '</div>';
+    }).join('');
+    h += '<div class="actionbar"><button class="btn" data-action="rwkesampah"' + (selN ? '' : ' disabled') + '>Pindahkan' + (selN ? ' ' + selN : '') + ' ke Sampah</button></div>';
+    return h;
+  }
+  if (S.rwArsip) {
+    if (!S.rwArsipData || S.rwArsipData.list === null) return '<p class="empty">Memuat…</p>';
+    if (S.rwArsipData.error) return '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
+    const list = S.rwArsipData.list, groups = groupBy(list);
+    if (!groups.length) return '<p class="empty">Tidak ada catatan pada tanggal ini.</p>';
+    return '<p class="stats">' + groups.length + ' pekerja · ' + list.length + ' pengambilan · sudah diarsipkan</p>' +
+      '<div style="margin-bottom:12px"><button class="btn" data-action="print">Cetak</button></div>' +
+      groups.map(g => '<section class="grp"><header><h3>' + esc(g.name) + (g.dept ? ' <small>' + esc(g.dept) + '</small>' : '') + '</h3><span class="muted">' + g.items.length + ' mesin</span></header><ul>' +
+        g.items.map(e => '<li>' + entryLines(e) + '</li>').join('') + '</ul></section>').join('');
   }
   if (S.pengDate !== S.rwDate) return '<p class="empty">Memuat…</p>';
   const list = entriesFor(S.rwDate), groups = groupBy(list), openN = list.filter(e => !e.kembali).length;
@@ -1833,7 +1914,7 @@ function liveRw() {
   else h += '<p class="muted" style="margin:0 0 10px;font-size:15px"><b>Arsipkan</b> memindahkan catatan tanggal ini ke sheet Arsip di Google Sheet. Datanya tetap tersimpan, hanya hilang dari daftar Riwayat.</p><button class="btn ghost block" data-action="arsip">Arsipkan tanggal ini</button>';
   return h + '</section>';
 }
-function dayRows(d) { return entriesFor(d).sort((a, b) => byName(norm(a.nama), norm(b.nama)) || byTs(a, b)); }
+function dayRows(d) { return (S.rwArsip ? (S.rwArsipData && S.rwArsipData.list || []) : entriesFor(d)).sort((a, b) => byName(norm(a.nama), norm(b.nama)) || byTs(a, b)); }
 function printDay() {
   const rows = dayRows(S.rwDate);
   const tr = rows.map((e, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(e.nama) + (e.dept || deptOf(e.nama) ? '<br><small>' + esc(e.dept || deptOf(e.nama)) + '</small>' : '') + '</td><td>' + esc(e.kode) + '</td><td>' + esc(e.mesin) + '</td><td>' + esc(fmtHM(e.ts)) + '</td><td>' + (e.kembali ? esc(fmtHM(e.kembali)) : '') + '</td><td>' + esc(e.kondisi || '') + '</td></tr>').join('');
@@ -1902,6 +1983,72 @@ function liveLog() {
   if (S.logs.error) return '<p class="empty">Log belum bisa dimuat. Cek sinyal.</p>';
   if (!S.logs.list.length) return '<p class="empty">Belum ada perubahan tercatat.</p>';
   return '<section class="card" style="padding:4px 16px">' + S.logs.list.map(r => '<div class="logrow"><b>' + esc(r.a) + '</b>' + (r.k ? ' · <span class="code">' + esc(r.k) + '</span>' : '') + '<br>' + esc(r.d) + '<div class="w">' + esc(r.o || '—') + ' · ' + esc(fmtDT(r.t)) + '</div></div>').join('') + '</section>';
+}
+
+/* ---------- Sampah: pulihkan atau hapus permanen. Manual semua, tidak ada batas waktu otomatis. ---------- */
+function viewSampah() { return '<p class="stats">Riwayat yang sudah dipindahkan dari Arsip/Stok Log/Log Perubahan. Pulihkan jika salah pindah, atau hapus permanen untuk membebaskan sel di Sheet.</p><div id="live-sampah"></div>'; }
+async function loadSampah() {
+  S.sampah = { list: null, error: false }; renderLive();
+  try { S.sampah.list = (await api('listSampah')).sampah; } catch (e) { S.sampah.list = []; S.sampah.error = true; }
+  renderLive();
+}
+function liveSampah() {
+  if (S.sampah.list === null) return '<p class="empty">Memuat…</p>';
+  if (S.sampah.error) return '<p class="empty">Sampah belum bisa dimuat. Cek sinyal.</p>';
+  if (!S.sampah.list.length) return '<p class="empty">Sampah kosong.</p>';
+  return '<section class="card" style="padding:0">' + S.sampah.list.map(r => {
+    const key = 'smp:' + r.id;
+    return '<div class="trashrow"><span class="nm"><b>' + esc(r.label) + '</b><small>' + r.jumlah + ' catatan · dipindahkan ' + esc(fmtDT(r.dipindahkan)) + (r.oleh ? ' oleh ' + esc(r.oleh) : '') + '</small></span>' +
+      '<span class="acts"><button class="icobtn" data-action="spulih" data-id="' + esc(r.id) + '" aria-label="Pulihkan ' + esc(r.label) + '">' + ic('undo', 20) + '</button>' +
+      '<button class="icobtn bad" data-action="shapus" data-id="' + esc(r.id) + '" aria-label="Hapus permanen ' + esc(r.label) + '">' + (S.confirmDel === key ? '<small><b>Yakin?</b></small>' : ic('trash', 20)) + '</button></span></div>';
+  }).join('') + '</section>';
+}
+function callSampah(action, payload, doneText, after) {
+  if (Busy.edit) { toast('Sedang menyimpan. Mohon tunggu.'); return; }
+  ensureMe(async () => {
+    Busy.edit = true; busyBegin(null, true);
+    let ok = false;
+    try {
+      const j = await api(action, { ...payload, oleh: S.me });
+      ok = true; toast(typeof doneText === 'function' ? doneText(j) : doneText);
+      after && after(j);
+    } catch (e) { failed(e); }
+    finally { Busy.edit = false; busyEnd(ok); }
+  });
+}
+function sampahPulihkan(id) { callSampah('pulihkanSampah', { id }, j => 'Dipulihkan: ' + (j.jumlah || 0) + ' catatan.', () => loadSampah()); }
+function sampahHapusMulai(id, label) {
+  if (S.sampahUndo) clearSampahUndo(true); // selesaikan dulu penghapusan sebelumnya yang masih menunggu
+  if (S.sampah.list) S.sampah.list = S.sampah.list.filter(r => r.id !== id); // sembunyikan selama jendela undo
+  renderLive();
+  S.sampahUndo = { id, label, remain: 10 };
+  renderUtoast();
+  S.sampahUndo.tick = setInterval(() => {
+    if (!S.sampahUndo) return;
+    S.sampahUndo.remain--;
+    if (S.sampahUndo.remain <= 0) { clearSampahUndo(true); return; }
+    renderUtoast();
+  }, 1000);
+}
+function renderUtoast() {
+  const u = S.sampahUndo, el = $('#utoast'); if (!el) return;
+  if (!u) { el.hidden = true; return; }
+  const R = 11, C = Math.round(2 * Math.PI * R * 100) / 100, off = Math.round(C * (1 - u.remain / 10) * 100) / 100;
+  el.hidden = false;
+  el.innerHTML = '<span class="ut-msg">Menghapus permanen: ' + esc(u.label) + '…</span>' +
+    '<button class="ut-undo" data-action="sundo"><svg class="ring" viewBox="0 0 28 28" aria-hidden="true"><circle class="bgc" cx="14" cy="14" r="' + R + '"/><circle class="fgc" cx="14" cy="14" r="' + R + '" stroke-dasharray="' + C + '" stroke-dashoffset="' + off + '"/></svg>URUNGKAN</button>';
+}
+function clearSampahUndo(commit) {
+  const u = S.sampahUndo; if (!u) return;
+  clearInterval(u.tick); S.sampahUndo = null;
+  const el = $('#utoast'); if (el) el.hidden = true;
+  if (commit) callSampah('hapusSampahPermanen', { id: u.id }, 'Dihapus permanen.', () => loadSampah());
+}
+function sampahUndo() {
+  if (!S.sampahUndo) return;
+  clearInterval(S.sampahUndo.tick); S.sampahUndo = null;
+  const el = $('#utoast'); if (el) el.hidden = true;
+  toast('Dibatalkan.'); loadSampah();
 }
 
 
@@ -1987,6 +2134,12 @@ function dasborStats() {
 function dkpi(n, label, sub, kind) {
   return '<div class="kpi ' + kind + '"><b>' + n + '</b><small>' + esc(label) + '</small>' + (sub ? '<span class="s">' + esc(sub) + '</span>' : '') + '</div>';
 }
+function dkpiOpen(id, n, label, sub, kind, rowsHtml, emptyMsg) {
+  const open = S.dkOpen && S.dkOpen[id];
+  return '<button class="kpi kpiopen ' + kind + '" data-action="dkpi" data-id="' + id + '" aria-expanded="' + !!open + '">' +
+    '<span class="top"><b>' + n + '</b>' + ic('chev', 18) + '</span><small>' + esc(label) + '</small>' + (sub ? '<span class="s">' + esc(sub) + '</span>' : '') + '</button>' +
+    '<div class="kpanel' + (open ? ' open' : '') + '">' + (n > 0 ? '<div class="tbox">' + (rowsHtml || '') + '</div>' : '<p class="muted" style="margin:6px 0 0">' + esc(emptyMsg || 'Tidak ada.') + '</p>') + '</div>';
+}
 function drow(a, b, tag, kind) {
   return '<div class="trow"><span class="nm"><b>' + esc(a) + '</b><small class="muted">' + esc(b) + '</small></span>' + (tag ? '<span class="pill ' + kind + '">' + esc(tag) + '</span>' : '') + '</div>';
 }
@@ -1997,20 +2150,20 @@ function viewDasbor() {
   const brokenRows = d.broken.slice(0, 10).map(u => drow(jenisOf(u).n + ' · ' + u.k, u.sl, u.sl, u.s));
   const dueRows = d.due.slice(0, 10).map(x => drow(jenisOf(x.u).n + ' · ' + x.u.k, x.d < 0 ? 'Terlewat ' + (-x.d) + ' hari' : x.d + ' hari lagi', x.d < 0 ? 'Lewat' : x.d + ' hari', x.d < 0 ? 'bad' : 'warn'));
   const lowRows = d.low.slice(0, 10).map(m => drow(m.n, 'Sisa ' + fmtQty(m.q) + ' ' + m.s + (m.lo ? ' · batas ' + fmtQty(m.lo) : ''), 'Menipis', 'warn'));
-  return '<p class="note info" style="margin-bottom:10px">Dasbor baca saja. Data sama dengan Sheet, diperbarui otomatis tiap kali dibuka.</p>' +
+  return '<p class="note info" style="margin-bottom:10px">Dasbor baca saja. Data sama dengan Sheet, diperbarui otomatis tiap kali dibuka. Tekan kotak merah/kuning untuk lihat daftarnya.</p>' +
     '<div class="dkpi">' +
     dkpi(d.open.length, 'Sedang dipakai', 'dari ' + act.length + ' unit', 'info') +
-    dkpi(d.late.length, 'Terlambat', 'lewat jam ' + (S.cfg.jamPulang || '17:00'), d.late.length ? 'bad' : 'info') +
-    dkpi(d.broken.length, 'Rusak / servis', '', d.broken.length ? 'warn' : 'info') +
-    dkpi(d.due.length, 'Servis jatuh tempo', 'dalam 7 hari', d.due.length ? 'warn' : 'info') +
     dkpi(d.noPlace.length, 'Mesin tanpa rak', d.empty.length + ' rak kosong', 'info') +
-    dkpi(d.low.length, 'Stok menipis', 'material', d.low.length ? 'warn' : 'info') +
     '</div>' +
-    '<div style="margin:12px 0"><button class="btn ghost small" data-action="dasborprint">' + ic('print', 20) + 'Cetak ringkasan</button></div>' +
-    '<h2 class="h2">Belum kembali · ' + d.open.length + '</h2>' + (lateRows.length || d.open.length ? '<div class="tbox">' + (lateRows.join('') || '<div class="trow"><span class="nm"><b>Tidak ada yang terlambat.</b></span></div>') + '</div>' : '<p class="muted">Tidak ada mesin di luar.</p>') +
-    '<h2 class="h2">Rusak / servis · ' + d.broken.length + '</h2>' + (brokenRows.length ? '<div class="tbox">' + brokenRows.join('') + '</div>' : '<p class="muted">Tidak ada.</p>') +
-    '<h2 class="h2">Servis jatuh tempo · ' + d.due.length + '</h2>' + (dueRows.length ? '<div class="tbox">' + dueRows.join('') + '</div>' : '<p class="muted">Tidak ada dalam 7 hari ke depan.</p>') +
-    '<h2 class="h2">Stok menipis · ' + d.low.length + '</h2>' + (lowRows.length ? '<div class="tbox">' + lowRows.join('') + '</div>' : '<p class="muted">Tidak ada yang menipis.</p>');
+    '<div class="dkpi" style="margin-top:10px">' +
+    dkpiOpen('late', d.late.length, 'Terlambat', 'lewat jam ' + (S.cfg.jamPulang || '17:00'), d.late.length ? 'bad' : 'info', lateRows.join(''), 'Tidak ada yang terlambat.') +
+    dkpiOpen('broken', d.broken.length, 'Rusak / servis', '', d.broken.length ? 'warn' : 'info', brokenRows.join(''), 'Tidak ada mesin rusak.') +
+    '</div>' +
+    '<div class="dkpi" style="margin-top:10px">' +
+    dkpiOpen('due', d.due.length, 'Servis jatuh tempo', 'dalam 7 hari', d.due.length ? 'warn' : 'info', dueRows.join(''), 'Tidak ada dalam 7 hari ke depan.') +
+    dkpiOpen('low', d.low.length, 'Stok menipis', 'material', d.low.length ? 'warn' : 'info', lowRows.join(''), 'Tidak ada yang menipis.') +
+    '</div>' +
+    '<div style="margin:16px 0"><button class="btn ghost small" data-action="dasborprint">' + ic('print', 20) + 'Cetak ringkasan</button></div>';
 }
 /* ---------- foto per jenis: disimpan kecil (sekitar 360 px) di sheet Foto, disalin ke HP ---------- */
 const FOTO = { cache: lsGet('qrg.foto', {}), busy: false };
@@ -2377,16 +2530,27 @@ function viewMaterial() {
     '<div class="mlistw" id="mlist"></div><div id="moff"></div>';
 }
 // Excel material: daftar material (stok sekarang) + riwayat stok per material (dari Stok Log, 60 transaksi terakhir per material).
+function parseStokCat(cat) {
+  const mm = /^Departemen:\s*([^·]+?)\s*(?:·\s*(.*))?$/.exec(cat || '');
+  return mm ? { dept: mm[1].trim(), note: mm[2] || '' } : { dept: '', note: cat || '' };
+}
 async function exportMaterialXlsx() {
   toast('Menyiapkan Excel…');
   const mats = allMaterial();
   const a1 = [['ID', 'Nama', 'Kategori', 'Merek', 'Satuan', 'Stok', 'Batas Menipis', 'Tempat', 'Dipinjam', 'Status']];
   mats.forEach(m => a1.push([m.id, m.n, m.c || '', m.b || '', m.s, m.q, m.lo || 0, (m.loc && T[m.loc]) ? T[m.loc].n : (m.loc || ''), m.pj || 0, m.off ? 'Nonaktif' : '']));
-  const a2 = [['Waktu', 'ID Material', 'Nama Material', 'Jenis', 'Jumlah', 'Stok Sesudah', 'Oleh', 'Catatan']];
+  const a2 = [['Tanggal', 'Hari', 'Material', 'Jenis', 'Jumlah', 'Nama/Departemen', 'Catatan']];
   for (const m of mats) {
     let log = [];
     try { log = (await api('stokLog', { id: m.id })).log || []; } catch (e) { /* lewati kalau gagal */ }
-    log.slice().reverse().forEach(r => a2.push([String(r.t || '').replace('T', ' '), m.id, m.n, r.tipe, r.j, r.q, r.o, r.cat || '']));
+    log.slice().reverse().forEach(r => {
+      const t = r.t ? new Date(r.t) : null;
+      const tgl = r.t ? String(r.t).slice(0, 10) : '';
+      const hari = t && !isNaN(t) ? t.toLocaleDateString('id-ID', { weekday: 'long' }) : '';
+      const { dept, note } = parseStokCat(r.cat);
+      const namaDept = r.o + (dept ? ' / ' + dept : '');
+      a2.push([tgl, hari, m.n, r.tipe, r.j, namaDept, note]);
+    });
   }
   const wb = XLSX.utils.book_new(), s1 = XLSX.utils.aoa_to_sheet(a1), s2 = XLSX.utils.aoa_to_sheet(a2);
   XLSX.utils.book_append_sheet(wb, s1, 'Material'); XLSX.utils.book_append_sheet(wb, s2, 'Riwayat Stok (60 terakhir/material)');
@@ -2394,11 +2558,14 @@ async function exportMaterialXlsx() {
 }
 function matRow(m) {
   const t = isLok(m.loc) ? T[m.loc] : null;
-  return '<button class="mrow2" data-action="stokopen" data-id="' + esc(m.id) + '" aria-label="Ubah stok ' + esc(m.n) + '">' + matIcon() +
+  const btn = '<button class="mrow2' + (isSemen(m) ? ' hasriw' : '') + '" data-action="stokopen" data-id="' + esc(m.id) + '" aria-label="Ubah stok ' + esc(m.n) + '">' + matIcon() +
     '<span class="nm"><b>' + esc(m.n) + '</b><small>' + esc([m.b, m.c, t ? t.n : ''].filter(Boolean).join(' · ') || m.id) + '</small>' +
     (isLow(m) ? '<span class="pills"><span class="pill warn">Menipis</span></span>' : '') + (m.pj > 0 ? '<span class="pills"><span class="pill warn">Dipinjam ' + esc(fmtQty(m.pj)) + '</span></span>' : '') + (m.off ? '<span class="pills"><span class="pill unk">Nonaktif</span></span>' : '') + '</span>' +
     '<span class="qty' + (isLow(m) ? ' low' : '') + '"><b>' + esc(fmtQty(m.q)) + '</b><small>' + esc(m.s) + (m.pending ? ' · menunggu' : '') + '</small></span></button>';
+  if (!isSemen(m)) return btn;
+  return '<div class="mrowwrap">' + btn + '<button class="mriw" data-action="matriw" data-id="' + esc(m.id) + '" aria-label="Riwayat ' + esc(m.n) + '">' + ic('list', 20) + '<small>Riwayat</small></button></div>';
 }
+function isSemen(m) { return norm(m.n) === 'semen'; }
 function renderMatList() {
   const el = $('#mlist'); if (!el) return;
   const all = allMaterial(), cats = matCats(), q = norm(S.mqq || ''), cat = S.mcat || '';
@@ -2454,7 +2621,7 @@ function openStok(id, tipe) {
   if (S.ov.includes('stok')) return;
   const m = allMaterial().find(x => x.id === id); if (!m) return;
   if (m.off) { toast('Material ini nonaktif.'); return; }
-  S.stokEd = { mat: id, tipe: tipe || 'Keluar', jumlah: '1', cat: '', nama: lsGet('qrg.stokNama', '') || S.me || '' };
+  S.stokEd = { mat: id, tipe: tipe || 'Keluar', jumlah: '1', cat: '', nama: lsGet('qrg.stokNama', '') || S.me || '', dept: lsGet('qrg.stokDept', '') };
   $('#stokSheet').hidden = false; pushOv('stok'); renderStok();
 }
 const stokNum = () => { const v = Number(String(S.stokEd.jumlah).replace(',', '.')); return isFinite(v) ? v : NaN; };
@@ -2495,7 +2662,8 @@ function renderStok() {
     '<div><label class="lbl" for="stokJ">' + (f.tipe === 'Koreksi' ? 'Stok yang benar (hasil hitung)' : 'Jumlah (' + esc(m.s) + ')') + '</label><div class="stepper"><button class="rnd big" data-action="stokstep" data-d="-1" aria-label="Kurangi satu">−</button>' +
     '<input id="stokJ" class="field" type="text" inputmode="decimal" value="' + esc(f.jumlah) + '" autocomplete="off" aria-label="Jumlah"><button class="rnd big" data-action="stokstep" data-d="1" aria-label="Tambah satu">+</button></div></div>' +
     (f.tipe === 'Koreksi' ? '' : '<div class="fchips qchips">' + [1, 5, 10, 25, 50].map(n => '<button class="fchip" data-action="stokq" data-n="' + n + '">' + n + '</button>').join('') + '</div>') +
-    '<div><label class="lbl">' + esc(siapaQ) + '</label><button type="button" class="namebar' + (f.nama ? '' : ' need') + '" data-action="stoknama"><span class="g">' + (f.nama ? esc(f.nama) : 'Pilih nama pekerja') + '</span>' + ic('chev', 18) + '</button></div>' +
+    '<div><label class="lbl">' + esc(siapaQ) + '</label><button type="button" class="namebar' + (f.nama ? '' : ' need') + '" data-action="stoknama"><span class="g">' + (f.nama ? esc(f.nama) : 'Pilih atau ketik nama') + '</span>' + ic('chev', 18) + '</button></div>' +
+    '<div><label class="lbl" for="stokD">Departemen (boleh kosong, bisa diketik bebas)</label><input id="stokD" class="field" type="text" value="' + esc(f.dept) + '" autocomplete="off" placeholder="contoh: Dapur Resort"></div>' +
     '<div><label class="lbl" for="stokC">Catatan (boleh kosong)</label><input id="stokC" class="field" type="text" value="' + esc(f.cat) + '" autocomplete="off" placeholder="contoh: untuk lantai 2"></div>' +
     '<p class="after" id="stokAfter"></p>' +
     '<button class="btn" id="stokGo" data-action="stokgo">…</button>' +
@@ -2508,8 +2676,10 @@ function stokSubmit() {
   if (!f.nama) { toast('Pilih nama pekerja dulu.'); return; }
   if (!(j >= 0) || (f.tipe !== 'Koreksi' && !(j > 0))) { toast('Isi jumlah dengan angka.'); return; }
   if (STOK_KURANG.includes(f.tipe) && a < 0) { toast('Stok tidak cukup.'); return; }
-  lsSet('qrg.stokNama', f.nama);
-  enqueue('stok', { id: uid(), mat: m.id, tipe: f.tipe, jumlah: j, nama: f.nama, cat: clean(f.cat), waktu: nowIso() });
+  lsSet('qrg.stokNama', f.nama); lsSet('qrg.stokDept', f.dept || '');
+  const dept = clean(f.dept), catNote = clean(f.cat);
+  const cat = dept ? ('Departemen: ' + dept + (catNote ? ' · ' + catNote : '')) : catNote;
+  enqueue('stok', { id: uid(), mat: m.id, tipe: f.tipe, jumlah: j, nama: f.nama, cat: cat, waktu: nowIso() });
   const txt = f.tipe === 'Keluar' ? 'Dikurangi ' + fmtQty(j) + ' ' + m.s : f.tipe === 'Masuk' ? 'Ditambah ' + fmtQty(j) + ' ' + m.s :
     f.tipe === 'Pinjam' ? 'Dicatat dipinjam ' + fmtQty(j) + ' ' + m.s : f.tipe === 'Kembali' ? 'Dicatat dikembalikan ' + fmtQty(j) + ' ' + m.s : 'Stok disetel ' + fmtQty(j) + ' ' + m.s;
   closeTop(); toast(txt + '. Sisa ' + fmtQty(a) + '.'); refresh();
@@ -2543,6 +2713,61 @@ function saveMat() {
   const c = clean(val('mkat')), b = clean(val('mmerek')), loc = clean(val('mloc'));
   if (S.mid) callEdit('editMaterial', { id: S.mid, f: { n, c, b, s, lo: clean(val('mbatas')), loc } }, r => r.changed ? 'Material diubah.' : 'Tidak ada yang berubah.');
   else callEdit('addMaterial', { nama: n, kategori: c, merek: b, satuan: s, stok: clean(val('mstok')), batas: clean(val('mbatas')), tempat: loc }, r => 'Material dibuat: ' + r.id, r => go('mat', { mid: r.id, replace: true }));
+}
+
+/* ---------- riwayat material per bulan (Semen dkk): lihat, cetak, pindah ke Sampah ---------- */
+function viewMatRiwayat() {
+  const m = M[S.mrId];
+  if (!m) return '<p class="empty">' + (S.loaded ? 'Material tidak ditemukan.' : 'Memuat…') + '</p>';
+  if (!S.mrBulan) return '<button class="btn ghost small" style="margin-bottom:8px" data-action="matriwback">← Material</button><div id="live-mriw"></div>';
+  return '<button class="btn ghost small" style="margin-bottom:8px" data-action="matriwbulan">← Semua bulan</button><div class="big">' + esc(labelBulanId(S.mrBulan)) + '</div><div id="live-mriw"></div>';
+}
+function labelBulanId(b) { const bln = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']; const p = b.split('-'); return bln[Number(p[1]) - 1] + ' ' + p[0]; }
+async function loadMatRiwayat() {
+  S.mrMonths = { list: null, error: false }; renderLive();
+  try { S.mrMonths.list = (await api('matBulanList', { id: S.mrId })).bulan; } catch (e) { S.mrMonths.list = []; S.mrMonths.error = true; }
+  renderLive();
+}
+async function loadMatRiwayatBulan() {
+  S.mrLog = { list: null, error: false }; renderLive();
+  try { S.mrLog.list = (await api('stokLogBulan', { id: S.mrId, bulan: S.mrBulan })).log; } catch (e) { S.mrLog.list = []; S.mrLog.error = true; }
+  renderLive();
+}
+function liveMatRiwayat() {
+  const m = M[S.mrId]; if (!m) return '';
+  if (!S.mrBulan) {
+    if (!S.mrMonths || S.mrMonths.list === null) return '<p class="empty">Memuat…</p>';
+    if (S.mrMonths.error) return '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
+    if (!S.mrMonths.list.length) return '<p class="empty">Belum ada riwayat stok untuk ' + esc(m.n) + '.</p>';
+    const curBulan = today().slice(0, 7);
+    return '<p class="stats">Pilih bulan untuk lihat dan cetak riwayat ' + esc(m.n) + '.</p><div class="dategrid">' +
+      S.mrMonths.list.map(b => '<button class="daterow2" data-action="matriwopen" data-b="' + esc(b.bulan) + '"><span><b>' + esc(b.label) + '</b><br><small class="muted">' + b.jumlah + ' catatan</small></span>' +
+        (b.bulan === curBulan ? '<span class="pill ok">Berjalan</span>' : '') + '</button>').join('') + '</div>';
+  }
+  if (!S.mrLog || S.mrLog.list === null) return '<p class="empty">Memuat…</p>';
+  if (S.mrLog.error) return '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
+  if (!S.mrLog.list.length) return '<p class="empty">Tidak ada catatan di bulan ini.</p>';
+  const curBulan = today().slice(0, 7), bisaSampah = S.mrBulan !== curBulan;
+  const rows = S.mrLog.list.map(r => { const { dept, note } = parseStokCat(r.cat); return '<tr><td>' + esc(fmtShort(r.t)) + '</td><td>' + esc(r.tipe) + '</td><td>' + esc(fmtQty(r.j)) + '</td><td>' + esc(fmtQty(r.q)) + '</td><td>' + esc(r.o + (dept ? ' / ' + dept : '')) + '</td><td>' + esc(note) + '</td></tr>'; }).join('');
+  return '<p class="stats">' + S.mrLog.list.length + ' catatan</p>' +
+    '<div class="two" style="margin-bottom:12px"><button class="btn" data-action="matriwprint">Cetak</button>' +
+    (bisaSampah ? '<button class="btn ghost" data-action="matriwsampah">Pindahkan bulan ini ke Sampah</button>' : '<button class="btn ghost" disabled title="Bulan berjalan belum bisa dipindah">Bulan berjalan</button>') + '</div>' +
+    '<div class="tblwrap"><table class="datatbl"><thead><tr><th>Waktu</th><th>Jenis</th><th>Jumlah</th><th>Stok Sesudah</th><th>Nama/Departemen</th><th>Catatan</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+function printMatRiwayat() {
+  const m = M[S.mrId]; if (!m || !S.mrLog || !S.mrLog.list) return;
+  const rows = S.mrLog.list.map(r => { const { dept, note } = parseStokCat(r.cat); return '<tr><td>' + esc(fmtShort(r.t)) + '</td><td>' + esc(r.tipe) + '</td><td>' + esc(fmtQty(r.j)) + '</td><td>' + esc(fmtQty(r.q)) + '</td><td>' + esc(r.o + (dept ? ' / ' + dept : '')) + '</td><td>' + esc(note) + '</td></tr>'; }).join('');
+  $('#printArea').innerHTML = '<h1>Riwayat Stok ' + esc(m.n) + '</h1><p>Construction site · ' + esc(labelBulanId(S.mrBulan)) + '</p>' +
+    '<table><thead><tr><th>Waktu</th><th>Jenis</th><th>Jumlah</th><th>Stok Sesudah</th><th>Nama/Departemen</th><th>Catatan</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<div class="foot"><span>Mengetahui: ______________________</span></div>';
+  setTimeout(() => window.print(), 50);
+}
+async function matRiwayatKeSampah() {
+  const m = M[S.mrId]; if (!m) return;
+  try {
+    const j = await api('pindahSampah', { sumber: 'Stok Log', matId: S.mrId, dari: S.mrBulan + '-01', sampai: S.mrBulan + '-31', oleh: S.me });
+    toast('Dipindahkan ke Sampah: ' + j.jumlah + ' catatan.'); S.mrBulan = null; render(); loadMatRiwayat();
+  } catch (e) { toast(e.message || (e.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal memindahkan ke Sampah.')); }
 }
 /* ---------- Panduan maintenance per jenis (berversi: versi lama tetap tersimpan) ---------- */
 async function loadPanduan() {
@@ -3233,7 +3458,9 @@ function fillPicker() {
   h += [...g.entries()].sort((a, b) => byName(a[0], b[0])).map(([d, ps]) => '<div class="dept">' + esc(d) + '</div>' + ps.map(p => '<button class="row" data-action="pickname" data-n="' + esc(p.n) + '">' + esc(p.n) + '</button>').join('')).join('');
   if (!rows.length && !q) h += '<p class="empty">Daftar nama masih kosong. Ketik nama di kolom cari, lalu tambahkan.</p>';
   const exact = S.pekerja.some(p => norm(p.n) === q);
-  if (pk.allowNew !== false && q && !exact) h += '<button class="row" data-action="picknew" data-n="' + esc(clean(pk.q)) + '">+ Tambah “' + esc(clean(pk.q)) + '” sebagai nama baru</button>';
+  if (pk.allowNew !== false && q && !exact) h += pk.freeName ?
+    '<button class="row" data-action="pickname" data-n="' + esc(clean(pk.q)) + '">+ Pakai nama “' + esc(clean(pk.q)) + '”</button>' :
+    '<button class="row" data-action="picknew" data-n="' + esc(clean(pk.q)) + '">+ Tambah “' + esc(clean(pk.q)) + '” sebagai nama baru</button>';
   if (!h) h = '<p class="empty">Tidak ada yang cocok.</p>';
   el.innerHTML = h;
 }
@@ -3453,7 +3680,7 @@ document.addEventListener('click', async e => {
     case 'stoktipe': if (S.stokEd) { const m = stokMat(); S.stokEd.tipe = t.dataset.t; S.stokEd.jumlah = t.dataset.t === 'Koreksi' && m ? String(m.q) : '1'; renderStok(); } break;
     case 'stokstep': if (S.stokEd) { const j = Math.max(0, Math.round(((stokNum() || 0) + Number(t.dataset.d)) * 1000) / 1000); S.stokEd.jumlah = String(j); $('#stokJ').value = S.stokEd.jumlah; stokPreview(); } break;
     case 'stokq': if (S.stokEd) { S.stokEd.jumlah = t.dataset.n; $('#stokJ').value = t.dataset.n; stokPreview(); } break;
-    case 'stoknama': openPicker({ title: 'Siapa?', sub: 'Nama pekerja yang mengambil atau menerima.', onPick: n => { if (S.stokEd) { S.stokEd.nama = n; renderStok(); } } }); break;
+    case 'stoknama': openPicker({ title: 'Siapa?', sub: 'Pilih dari daftar, atau ketik nama lain (tidak harus pekerja terdaftar).', freeName: true, onPick: n => { if (S.stokEd) { S.stokEd.nama = n; renderStok(); } } }); break;
     case 'stokgo': stokSubmit(); break;
     /* panduan */
     case 'pdedit': go('panduan', { jid: curJid() }); break;
@@ -3526,8 +3753,17 @@ document.addEventListener('click', async e => {
     case 'pickname': pickName(t.dataset.n); break;
     case 'picknew': { const n = clean(t.dataset.n); if (n && await saveWorkers([...S.pekerja, { n, d: '' }])) pickName(n); break; }
     /* riwayat */
-    case 'rwopen': S.rwDate = t.dataset.tgl; render(); loadAll(true); break;
-    case 'rwback': S.rwDate = null; render(); loadRingkasan(); break;
+    case 'rwopen': S.rwDate = t.dataset.tgl; S.rwArsip = t.dataset.arsip === '1'; render(); if (S.rwArsip) loadArsipHari(); else loadAll(true); break;
+    case 'rwback': S.rwDate = null; S.rwArsip = false; render(); loadRingkasan(); break;
+    case 'rwbulan': S.rwOpenM[t.dataset.b] = !S.rwOpenM[t.dataset.b]; renderLive(); break;
+    case 'rwkesampah': {
+      const tgl = Object.keys(S.rwSel).filter(k => S.rwSel[k]);
+      if (!tgl.length) break;
+      try { const j = await api('pindahSampah', { sumber: 'Arsip', tgl, oleh: S.me }); toast('Dipindahkan ke Sampah: ' + j.jumlah + ' catatan.'); S.rwSel = {}; loadRingkasan(); }
+      catch (err) { toast(err.message || (err.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal memindahkan ke Sampah.')); }
+      break;
+    }
+    case 'dkpi': { const id = t.dataset.id; S.dkOpen[id] = !S.dkOpen[id]; render(); break; }
     case 'print': printDay(); break;
     case 'export': exportXlsx(); break;
     case 'exportmat': exportMaterialXlsx(); break;
@@ -3535,6 +3771,22 @@ document.addEventListener('click', async e => {
       try { const j = await api('arsipkan', { tgl: S.rwDate }); toast('Diarsipkan: ' + j.jumlah + ' catatan.'); S.rwDate = null; render(); loadRingkasan(); loadAll(true); }
       catch (err) { toast(err.message || (err.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal mengarsipkan.')); }
       break;
+    /* riwayat material per bulan (Semen dkk) */
+    case 'matriw': S.mrId = t.dataset.id; S.mrBulan = null; go('matriw'); break;
+    case 'matriwback': back(); break;
+    case 'matriwbulan': S.mrBulan = null; render(); break;
+    case 'matriwopen': S.mrBulan = t.dataset.b; render(); loadMatRiwayatBulan(); break;
+    case 'matriwprint': printMatRiwayat(); break;
+    case 'matriwsampah': matRiwayatKeSampah(); break;
+    /* sampah */
+    case 'spulih': sampahPulihkan(t.dataset.id); break;
+    case 'shapus': {
+      const key = 'smp:' + t.dataset.id;
+      if (S.confirmDel === key) { S.confirmDel = null; const r = (S.sampah.list || []).find(x => x.id === t.dataset.id); sampahHapusMulai(t.dataset.id, r ? r.label : t.dataset.id); }
+      else armConfirm(key);
+      break;
+    }
+    case 'sundo': sampahUndo(); break;
     /* pekerja */
     case 'addname': { const n = $('#newName'), d = $('#newDept'), v = clean(n.value); if (v) { if (await saveWorkers([...S.pekerja, { n: v, d: d.value }])) { n.value = ''; toast('Pekerja ditambahkan.'); } } else toast('Isi nama pekerja.'); break; }
     case 'doimport': {
@@ -3593,6 +3845,7 @@ document.addEventListener('input', e => {
   else if (id === 'aq') { if (S.form) { S.form.q = e.target.value; renderTambahTempat(); } }
   else if (id === 'stokJ') { if (S.stokEd) { S.stokEd.jumlah = e.target.value; stokPreview(); } }
   else if (id === 'stokC') { if (S.stokEd) S.stokEd.cat = e.target.value; }
+  else if (id === 'stokD') { if (S.stokEd) S.stokEd.dept = e.target.value; }
   else if (id === 'cropZoom') { if (S.fotoEd) { S.fotoEd.zoom = Number(e.target.value); drawCrop(); } }
   else if (id === 'tq') { S.form.q = e.target.value; const q = norm(e.target.value); $('#tlist').innerHTML = tambahList(S.jenis.filter(j => !q || norm([j.n, j.b, j.m].join(' ')).includes(q)).sort((a, b) => byName(a.n, b.n) || byName(a.b, b.b))); }
   else if (id === 'pickq') { S.picker.q = e.target.value; fillPicker(); }
@@ -3610,6 +3863,7 @@ document.addEventListener('change', e => {
   if (id === 'irFile') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) irLoad(f); return; }
   if (id === 'fiFile') { const fs = e.target.files; e.target.value = ''; if (fs && fs.length) fiPicked(fs); return; }
   if (id === 'fileCam' || id === 'fileGal') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) fotoPicked(f); return; }
+  if (e.target.classList && e.target.classList.contains('rwchk')) { S.rwSel[e.target.dataset.tgl] = e.target.checked; renderLive(); return; }
   if (id === 'tkat') { $('#tkatBox').hidden = v !== '__new'; updateCodePrev(); }
   else if (id === 'jkat') $('#jkatBox').hidden = v !== '__new';
   else if (id === 'tmerek') $('#tmerekBox').hidden = v !== '__new';

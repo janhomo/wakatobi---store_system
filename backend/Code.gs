@@ -40,7 +40,9 @@ var HEADERS = {
   'Panduan': ['ID Jenis', 'Versi', 'Peringatan', 'Alat dan Bahan', 'Langkah', 'Interval (bulan)', 'Tautan Manual', 'Oleh', 'Waktu'],
   'Material': ['ID Material', 'Nama', 'Kategori', 'Merek', 'Satuan', 'Stok', 'Batas Menipis', 'Tempat', 'Status'],
   'Stok Log': ['ID', 'Waktu', 'ID Material', 'Jenis', 'Jumlah', 'Stok Sesudah', 'Oleh', 'Catatan'],
-  'Skema Maintenance': ['ID Jenis', 'ID Kolom', 'Label', 'Tipe', 'Status', 'Oleh', 'Waktu']
+  'Skema Maintenance': ['ID Jenis', 'ID Kolom', 'Label', 'Tipe', 'Status', 'Oleh', 'Waktu'],
+  // Riwayat lama yang dipindahkan dari Arsip / Stok Log / Log Perubahan, menunggu dihapus permanen atau dipulihkan.
+  'Sampah': ['ID', 'Sumber', 'Label', 'Jumlah', 'Data', 'Dipindahkan', 'Oleh']
 };
 var TEXT_COLS = {
   'Unit': ['E:F', 'G:H', 'I:I', 'L:L'],
@@ -54,7 +56,8 @@ var TEXT_COLS = {
   'Tempat': ['B:C', 'E:E'],
   'Material': ['B:E'],
   'Stok Log': ['B:B', 'G:H'],
-  'Skema Maintenance': ['A:G']
+  'Skema Maintenance': ['A:G'],
+  'Sampah': ['A:A', 'E:F']
 };
 var KATEGORI_AWAL = [
   ['Bor/Breker', 'BOR'], ['Gurinda/Mesin Potong', 'GRD'], ['Mesin Amplas', 'AMP'], ['Mesin Karpenter', 'KRP'],
@@ -187,7 +190,8 @@ function login_(req) {
 var BUTUH_NAMA = ['addUnit', 'editUnit', 'editJenis', 'nonaktifUnit', 'aktifkanUnit', 'renameMerek', 'gabungJenis',
   'addTempat', 'editTempat', 'nonaktifTempat', 'aktifTempat', 'setTempat', 'fotoSet', 'fotoHapus', 'panduanSimpan',
   'addMaterial', 'editMaterial', 'statusMaterial', 'imporUnit', 'imporRak', 'buatRak', 'saranTolak',
-  'skemaAddKolom', 'skemaEditKolom', 'skemaHapusKolom', 'hapusUnit', 'hapusJenis'];
+  'skemaAddKolom', 'skemaEditKolom', 'skemaHapusKolom', 'hapusUnit', 'hapusJenis',
+  'pindahSampah', 'pulihkanSampah', 'hapusSampahPermanen'];
 function route_(req) {
   if (BUTUH_NAMA.indexOf(req.action) >= 0 && !clean_(req.oleh)) return { ok: false, error: 'Pilih nama Anda dulu.' };
   if (BUTUH_NAMA.indexOf(req.action) >= 0 && !PENGEDIT.some(function (n) { return same_(n, req.oleh); })) return { ok: false, error: 'Hanya Abidin, Vikar, dan La Ode Riyan Syaputra yang boleh mengubah data.' };
@@ -198,9 +202,19 @@ function route_(req) {
                pengambilan: listPengambilan_(req.tgl), belum: listBelum_(), cfg: { jamPulang: getSetting_('JAM PULANG') || '17:00', saranTolak: getSetting_('SARAN DITOLAK') || '', pengedit: PENGEDIT }, serverDate: today_() };
     case 'pengambilan': return { ok: true, pengambilan: listPengambilan_(req.tgl) };
     case 'ringkasan': return { ok: true, ringkasan: ringkasan_() };
+    case 'riwayatBulan': return { ok: true, bulan: riwayatBulan_() };
+    case 'listArsipTgl': return { ok: true, pengambilan: listArsipTgl_(clean_(req.tgl)) };
     case 'riwayat': return { ok: true, riwayat: riwayat_([clean_(req.kode)]) };
     case 'riwayatJenis': return { ok: true, riwayat: riwayat_(kodeJenis_(clean_(req.id))) };
     case 'logList': return { ok: true, log: logList_() };
+    case 'logListBulan': return { ok: true, log: logListBulan_(clean_(req.bulan)) };
+    case 'stokLogBulan': return { ok: true, log: stokLogBulan_(clean_(req.id), clean_(req.bulan)) };
+    case 'matBulanList': return { ok: true, bulan: matBulanList_(clean_(req.id)) };
+    case 'logBulanList': return { ok: true, bulan: logBulanList_() };
+    case 'listSampah': return { ok: true, sampah: listSampah_() };
+    case 'pindahSampah': return pindahSampah_(req);
+    case 'pulihkanSampah': return pulihkanSampah_(req);
+    case 'hapusSampahPermanen': return hapusSampahPermanen_(req);
     case 'addPengambilan': return addPengambilan_(req);
     case 'returnPengambilan': return returnPengambilan_(req);
     case 'batalKembali': return batalKembali_(req);
@@ -399,6 +413,100 @@ function ringkasan_() {
   });
   return Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return a.tgl < b.tgl ? 1 : -1; }).slice(0, 120);
 }
+var BULAN_NAMA_ = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+function labelBulan_(b) { var p = b.split('-'); return BULAN_NAMA_[Number(p[1]) - 1] + ' ' + p[0]; }
+// Riwayat Pengambilan + Arsip, dikelompokkan per bulan lalu per tanggal. Dipakai halaman Riwayat (tampilan bulan) dan untuk memilih apa yang mau dipindah ke Sampah.
+function riwayatBulan_() {
+  var map = {};
+  function tambah(tgl, arsip) {
+    var b = tgl.slice(0, 7);
+    if (!map[b]) map[b] = {};
+    if (!map[b][tgl]) map[b][tgl] = { tgl: tgl, jumlah: 0, belum: 0, arsip: arsip };
+    map[b][tgl].jumlah++;
+  }
+  filled_('Pengambilan').forEach(function (r) { var t = ds_(r[1]); tambah(t, false); if (ts_(r[7]) === '') map[t.slice(0, 7)][t].belum++; });
+  filled_('Arsip').forEach(function (r) { tambah(ds_(r[1]), true); });
+  return Object.keys(map).sort().reverse().map(function (b) {
+    var hari = Object.keys(map[b]).map(function (t) { return map[b][t]; }).sort(function (a, c) { return a.tgl < c.tgl ? 1 : -1; });
+    return { bulan: b, label: labelBulan_(b), hari: hari };
+  });
+}
+function listArsipTgl_(tgl) {
+  return filled_('Arsip').filter(function (r) { return ds_(r[1]) === tgl; }).map(entry_);
+}
+function logListBulan_(bulan) {
+  return filled_('Log Perubahan').filter(function (r) { return ts_(r[0]).slice(0, 7) === bulan; })
+    .map(function (r) { return { t: ts_(r[0]), k: str_(r[1]), a: str_(r[2]), d: str_(r[3]), o: str_(r[4]) }; })
+    .sort(function (a, b) { return a.t < b.t ? 1 : -1; });
+}
+function logBulanList_() {
+  var set = {};
+  filled_('Log Perubahan').forEach(function (r) { set[ts_(r[0]).slice(0, 7)] = (set[ts_(r[0]).slice(0, 7)] || 0) + 1; });
+  return Object.keys(set).sort().reverse().map(function (b) { return { bulan: b, label: labelBulan_(b), jumlah: set[b] }; });
+}
+// Riwayat stok 1 material untuk 1 bulan penuh (dipakai cetak + pindah ke Sampah). Tidak dibatasi 60 seperti stokLog_.
+function stokLogBulan_(mat, bulan) {
+  return filled_('Stok Log').filter(function (r) { return str_(r[2]) === mat && ts_(r[1]).slice(0, 7) === bulan; })
+    .map(function (r) { return { id: str_(r[0]), t: ts_(r[1]), tipe: str_(r[3]), j: Number(r[4]) || 0, q: Number(r[5]) || 0, o: str_(r[6]), cat: str_(r[7]) }; })
+    .sort(function (a, b) { return a.t < b.t ? 1 : -1; });
+}
+function matBulanList_(mat) {
+  var set = {};
+  filled_('Stok Log').forEach(function (r) { if (str_(r[2]) === mat) { var b = ts_(r[1]).slice(0, 7); set[b] = (set[b] || 0) + 1; } });
+  return Object.keys(set).sort().reverse().map(function (b) { return { bulan: b, label: labelBulan_(b), jumlah: set[b] }; });
+}
+
+/* ---------- Sampah: riwayat lama dipindahkan dari Arsip / Stok Log / Log Perubahan. Manual semua, tidak ada batas waktu otomatis. ---------- */
+function newSampahId_() { return 'SMP' + Utilities.getUuid().slice(0, 8).toUpperCase(); }
+function listSampah_() {
+  return filled_('Sampah').map(function (r) {
+    var data = []; try { data = JSON.parse(str_(r[4]) || '[]'); } catch (e) {}
+    return { id: str_(r[0]), sumber: str_(r[1]), label: str_(r[2]), jumlah: Number(r[3]) || data.length, dipindahkan: ts_(r[5]), oleh: str_(r[6]) };
+  }).sort(function (a, b) { return a.dipindahkan < b.dipindahkan ? 1 : -1; });
+}
+var SAMPAH_SUMBER_ = { 'Arsip': 1, 'Stok Log': 1, 'Log Perubahan': 0 };
+function pindahSampah_(r) {
+  var sumber = clean_(r.sumber);
+  if (!SAMPAH_SUMBER_.hasOwnProperty(sumber)) return err_('Sumber tidak dikenal.');
+  var dateCol = SAMPAH_SUMBER_[sumber], matId = clean_(r.matId);
+  var tglSet = null, dari = '', sampai = '';
+  if (r.tgl && r.tgl.length) { tglSet = {}; r.tgl.forEach(function (t) { tglSet[clean_(t)] = true; }); }
+  else { dari = clean_(r.dari); sampai = clean_(r.sampai); if (!ISO_.test(dari) || !ISO_.test(sampai)) return err_('Rentang tanggal tidak valid.'); }
+  var sh = sheet_(sumber), rows = rows_(sumber), pick = [];
+  for (var i = 0; i < rows.length; i++) {
+    if (str_(rows[i][0]) === '' && sumber !== 'Log Perubahan') continue;
+    var t = ds_(rows[i][dateCol]);
+    if (tglSet) { if (!tglSet[t]) continue; } else { if (t < dari || t > sampai) continue; }
+    if (sumber === 'Stok Log' && matId && str_(rows[i][2]) !== matId) continue;
+    pick.push(i);
+  }
+  if (!pick.length) return { ok: true, jumlah: 0 };
+  var dataRows = pick.map(function (i) { return rows[i]; });
+  var tglLabel = tglSet ? Object.keys(tglSet).sort() : [dari, sampai];
+  var label = sumber + (matId ? ' (' + matId + ')' : '') + ' — ' + (tglLabel.length > 1 && tglLabel[0] !== tglLabel[tglLabel.length - 1] ?
+    fmtTglId_(tglLabel[0]) + ' s/d ' + fmtTglId_(tglLabel[tglLabel.length - 1]) : fmtTglId_(tglLabel[0]));
+  sheet_('Sampah').appendRow([newSampahId_(), sumber, label, pick.length, JSON.stringify(dataRows), stamp_(), clean_(r.oleh)]);
+  for (var k = pick.length - 1; k >= 0; k--) sh.deleteRow(pick[k] + 2);
+  return { ok: true, jumlah: pick.length };
+}
+function fmtTglId_(iso) { var p = iso.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+function pulihkanSampah_(r) {
+  var f = findRow_('Sampah', clean_(r.id));
+  if (!f) return { ok: true, missing: true };
+  var sumber = str_(f.row[1]), data = [];
+  try { data = JSON.parse(str_(f.row[4]) || '[]'); } catch (e) { return err_('Data sampah rusak, tidak bisa dipulihkan.'); }
+  var sh = sheet_(sumber);
+  data.forEach(function (row) { sh.appendRow(row); });
+  sheet_('Sampah').deleteRow(f.i + 2);
+  return { ok: true, jumlah: data.length };
+}
+function hapusSampahPermanen_(r) {
+  var f = findRow_('Sampah', clean_(r.id));
+  if (!f) return { ok: true, missing: true };
+  sheet_('Sampah').deleteRow(f.i + 2);
+  return { ok: true };
+}
+
 function kodeJenis_(id) {
   return filled_('Unit').filter(function (r) { return str_(r[1]) === id; }).map(function (r) { return str_(r[0]); });
 }
@@ -564,6 +672,7 @@ function unitNosOf_(jenisId, exceptKode) {
   return out;
 }
 
+function lowestFree_(used) { var n = 1; while (used.indexOf(n) >= 0) n++; return n; }
 function addUnit_(r) {
   var f = normUnit_(r.f), bad = checkUnit_(f);
   if (bad) return err_(bad);
@@ -587,7 +696,8 @@ function addUnit_(r) {
   var pf = prefixFor_(kat, awalan);
   if (pf.err) return err_(pf.err);
   var used = newJenis ? [] : unitNosOf_(jenis.id, '');
-  var u = f.u ? parseUnitNo_(f.u) : (used.length ? Math.max.apply(null, used) + 1 : 1);
+  // No. Unit baru: isi nomor kosong terkecil dulu (misal Unit 3 yang dihapus dipakai lagi), baru lanjut ke nomor berikutnya.
+  var u = f.u ? parseUnitNo_(f.u) : lowestFree_(used);
   if (used.indexOf(u) >= 0) return err_('Unit ' + u + ' sudah ada di jenis ini.');
   var units = filled_('Unit'), max = 0;
   units.forEach(function (x) { var m = /^([A-Z]{3})-(\d+)$/.exec(str_(x[0])); if (m && m[1] === pf.p) max = Math.max(max, Number(m[2])); });

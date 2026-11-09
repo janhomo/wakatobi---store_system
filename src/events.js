@@ -196,7 +196,7 @@ document.addEventListener('click', async e => {
     case 'stoktipe': if (S.stokEd) { const m = stokMat(); S.stokEd.tipe = t.dataset.t; S.stokEd.jumlah = t.dataset.t === 'Koreksi' && m ? String(m.q) : '1'; renderStok(); } break;
     case 'stokstep': if (S.stokEd) { const j = Math.max(0, Math.round(((stokNum() || 0) + Number(t.dataset.d)) * 1000) / 1000); S.stokEd.jumlah = String(j); $('#stokJ').value = S.stokEd.jumlah; stokPreview(); } break;
     case 'stokq': if (S.stokEd) { S.stokEd.jumlah = t.dataset.n; $('#stokJ').value = t.dataset.n; stokPreview(); } break;
-    case 'stoknama': openPicker({ title: 'Siapa?', sub: 'Nama pekerja yang mengambil atau menerima.', onPick: n => { if (S.stokEd) { S.stokEd.nama = n; renderStok(); } } }); break;
+    case 'stoknama': openPicker({ title: 'Siapa?', sub: 'Pilih dari daftar, atau ketik nama lain (tidak harus pekerja terdaftar).', freeName: true, onPick: n => { if (S.stokEd) { S.stokEd.nama = n; renderStok(); } } }); break;
     case 'stokgo': stokSubmit(); break;
     /* panduan */
     case 'pdedit': go('panduan', { jid: curJid() }); break;
@@ -269,8 +269,17 @@ document.addEventListener('click', async e => {
     case 'pickname': pickName(t.dataset.n); break;
     case 'picknew': { const n = clean(t.dataset.n); if (n && await saveWorkers([...S.pekerja, { n, d: '' }])) pickName(n); break; }
     /* riwayat */
-    case 'rwopen': S.rwDate = t.dataset.tgl; render(); loadAll(true); break;
-    case 'rwback': S.rwDate = null; render(); loadRingkasan(); break;
+    case 'rwopen': S.rwDate = t.dataset.tgl; S.rwArsip = t.dataset.arsip === '1'; render(); if (S.rwArsip) loadArsipHari(); else loadAll(true); break;
+    case 'rwback': S.rwDate = null; S.rwArsip = false; render(); loadRingkasan(); break;
+    case 'rwbulan': S.rwOpenM[t.dataset.b] = !S.rwOpenM[t.dataset.b]; renderLive(); break;
+    case 'rwkesampah': {
+      const tgl = Object.keys(S.rwSel).filter(k => S.rwSel[k]);
+      if (!tgl.length) break;
+      try { const j = await api('pindahSampah', { sumber: 'Arsip', tgl, oleh: S.me }); toast('Dipindahkan ke Sampah: ' + j.jumlah + ' catatan.'); S.rwSel = {}; loadRingkasan(); }
+      catch (err) { toast(err.message || (err.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal memindahkan ke Sampah.')); }
+      break;
+    }
+    case 'dkpi': { const id = t.dataset.id; S.dkOpen[id] = !S.dkOpen[id]; render(); break; }
     case 'print': printDay(); break;
     case 'export': exportXlsx(); break;
     case 'exportmat': exportMaterialXlsx(); break;
@@ -278,6 +287,22 @@ document.addEventListener('click', async e => {
       try { const j = await api('arsipkan', { tgl: S.rwDate }); toast('Diarsipkan: ' + j.jumlah + ' catatan.'); S.rwDate = null; render(); loadRingkasan(); loadAll(true); }
       catch (err) { toast(err.message || (err.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal mengarsipkan.')); }
       break;
+    /* riwayat material per bulan (Semen dkk) */
+    case 'matriw': S.mrId = t.dataset.id; S.mrBulan = null; go('matriw'); break;
+    case 'matriwback': back(); break;
+    case 'matriwbulan': S.mrBulan = null; render(); break;
+    case 'matriwopen': S.mrBulan = t.dataset.b; render(); loadMatRiwayatBulan(); break;
+    case 'matriwprint': printMatRiwayat(); break;
+    case 'matriwsampah': matRiwayatKeSampah(); break;
+    /* sampah */
+    case 'spulih': sampahPulihkan(t.dataset.id); break;
+    case 'shapus': {
+      const key = 'smp:' + t.dataset.id;
+      if (S.confirmDel === key) { S.confirmDel = null; const r = (S.sampah.list || []).find(x => x.id === t.dataset.id); sampahHapusMulai(t.dataset.id, r ? r.label : t.dataset.id); }
+      else armConfirm(key);
+      break;
+    }
+    case 'sundo': sampahUndo(); break;
     /* pekerja */
     case 'addname': { const n = $('#newName'), d = $('#newDept'), v = clean(n.value); if (v) { if (await saveWorkers([...S.pekerja, { n: v, d: d.value }])) { n.value = ''; toast('Pekerja ditambahkan.'); } } else toast('Isi nama pekerja.'); break; }
     case 'doimport': {
@@ -336,6 +361,7 @@ document.addEventListener('input', e => {
   else if (id === 'aq') { if (S.form) { S.form.q = e.target.value; renderTambahTempat(); } }
   else if (id === 'stokJ') { if (S.stokEd) { S.stokEd.jumlah = e.target.value; stokPreview(); } }
   else if (id === 'stokC') { if (S.stokEd) S.stokEd.cat = e.target.value; }
+  else if (id === 'stokD') { if (S.stokEd) S.stokEd.dept = e.target.value; }
   else if (id === 'cropZoom') { if (S.fotoEd) { S.fotoEd.zoom = Number(e.target.value); drawCrop(); } }
   else if (id === 'tq') { S.form.q = e.target.value; const q = norm(e.target.value); $('#tlist').innerHTML = tambahList(S.jenis.filter(j => !q || norm([j.n, j.b, j.m].join(' ')).includes(q)).sort((a, b) => byName(a.n, b.n) || byName(a.b, b.b))); }
   else if (id === 'pickq') { S.picker.q = e.target.value; fillPicker(); }
@@ -353,6 +379,7 @@ document.addEventListener('change', e => {
   if (id === 'irFile') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) irLoad(f); return; }
   if (id === 'fiFile') { const fs = e.target.files; e.target.value = ''; if (fs && fs.length) fiPicked(fs); return; }
   if (id === 'fileCam' || id === 'fileGal') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) fotoPicked(f); return; }
+  if (e.target.classList && e.target.classList.contains('rwchk')) { S.rwSel[e.target.dataset.tgl] = e.target.checked; renderLive(); return; }
   if (id === 'tkat') { $('#tkatBox').hidden = v !== '__new'; updateCodePrev(); }
   else if (id === 'jkat') $('#jkatBox').hidden = v !== '__new';
   else if (id === 'tmerek') $('#tmerekBox').hidden = v !== '__new';
