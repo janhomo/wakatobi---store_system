@@ -154,6 +154,15 @@ function placeSummary(tid) {
   const mats = allMaterial().filter(m => !m.off && m.loc === tid);
   return { units: us, out: us.filter(u => held.has(u.k)).length, mats, low: mats.filter(isLow).length };
 }
+// Untuk rak induk: jumlah mesin/material termasuk yang ada di sub rak-nya, bukan cuma yang langsung di rak itu.
+function placeSummaryRollup(t) {
+  const subs = t.ind ? [] : childRaks(t.id);
+  if (!subs.length) return placeSummary(t.id);
+  const own = placeSummary(t.id);
+  let units = own.units.slice(), mats = own.mats.slice(), out = own.out, low = own.low;
+  subs.forEach(s => { const sm = placeSummary(s.id); units = units.concat(sm.units); mats = mats.concat(sm.mats); out += sm.out; low += sm.low; });
+  return { units, out, mats, low };
+}
 
 /* ---------- material dan stok (dengan catatan stok yang menunggu terkirim) ---------- */
 function stokApply(q, p) {

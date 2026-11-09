@@ -804,6 +804,15 @@ function placeSummary(tid) {
   const mats = allMaterial().filter(m => !m.off && m.loc === tid);
   return { units: us, out: us.filter(u => held.has(u.k)).length, mats, low: mats.filter(isLow).length };
 }
+// Untuk rak induk: jumlah mesin/material termasuk yang ada di sub rak-nya, bukan cuma yang langsung di rak itu.
+function placeSummaryRollup(t) {
+  const subs = t.ind ? [] : childRaks(t.id);
+  if (!subs.length) return placeSummary(t.id);
+  const own = placeSummary(t.id);
+  let units = own.units.slice(), mats = own.mats.slice(), out = own.out, low = own.low;
+  subs.forEach(s => { const sm = placeSummary(s.id); units = units.concat(sm.units); mats = mats.concat(sm.mats); out += sm.out; low += sm.low; });
+  return { units, out, mats, low };
+}
 
 /* ---------- material dan stok (dengan catatan stok yang menunggu terkirim) ---------- */
 function stokApply(q, p) {
@@ -2407,7 +2416,7 @@ function viewTempatList() {
     '<p class="stats" id="tstats"></p>' + '<div id="rakbtn"></div>' + '<div class="jlist" id="tlist2"></div><div id="toff"></div>';
 }
 function placeCard(t) {
-  const sm = placeSummary(t.id), pills = [];
+  const sm = placeSummaryRollup(t), pills = [];
   pills.push('<span class="pill rak">' + sm.units.length + ' mesin</span>');
   if (sm.out) pills.push('<span class="pill out">' + sm.out + ' di luar</span>');
   if (sm.mats.length) pills.push('<span class="pill unk">' + sm.mats.length + ' material</span>');
@@ -2434,7 +2443,7 @@ function viewTempat() {
   if (!t) return '<p class="empty">' + (S.loaded ? 'Tempat tidak ditemukan.' : 'Memuat…') + '</p>';
   const isSub = !!t.ind, parent = isSub ? T[t.ind] : null;
   const subs = isSub ? [] : childRaks(t.id);
-  const sm = placeSummary(t.id), held = heldMap();
+  const sm = placeSummary(t.id), smAll = subs.length ? placeSummaryRollup(t) : sm, held = heldMap();
   const mrow = u => { const j = jenisOf(u), h = held.get(u.k);
     const ln = unitLine(u);
     return '<button class="trow" data-action="openunit" data-k="' + esc(u.k) + '">' + thumbHtml(u.j, 22, 'sm') + '<span class="nm"><b>' + esc(ln.a) + '</b><small class="muted">' + esc(ln.b) + '</small></span>' +
@@ -2448,7 +2457,7 @@ function viewTempat() {
   btns.push('<button class="pbtn" data-action="tambahke" data-id="' + esc(t.id) + '" data-tab="material">' + ic('plus', 22) + 'Material</button>');
   return (isSub ? '<button class="ulink" data-action="opentempat" data-id="' + esc(parent.id) + '" style="margin-bottom:8px">' + ic('back', 16) + esc(parent.n) + '</button>' : '') +
     (t.off ? '<p class="note warn" style="margin-bottom:10px">Tempat ini nonaktif. <button class="btn small ghost" style="display:inline-flex;min-height:36px;margin-left:6px" data-action="tempataktif" data-id="' + esc(t.id) + '">Aktifkan kembali</button></p>' : '') +
-    '<div class="stat3"><div><b>' + sm.units.length + '</b><small>Mesin</small></div><div><b>' + sm.mats.length + '</b><small>Jenis material</small></div><div class="' + (sm.low ? 'lowc' : '') + '"><b>' + sm.low + '</b><small>Menipis</small></div></div>' +
+    '<div class="stat3"><div><b>' + smAll.units.length + '</b><small>Mesin' + (subs.length ? ' (termasuk sub rak)' : '') + '</small></div><div><b>' + smAll.mats.length + '</b><small>Jenis material</small></div><div class="' + (smAll.low ? 'lowc' : '') + '"><b>' + smAll.low + '</b><small>Menipis</small></div></div>' +
     '<div class="two" style="margin:10px 0"><a class="btn ghost small" href="label.html?kode=' + esc(t.id) + '">' + ic('print', 20) + 'Cetak QR tempat</a><button class="btn ghost small" data-action="tempatedit" data-id="' + esc(t.id) + '">' + ic('edit', 20) + 'Ubah nama</button></div>' +
     (isSub ? '' : '<h2 class="h2" style="margin-top:6px">Sub rak</h2>' + (subs.length ? '<div class="jlist">' + subs.map(placeCard).join('') + '</div>' : '<p class="muted">Belum ada sub rak.</p>')) +
     '<h2 class="h2" style="margin-top:6px">Mesin' + (isSub ? '' : ' di rak ini') + '</h2>' + (sm.units.length ? '<div class="tbox">' + sm.units.sort((a, b) => byName(jenisOf(a).n, jenisOf(b).n) || (Number(a.u) || 0) - (Number(b.u) || 0) || a.k.localeCompare(b.k)).map(mrow).join('') + '</div>' : '<p class="muted">Belum ada mesin di sini.</p>') +
