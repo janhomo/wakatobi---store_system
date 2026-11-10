@@ -223,15 +223,63 @@ function liveMatRiwayat() {
       S.mrMonths.list.map(b => '<button class="daterow2" data-action="matriwopen" data-b="' + esc(b.bulan) + '"><span><b>' + esc(b.label) + '</b><br><small class="muted">' + b.jumlah + ' catatan</small></span>' +
         (b.bulan === curBulan ? '<span class="pill ok">Berjalan</span>' : '') + '</button>').join('') + '</div>';
   }
-  if (!S.mrLog || S.mrLog.list === null) return '<p class="empty">Memuat…</p>';
-  if (S.mrLog.error) return '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
-  if (!S.mrLog.list.length) return '<p class="empty">Tidak ada catatan di bulan ini.</p>';
+  const modeToggle = isSemen(m) ? '<div class="utabs" role="tablist" style="margin-bottom:12px">' +
+    '<button role="tab" data-action="matriwmode" data-m="edit" aria-selected="' + (S.mrMode !== 'harian') + '">Per transaksi</button>' +
+    '<button role="tab" data-action="matriwmode" data-m="harian" aria-selected="' + (S.mrMode === 'harian') + '">Harian</button></div>' : '';
+  if (isSemen(m) && S.mrMode === 'harian') return modeToggle + liveLedgerHarian();
+  if (!S.mrLog || S.mrLog.list === null) return modeToggle + '<p class="empty">Memuat…</p>';
+  if (S.mrLog.error) return modeToggle + '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
+  if (!S.mrLog.list.length) return modeToggle + '<p class="empty">Tidak ada catatan di bulan ini.</p>';
   const curBulan = today().slice(0, 7), bisaSampah = S.mrBulan !== curBulan;
   const rows = S.mrLog.list.map(r => { const { dept, note } = parseStokCat(r.cat); return '<tr><td>' + esc(fmtShort(r.t)) + '</td><td>' + esc(r.tipe) + '</td><td>' + esc(fmtQty(r.j)) + '</td><td>' + esc(fmtQty(r.q)) + '</td><td>' + esc(r.o + (dept ? ' / ' + dept : '')) + '</td><td>' + esc(note) + '</td></tr>'; }).join('');
-  return '<p class="stats">' + S.mrLog.list.length + ' catatan</p>' +
+  return modeToggle + '<p class="stats">' + S.mrLog.list.length + ' catatan</p>' +
     '<div class="two" style="margin-bottom:12px"><button class="btn" data-action="matriwprint">Cetak</button>' +
     (bisaSampah ? '<button class="btn ghost" data-action="matriwsampah">Pindahkan bulan ini ke Sampah</button>' : '<button class="btn ghost" disabled title="Bulan berjalan belum bisa dipindah">Bulan berjalan</button>') + '</div>' +
-    '<div class="tblwrap"><table class="datatbl"><thead><tr><th>Waktu</th><th>Jenis</th><th>Jumlah</th><th>Stok Sesudah</th><th>Nama/Departemen</th><th>Catatan</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    '<div class="tblwrap"><table class="tbl small"><thead><tr><th>Waktu</th><th>Jenis</th><th>Jumlah</th><th>Stok Sesudah</th><th>Nama/Departemen</th><th>Catatan</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+function fmtTglLedger(iso) { const p = iso.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+async function loadMatLedgerBulan() {
+  S.mrLedger = { list: null, error: false, tutup: false }; renderLive();
+  try { const res = await api('ledgerBulan', { id: S.mrId, bulan: S.mrBulan }); S.mrLedger.list = res.ledger; S.mrLedger.tutup = !!res.tutup; }
+  catch (e) { S.mrLedger.list = []; S.mrLedger.error = true; }
+  renderLive();
+}
+function liveLedgerHarian() {
+  if (!S.mrLedger || S.mrLedger.list === null) return '<p class="empty">Memuat…</p>';
+  if (S.mrLedger.error) return '<p class="empty">Riwayat harian belum bisa dimuat. Cek sinyal.</p>';
+  const curBulan = today().slice(0, 7), tutup = S.mrLedger.tutup;
+  const rows = S.mrLedger.list.map(r => '<tr><td>' + esc(fmtTglLedger(r.tgl)) + '</td><td>' + esc(fmtQty(r.awal)) + '</td><td>' + (r.masuk ? esc(fmtQty(r.masuk)) : '') + '</td><td>' + (r.keluar ? esc(fmtQty(r.keluar)) : '') + '</td><td>' + (r.pinjam ? esc(fmtQty(r.pinjam)) : '') + '</td><td>' + (r.kembali ? esc(fmtQty(r.kembali)) : '') + '</td><td><b>' + esc(fmtQty(r.akhir)) + '</b></td><td><input class="field lket" data-tgl="' + esc(r.tgl) + '" value="' + esc(r.ket) + '" placeholder="diisi manual" autocomplete="off" ' + (tutup ? 'disabled' : '') + '></td></tr>').join('');
+  const tutupBtn = tutup
+    ? '<span class="pill ok">Bulan ditutup</span>'
+    : (S.mrBulan === curBulan
+      ? '<button class="btn ghost" disabled title="Bulan berjalan belum bisa ditutup">Bulan berjalan</button>'
+      : '<button class="btn ghost" data-action="matriwtutup">Tutup Bulan</button>');
+  return '<p class="note">Stock Awal/Akhir dihitung otomatis dari Stok Log. Kolom Keterangan diisi manual, tersimpan sendiri saat pindah dari kolomnya.</p>' +
+    (tutup ? '<p class="note">Bulan ini sudah ditutup. Stock Akhir terkunci jadi Stock Awal bulan depan, transaksinya sudah boleh dihapus ke Sampah.</p>' : '<p class="note">Tutup bulan dulu sebelum transaksinya boleh dihapus ke Sampah.</p>') +
+    '<div class="two" style="margin-bottom:12px"><button class="btn" data-action="matriwexport">Unduh Excel</button>' + tutupBtn + '</div>' +
+    '<div class="tblwrap"><table class="tbl small ltable"><thead><tr><th>Tanggal</th><th>Stock Awal</th><th>Pemasukan</th><th>Pemakaian Project</th><th>Pinjaman Resort</th><th>Pengembalian Resort</th><th>Stock Akhir</th><th>Keterangan</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+function tutupBulanLedger() {
+  ensureMe(async () => {
+    try {
+      const r = await api('tutupBulan', { matId: S.mrId, bulan: S.mrBulan, oleh: S.me });
+      S.mrLedger.tutup = true; toast('Bulan ditutup. Stock Akhir: ' + fmtQty(r.akhir) + '.'); renderLive();
+    } catch (e) { toast(e.message || (e.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal menutup bulan.')); }
+  });
+}
+function exportLedgerExcel() {
+  const m = M[S.mrId]; if (!m || !S.mrLedger || !S.mrLedger.list) return;
+  const aoa = [['Tanggal', 'Stock Awal', 'Pemasukan', 'Pemakaian Project', 'Pinjaman Resort', 'Pengembalian Resort', 'Stock Akhir', 'Keterangan']];
+  S.mrLedger.list.forEach(r => aoa.push([fmtTglLedger(r.tgl), r.awal, r.masuk || '', r.keluar || '', r.pinjam || '', r.kembali || '', r.akhir, r.ket || '']));
+  const wb = XLSX.utils.book_new(), sh = XLSX.utils.aoa_to_sheet(aoa);
+  XLSX.utils.book_append_sheet(wb, sh, labelBulanId(S.mrBulan).slice(0, 31));
+  XLSX.writeFile(wb, 'Riwayat_Harian_' + m.n.replace(/\s+/g, '_') + '_' + S.mrBulan + '.xlsx');
+}
+function simpanKeteranganHarian(tgl, ket) {
+  ensureMe(async () => {
+    try { await api('simpanCatatanHarian', { matId: S.mrId, tgl, ket: ket.trim(), oleh: S.me }); if (S.mrLedger && S.mrLedger.list) { const r = S.mrLedger.list.find(x => x.tgl === tgl); if (r) r.ket = ket.trim(); } toast('Keterangan disimpan.'); }
+    catch (e) { toast(e.message || (e.code === 'network' ? 'Tidak ada sinyal, keterangan belum tersimpan.' : 'Gagal menyimpan keterangan.')); }
+  });
 }
 function printMatRiwayat() {
   const m = M[S.mrId]; if (!m || !S.mrLog || !S.mrLog.list) return;

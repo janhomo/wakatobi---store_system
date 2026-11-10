@@ -73,12 +73,12 @@ function setTheme(t) {
 const KONDISI = ['Normal', 'Servis', 'Rusak', 'Rusak total', 'Belum dicek'];
 const MJENIS = ['Servis rutin', 'Ganti sparepart', 'Perbaikan', 'Kalibrasi', 'Pengecekan', 'Lainnya'];
 const S = {
-  view: 'mesin', nm: null, wj: null, jid: null, kode: null, tid: null, mid: null, tab: 'unit', filter: '', q: '',
+  view: 'dasbor', nm: null, wj: null, jid: null, kode: null, tid: null, mid: null, tab: 'unit', filter: '', q: '',
   jenis: [], units: [], kategori: [], tempat: [], material: [], pekerja: [], maintServer: [], pengServer: [], pengDate: null, belumServer: [], skema: {}, cfg: { jamPulang: '17:00', pengedit: ['Abidin', 'Vikar', 'La Ode Riyan Syaputra'] },
-  loaded: false, loadError: null, tok: lsGet('qrg.tok', ''), me: lsGet('qrg.me', ''), dkOpen: {},
+  loaded: false, loadError: null, tok: lsGet('qrg.tok', ''), me: lsGet('qrg.me', ''), dkChip: null,
   ov: [], pending: null, form: null, confirmDel: null, skForm: null,
   rwDate: null, rwArsip: false, rwOpenM: {}, rwSel: {}, rw: { list: null, error: false }, riw: { key: null, list: null, error: false }, logs: { list: null, error: false },
-  mrId: null, mrBulan: null, mrMonths: null, mrLog: null,
+  mrId: null, mrBulan: null, mrMonths: null, mrLog: null, mrMode: 'edit', mrLedger: null,
   sampah: { list: null, error: false }, sampahUndo: null,
   scan: null, picker: null, justAdded: null, focus: null
 };
@@ -362,7 +362,7 @@ function go(view, o = {}) {
 }
 function back() {
   if (S.ov.length) { history.back(); return; }
-  if (history.state && history.state.d > 0) history.back(); else go('mesin', { root: true });
+  if (history.state && history.state.d > 0) history.back(); else go('dasbor', { root: true });
 }
 function pushOv(name) {
   S.ov.push(name);
@@ -378,7 +378,7 @@ function closeOv(name) {
   else if (name === 'stok') { $('#stokSheet').hidden = true; S.stokEd = null; }
 }
 window.addEventListener('popstate', e => {
-  const st = e.state || { v: 'mesin', d: 0, ovn: 0 };
+  const st = e.state || { v: 'dasbor', d: 0, ovn: 0 };
   const target = st.ovn || 0;
   while (S.ov.length > target) closeOv(S.ov.pop());
   if (st.v !== S.view || (st.nm || null) !== S.nm || (st.jid || null) !== S.jid || (st.kode || null) !== S.kode || (st.tid || null) !== S.tid || (st.mid || null) !== S.mid || (st.tab || 'unit') !== S.tab) {

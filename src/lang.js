@@ -37,6 +37,7 @@ const DICT_EN = {
   'Cetak QR tempat': 'Print place QR', 'Memuat…': 'Loading…', 'Tersimpan': 'Saved',
   'Belum kembali': 'Not returned yet', 'Rusak / servis': 'Broken / in service',
   'Servis jatuh tempo': 'Service due', 'Stok menipis': 'Low stock', 'Sedang dipakai': 'In use now',
+  'Total unit': 'Total units', 'Total material': 'Total materials', 'Aktivitas Terbaru': 'Recent Activity', 'Belum ada aktivitas.': 'No activity yet.',
   'Mesin tanpa rak': 'Machines without a rack', 'Baca saja': 'View only',
   'Pilih file Excel': 'Choose Excel file', 'Unduh contoh': 'Download example',
   'Pilih dari galeri': 'Choose from gallery', 'Ambil foto': 'Take photo', 'Hapus foto': 'Delete photo',
@@ -193,7 +194,8 @@ const DICT_FRAG = {
   'Riwayat belum bisa dimuat. Cek sinyal.': "History couldn't be loaded. Check your signal.",
   'Baik)': 'Good)', 'Rusak)': 'Broken)', 'memindahkan catatan tanggal ini ke sheet Arsip di Google Sheet. Datanya tetap tersimpan, hanya hilang dari daftar Riwayat.': ' moves this date’s entries to the Arsip sheet in the Google Sheet. The data stays saved, it just disappears from the History list.',
   'Kolom ini muncul saat mengisi riwayat maintenance untuk ': 'These columns appear when filling in maintenance history for ',
-  'Ubah kolom ': 'Edit column ', 'Hapus kolom ': 'Delete column '
+  'Ubah kolom ': 'Edit column ', 'Hapus kolom ': 'Delete column ',
+  ' mengambil': ' took', ' mengembalikan': ' returned'
 };
 const FRAG_KEYS = Object.keys(DICT_FRAG).sort((a, b) => b.length - a.length);
 /* kata status yang hanya ditukar kalau langsung mengikuti angka (hindari mengubah kata yang sama

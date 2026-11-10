@@ -24,7 +24,7 @@ async function callEdit(action, payload, doneText, after) {
 }
 function saveUnit() {
   const u = U[S.kode]; if (!u) return;
-  const f = { u: clean(val('uu')), sl: ksegVal('uk'), loc: clean(val('uloc')), pm: clean(val('upm')), sn: clean(val('usn')), tb: val('utb'), gs: val('ugs'), cat: val('ucat').trim() };
+  const f = { u: clean(val('uu')), sl: ksegVal('uk'), loc: clean(val('uloc')), pm: clean(val('upm')), pic: clean(val('upic')), sn: clean(val('usn')), tb: val('utb'), gs: val('ugs'), cat: val('ucat').trim() };
   if (!f.u) { toast('Isi nomor unit.'); return; }
   callEdit('editUnit', { kode: u.k, f }, j => j.changed ? 'Perubahan disimpan.' : 'Tidak ada yang berubah.');
 }
@@ -275,11 +275,18 @@ document.addEventListener('click', async e => {
     case 'rwkesampah': {
       const tgl = Object.keys(S.rwSel).filter(k => S.rwSel[k]);
       if (!tgl.length) break;
-      try { const j = await api('pindahSampah', { sumber: 'Arsip', tgl, oleh: S.me }); toast('Dipindahkan ke Sampah: ' + j.jumlah + ' catatan.'); S.rwSel = {}; loadRingkasan(); }
-      catch (err) { toast(err.message || (err.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal memindahkan ke Sampah.')); }
+      const arsipMap = {};
+      (S.rw.list || []).forEach(b => b.hari.forEach(d => { arsipMap[d.tgl] = d.arsip; }));
+      const tglArsip = tgl.filter(t => arsipMap[t]), tglLive = tgl.filter(t => !arsipMap[t]);
+      try {
+        let total = 0;
+        if (tglArsip.length) total += (await api('pindahSampah', { sumber: 'Arsip', tgl: tglArsip, oleh: S.me })).jumlah;
+        if (tglLive.length) total += (await api('pindahSampah', { sumber: 'Pengambilan', tgl: tglLive, oleh: S.me })).jumlah;
+        toast('Dipindahkan ke Sampah: ' + total + ' catatan.'); S.rwSel = {}; loadRingkasan();
+      } catch (err) { toast(err.message || (err.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal memindahkan ke Sampah.')); }
       break;
     }
-    case 'dkpi': { const id = t.dataset.id; S.dkOpen[id] = !S.dkOpen[id]; render(); break; }
+    case 'dkchip': { const id = t.dataset.id; S.dkChip = S.dkChip === id ? null : id; render(); break; }
     case 'print': printDay(); break;
     case 'export': exportXlsx(); break;
     case 'exportmat': exportMaterialXlsx(); break;
@@ -288,12 +295,15 @@ document.addEventListener('click', async e => {
       catch (err) { toast(err.message || (err.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal mengarsipkan.')); }
       break;
     /* riwayat material per bulan (Semen dkk) */
-    case 'matriw': S.mrId = t.dataset.id; S.mrBulan = null; go('matriw'); break;
+    case 'matriw': S.mrId = t.dataset.id; S.mrBulan = null; S.mrMode = 'edit'; go('matriw'); break;
     case 'matriwback': back(); break;
     case 'matriwbulan': S.mrBulan = null; render(); break;
-    case 'matriwopen': S.mrBulan = t.dataset.b; render(); loadMatRiwayatBulan(); break;
+    case 'matriwopen': S.mrBulan = t.dataset.b; S.mrMode = 'edit'; render(); loadMatRiwayatBulan(); break;
+    case 'matriwmode': S.mrMode = t.dataset.m; renderLive(); if (S.mrMode === 'harian' && !S.mrLedger) loadMatLedgerBulan(); break;
+    case 'matriwexport': exportLedgerExcel(); break;
     case 'matriwprint': printMatRiwayat(); break;
     case 'matriwsampah': matRiwayatKeSampah(); break;
+    case 'matriwtutup': tutupBulanLedger(); break;
     /* sampah */
     case 'spulih': sampahPulihkan(t.dataset.id); break;
     case 'shapus': {
@@ -380,6 +390,7 @@ document.addEventListener('change', e => {
   if (id === 'fiFile') { const fs = e.target.files; e.target.value = ''; if (fs && fs.length) fiPicked(fs); return; }
   if (id === 'fileCam' || id === 'fileGal') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) fotoPicked(f); return; }
   if (e.target.classList && e.target.classList.contains('rwchk')) { S.rwSel[e.target.dataset.tgl] = e.target.checked; renderLive(); return; }
+  if (e.target.classList && e.target.classList.contains('lket')) { simpanKeteranganHarian(e.target.dataset.tgl, e.target.value); return; }
   if (id === 'tkat') { $('#tkatBox').hidden = v !== '__new'; updateCodePrev(); }
   else if (id === 'jkat') $('#jkatBox').hidden = v !== '__new';
   else if (id === 'tmerek') $('#tmerekBox').hidden = v !== '__new';

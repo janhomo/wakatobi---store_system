@@ -86,7 +86,8 @@ label.lbl{display:block; font-size:14px; color:var(--muted); margin:0 0 4px}
 .note.bad{background:var(--bad-bg); color:var(--bad)}
 .note.info{background:var(--accent-soft); color:var(--ink)}
 .card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px}
-.dkpi{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:4px}
+.dkpi{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:4px; align-items:start}
+.kpiwrap{min-width:0}
 .kpi{background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:2px}
 .kpi b{font-family:var(--f-display); font-size:32px; line-height:1; color:var(--ink)}
 .kpi small{font-size:13px; font-weight:600; color:var(--muted)}
@@ -101,6 +102,14 @@ label.lbl{display:block; font-size:14px; color:var(--muted); margin:0 0 4px}
 .kpi.kpiopen[aria-expanded="true"] .top svg{transform:rotate(90deg)}
 .kpanel{overflow:hidden; max-height:0; transition:max-height .25s ease}
 .kpanel.open{max-height:1000px; margin-top:8px}
+.statstrip{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px}
+.schip{flex:1 1 90px; min-width:82px; background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:10px; padding:8px 6px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:1px}
+.schip.bad{border-left-color:var(--bad)} .schip.bad b{color:var(--bad)}
+.schip.warn{border-left-color:var(--warn)} .schip.warn b{color:var(--warn)}
+.schip b{font-family:var(--f-display); font-size:22px; line-height:1.1; color:var(--ink)}
+.schip small{font-size:11px; font-weight:600; color:var(--muted); line-height:1.2}
+button.schip{font:inherit; cursor:pointer; width:auto}
+button.schip[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent)}
 .card h3{margin:0 0 10px; font-family:var(--f-display); font-weight:700; font-size:22px; letter-spacing:.03em; text-transform:uppercase}
 .card h4{margin:14px 0 8px; font-size:15px}
 .h2{font-family:var(--f-display); font-weight:700; font-size:22px; letter-spacing:.03em; text-transform:uppercase; margin:18px 0 8px}
@@ -488,6 +497,9 @@ textarea.field.tall{min-height:160px}
 .tbl tbody tr[data-action]{cursor:pointer}
 .tbl tbody tr[data-action]:hover{background:var(--accent-soft)}
 .tbl.small{font-size:13px}
+.ltable td:not(:first-child):not(:last-child),.ltable th:not(:first-child):not(:last-child){text-align:right}
+.ltable td:last-child{min-width:160px}
+.ltable .lket{min-height:34px; padding:4px 8px; font-size:13px}
 .tbl tr.badrow td{background:var(--bad-bg); color:var(--bad)}
 .impl{margin:8px 0 0; padding-left:18px; font-size:14px; color:var(--muted)}
 .impl.bad{color:var(--bad)}

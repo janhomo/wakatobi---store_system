@@ -27,7 +27,7 @@ var KONDISI_OK = ['Normal', 'Servis', 'Rusak', 'Rusak total', 'Belum dicek'];
 
 var HEADERS = {
   'Jenis': ['ID Jenis', 'Kategori', 'Nama Mesin/Alat', 'Merek', 'Model / Tipe', 'Status'],
-  'Unit': ['Kode', 'ID Jenis', 'No. Unit', 'Kondisi', 'Tempat', 'No. Seri', 'Tanggal Beli', 'Garansi Sampai', 'Catatan', 'Status', 'Harga', 'Pemilik'],
+  'Unit': ['Kode', 'ID Jenis', 'No. Unit', 'Kondisi', 'Tempat', 'No. Seri', 'Tanggal Beli', 'Garansi Sampai', 'Catatan', 'Status', 'Harga', 'Pemilik', 'PIC Perawatan'],
   'Kategori': ['Kategori', 'Awalan'],
   'Pengambilan': ['ID', 'Tanggal', 'Nama', 'Kode Aset', 'Mesin', 'Model', 'Jam Ambil', 'Jam Kembali', 'Kondisi Kembali', 'Catatan', 'Departemen'],
   'Arsip': ['ID', 'Tanggal', 'Nama', 'Kode Aset', 'Mesin', 'Model', 'Jam Ambil', 'Jam Kembali', 'Kondisi Kembali', 'Catatan', 'Departemen', 'Diarsipkan'],
@@ -42,10 +42,14 @@ var HEADERS = {
   'Stok Log': ['ID', 'Waktu', 'ID Material', 'Jenis', 'Jumlah', 'Stok Sesudah', 'Oleh', 'Catatan'],
   'Skema Maintenance': ['ID Jenis', 'ID Kolom', 'Label', 'Tipe', 'Status', 'Oleh', 'Waktu'],
   // Riwayat lama yang dipindahkan dari Arsip / Stok Log / Log Perubahan, menunggu dihapus permanen atau dipulihkan.
-  'Sampah': ['ID', 'Sumber', 'Label', 'Jumlah', 'Data', 'Dipindahkan', 'Oleh']
+  'Sampah': ['ID', 'Sumber', 'Label', 'Jumlah', 'Data', 'Dipindahkan', 'Oleh'],
+  // Catatan manual per hari untuk Riwayat Harian (ledger) material, misalnya siapa yang pinjam/ambil.
+  'Catatan Harian': ['ID Material', 'Tanggal', 'Keterangan', 'Oleh', 'Waktu'],
+  // Bulan yang sudah ditutup per material. Stok Akhir terkunci jadi Stok Awal bulan depan, baru setelah ditutup transaksi bulan itu boleh dihapus ke Sampah.
+  'Tutup Ledger': ['ID Material', 'Bulan', 'Stok Akhir', 'Oleh', 'Waktu']
 };
 var TEXT_COLS = {
-  'Unit': ['E:F', 'G:H', 'I:I', 'L:L'],
+  'Unit': ['E:F', 'G:H', 'I:I', 'L:M'],
   'Pengambilan': ['B:B', 'G:H'],
   'Arsip': ['B:B', 'G:H', 'L:L'],
   'Maintenance': ['C:C', 'G:H', 'I:J'],
@@ -57,7 +61,9 @@ var TEXT_COLS = {
   'Material': ['B:E'],
   'Stok Log': ['B:B', 'G:H'],
   'Skema Maintenance': ['A:G'],
-  'Sampah': ['A:A', 'E:F']
+  'Sampah': ['A:A', 'E:F'],
+  'Catatan Harian': ['A:B'],
+  'Tutup Ledger': ['A:B']
 };
 var KATEGORI_AWAL = [
   ['Bor/Breker', 'BOR'], ['Gurinda/Mesin Potong', 'GRD'], ['Mesin Amplas', 'AMP'], ['Mesin Karpenter', 'KRP'],
@@ -191,7 +197,7 @@ var BUTUH_NAMA = ['addUnit', 'editUnit', 'editJenis', 'nonaktifUnit', 'aktifkanU
   'addTempat', 'editTempat', 'nonaktifTempat', 'aktifTempat', 'setTempat', 'fotoSet', 'fotoHapus', 'panduanSimpan',
   'addMaterial', 'editMaterial', 'statusMaterial', 'imporUnit', 'imporRak', 'buatRak', 'saranTolak',
   'skemaAddKolom', 'skemaEditKolom', 'skemaHapusKolom', 'hapusUnit', 'hapusJenis',
-  'pindahSampah', 'pulihkanSampah', 'hapusSampahPermanen'];
+  'pindahSampah', 'pulihkanSampah', 'hapusSampahPermanen', 'simpanCatatanHarian'];
 function route_(req) {
   if (BUTUH_NAMA.indexOf(req.action) >= 0 && !clean_(req.oleh)) return { ok: false, error: 'Pilih nama Anda dulu.' };
   if (BUTUH_NAMA.indexOf(req.action) >= 0 && !PENGEDIT.some(function (n) { return same_(n, req.oleh); })) return { ok: false, error: 'Hanya Abidin, Vikar, dan La Ode Riyan Syaputra yang boleh mengubah data.' };
@@ -212,6 +218,9 @@ function route_(req) {
     case 'matBulanList': return { ok: true, bulan: matBulanList_(clean_(req.id)) };
     case 'logBulanList': return { ok: true, bulan: logBulanList_() };
     case 'listSampah': return { ok: true, sampah: listSampah_() };
+    case 'ledgerBulan': return { ok: true, ledger: ledgerBulan_(clean_(req.id), clean_(req.bulan)), tutup: cariTutup_(clean_(req.id), clean_(req.bulan)) ? true : false };
+    case 'tutupBulan': return tutupBulan_(req);
+    case 'simpanCatatanHarian': return simpanCatatanHarian_(req);
     case 'pindahSampah': return pindahSampah_(req);
     case 'pulihkanSampah': return pulihkanSampah_(req);
     case 'hapusSampahPermanen': return hapusSampahPermanen_(req);
@@ -313,7 +322,7 @@ function listJenis_() {
 function listUnit_() {
   // Harga (kolom 11) sengaja tidak dikirim ke aplikasi
   return filled_('Unit').map(function (r) {
-    return { k: str_(r[0]), j: str_(r[1]), u: numOrStr_(r[2]), sl: clean_(r[3]), loc: clean_(r[4]), sn: clean_(r[5]), tb: ds_(r[6]), gs: ds_(r[7]), cat: str_(r[8]), pm: clean_(r[11]), off: str_(r[9]).toLowerCase() === 'nonaktif' };
+    return { k: str_(r[0]), j: str_(r[1]), u: numOrStr_(r[2]), sl: clean_(r[3]), loc: clean_(r[4]), sn: clean_(r[5]), tb: ds_(r[6]), gs: ds_(r[7]), cat: str_(r[8]), pm: clean_(r[11]), pic: clean_(r[12]), off: str_(r[9]).toLowerCase() === 'nonaktif' };
   });
 }
 function listKategori_() { return filled_('Kategori').map(function (r) { return { c: clean_(r[0]), p: clean_(r[1]).toUpperCase() }; }); }
@@ -456,6 +465,96 @@ function matBulanList_(mat) {
   return Object.keys(set).sort().reverse().map(function (b) { return { bulan: b, label: labelBulan_(b), jumlah: set[b] }; });
 }
 
+/* ---------- Riwayat harian (ledger) satu material untuk satu bulan: Stock Awal/Akhir berjalan otomatis dari Stok Log. ---------- */
+function catatanHarianMap_(matId, bulan) {
+  var map = {};
+  filled_('Catatan Harian').forEach(function (r) { if (str_(r[0]) === matId && str_(r[1]).slice(0, 7) === bulan) map[str_(r[1])] = str_(r[2]); });
+  return map;
+}
+function bulanSebelum_(bulan) {
+  var y = Number(bulan.slice(0, 4)), m = Number(bulan.slice(5, 7)) - 1;
+  if (m < 1) { m = 12; y -= 1; }
+  return y + '-' + ('0' + m).slice(-2);
+}
+function cariTutup_(matId, bulan) {
+  var rows = filled_('Tutup Ledger');
+  for (var i = 0; i < rows.length; i++) if (str_(rows[i][0]) === matId && str_(rows[i][1]) === bulan) return { i: i, row: rows[i] };
+  return null;
+}
+// Bulan paling lama yang masih punya transaksi tapi belum ditutup (harus ditutup berurutan dari yang tertua).
+function bulanTertuaBelumTutup_(matId) {
+  var bulanSet = {};
+  filled_('Stok Log').forEach(function (r) { if (str_(r[2]) === matId) bulanSet[ts_(r[1]).slice(0, 7)] = true; });
+  var list = Object.keys(bulanSet).sort();
+  for (var i = 0; i < list.length; i++) if (!cariTutup_(matId, list[i])) return list[i];
+  return null;
+}
+function tutupBulan_(r) {
+  var matId = clean_(r.matId), bulan = clean_(r.bulan);
+  if (!matId || !/^\d{4}-\d{2}$/.test(bulan)) return err_('Data tidak lengkap.');
+  if (!findRow_('Material', matId)) return err_('Material tidak ditemukan.');
+  if (cariTutup_(matId, bulan)) return err_('Bulan ini sudah ditutup.');
+  var tertua = bulanTertuaBelumTutup_(matId);
+  if (tertua && tertua !== bulan) return err_('Tutup bulan ' + tertua + ' dulu, baru bisa tutup bulan ini.');
+  var rows = ledgerBulan_(matId, bulan);
+  var akhir = rows.length ? rows[rows.length - 1].akhir : 0;
+  sheet_('Tutup Ledger').appendRow([matId, bulan, akhir, clean_(r.oleh), stamp_()]);
+  return { ok: true, akhir: akhir };
+}
+function ledgerBulan_(matId, bulan) {
+  var catMap = catatanHarianMap_(matId, bulan);
+  var first = bulan + '-01', lastDay = new Date(Number(bulan.slice(0, 4)), Number(bulan.slice(5, 7)), 0).getDate();
+  var last = bulan + '-' + ('0' + lastDay).slice(-2);
+  var tutupSebelum = cariTutup_(matId, bulanSebelum_(bulan));
+  var all = filled_('Stok Log').filter(function (r) { return str_(r[2]) === matId; });
+  var stok;
+  if (tutupSebelum) {
+    // Bulan sebelumnya sudah ditutup: pakai Stok Akhir yang terkunci, tidak perlu baca riwayat lama (yang mungkin sudah dihapus ke Sampah).
+    stok = Number(tutupSebelum.row[2]) || 0;
+  } else {
+    var before = all.filter(function (r) { return ds_(r[1]) < first; }).sort(function (a, b) { return ts_(a[1]) < ts_(b[1]) ? -1 : 1; });
+    stok = before.length ? (Number(before[before.length - 1][5]) || 0) : 0;
+  }
+  var byDay = {};
+  all.forEach(function (r) {
+    var t = ds_(r[1]);
+    if (t < first || t > last) return;
+    if (!byDay[t]) byDay[t] = [];
+    byDay[t].push(r);
+  });
+  var rows = [];
+  for (var d = 1; d <= lastDay; d++) {
+    var iso = bulan + '-' + ('0' + d).slice(-2);
+    var awal = stok, masuk = 0, keluar = 0, pinjam = 0, kembali = 0, akhir = stok;
+    var entries = (byDay[iso] || []).sort(function (a, b) { return ts_(a[1]) < ts_(b[1]) ? -1 : 1; });
+    entries.forEach(function (r) {
+      var tipe = str_(r[3]), j = Number(r[4]) || 0;
+      if (tipe === 'Masuk') masuk += j;
+      else if (tipe === 'Keluar') keluar += j;
+      else if (tipe === 'Pinjam') pinjam += j;
+      else if (tipe === 'Kembali') kembali += j;
+      akhir = Number(r[5]) || akhir; // pakai Stok Sesudah tersimpan, jadi Koreksi pun ikut terhitung di Stock Akhir
+    });
+    rows.push({ tgl: iso, awal: awal, masuk: masuk, keluar: keluar, pinjam: pinjam, kembali: kembali, akhir: akhir, ket: catMap[iso] || '' });
+    stok = akhir;
+  }
+  return rows;
+}
+function simpanCatatanHarian_(r) {
+  var matId = clean_(r.matId), tgl = clean_(r.tgl), ket = clean_(r.ket);
+  if (!matId || !ISO_.test(tgl)) return err_('Data tidak lengkap.');
+  var sh = sheet_('Catatan Harian'), rows = rows_('Catatan Harian');
+  for (var i = 0; i < rows.length; i++) {
+    if (str_(rows[i][0]) === matId && str_(rows[i][1]) === tgl) {
+      if (!ket) { sh.deleteRow(i + 2); return { ok: true }; }
+      sh.getRange(i + 2, 3, 1, 3).setValues([[ket, clean_(r.oleh), stamp_()]]);
+      return { ok: true };
+    }
+  }
+  if (ket) sh.appendRow([matId, tgl, ket, clean_(r.oleh), stamp_()]);
+  return { ok: true };
+}
+
 /* ---------- Sampah: riwayat lama dipindahkan dari Arsip / Stok Log / Log Perubahan. Manual semua, tidak ada batas waktu otomatis. ---------- */
 function newSampahId_() { return 'SMP' + Utilities.getUuid().slice(0, 8).toUpperCase(); }
 function listSampah_() {
@@ -464,7 +563,7 @@ function listSampah_() {
     return { id: str_(r[0]), sumber: str_(r[1]), label: str_(r[2]), jumlah: Number(r[3]) || data.length, dipindahkan: ts_(r[5]), oleh: str_(r[6]) };
   }).sort(function (a, b) { return a.dipindahkan < b.dipindahkan ? 1 : -1; });
 }
-var SAMPAH_SUMBER_ = { 'Arsip': 1, 'Stok Log': 1, 'Log Perubahan': 0 };
+var SAMPAH_SUMBER_ = { 'Arsip': 1, 'Stok Log': 1, 'Log Perubahan': 0, 'Pengambilan': 1 };
 function pindahSampah_(r) {
   var sumber = clean_(r.sumber);
   if (!SAMPAH_SUMBER_.hasOwnProperty(sumber)) return err_('Sumber tidak dikenal.');
@@ -478,6 +577,14 @@ function pindahSampah_(r) {
     var t = ds_(rows[i][dateCol]);
     if (tglSet) { if (!tglSet[t]) continue; } else { if (t < dari || t > sampai) continue; }
     if (sumber === 'Stok Log' && matId && str_(rows[i][2]) !== matId) continue;
+    // Pengambilan belum diarsipkan: jangan sampai mesin yang masih di luar ikut terhapus dari Riwayat.
+    if (sumber === 'Pengambilan' && ts_(rows[i][7]) === '') return err_('Masih ada mesin yang belum kembali, tidak bisa dipindahkan ke Sampah.');
+    // Stok Log Semen: pakai Riwayat Harian (Awal/Akhir berjalan), jadi bulan transaksi itu harus sudah ditutup dulu, supaya tidak rusak.
+    if (sumber === 'Stok Log') {
+      var mr_ = findRow_('Material', str_(rows[i][2]));
+      if (mr_ && str_(mr_.row[1]).toLowerCase() === 'semen' && !cariTutup_(str_(rows[i][2]), ts_(rows[i][1]).slice(0, 7)))
+        return err_('Tutup bulan transaksi itu dulu (menu Tutup Bulan), baru bisa dihapus ke Sampah.');
+    }
     pick.push(i);
   }
   if (!pick.length) return { ok: true, jumlah: 0 };
@@ -647,7 +754,7 @@ function parseUnitNo_(v) {
 function normUnit_(f) {
   f = f || {};
   var o = {};
-  ['u', 'sl', 'loc', 'sn', 'tb', 'gs', 'pm'].forEach(function (k) { if (f[k] !== undefined && f[k] !== null) o[k] = clean_(f[k]); });
+  ['u', 'sl', 'loc', 'sn', 'tb', 'gs', 'pm', 'pic'].forEach(function (k) { if (f[k] !== undefined && f[k] !== null) o[k] = clean_(f[k]); });
   if (f.cat !== undefined && f.cat !== null) o.cat = str_(f.cat).trim();
   return o;
 }
@@ -711,7 +818,7 @@ function addUnit_(r) {
     sheet_('Jenis').appendRow([jenis.id, jenis.c, jenis.n, jenis.b, jenis.m, '']);
     log_(jenis.id, 'Tambah jenis', jenis.n + (jenis.b ? ' / ' + jenis.b : '') + (jenis.m ? ' / ' + jenis.m : '') + ' (' + jenis.c + ')', r.oleh);
   }
-  sheet_('Unit').appendRow([kode, jenis.id, u, f.sl || 'Normal', f.loc || '', f.sn || '', f.tb || '', f.gs || '', f.cat || '', '', '', f.pm || '']);
+  sheet_('Unit').appendRow([kode, jenis.id, u, f.sl || 'Normal', f.loc || '', f.sn || '', f.tb || '', f.gs || '', f.cat || '', '', '', f.pm || '', f.pic || '']);
   log_(kode, 'Tambah unit', jenis.n + ' unit ' + u, r.oleh);
   return { ok: true, kode: kode, jenisId: jenis.id };
 }
@@ -722,7 +829,7 @@ function editUnit_(r) {
   var o = normUnit_(r.f), bad = checkUnit_(o);
   if (bad) return err_(bad);
   var row = f.row.slice(); while (row.length < HEADERS['Unit'].length) row.push('');
-  var labels = { u: [2, 'No. unit'], sl: [3, 'Kondisi'], loc: [4, 'Tempat'], sn: [5, 'No. seri'], tb: [6, 'Tanggal beli'], gs: [7, 'Garansi'], cat: [8, 'Catatan'], pm: [11, 'Pemilik'] };
+  var labels = { u: [2, 'No. unit'], sl: [3, 'Kondisi'], loc: [4, 'Tempat'], sn: [5, 'No. seri'], tb: [6, 'Tanggal beli'], gs: [7, 'Garansi'], cat: [8, 'Catatan'], pm: [11, 'Pemilik'], pic: [12, 'PIC Perawatan'] };
   var diffs = [], k;
   for (k in labels) {
     if (o[k] === undefined) continue;
@@ -1315,10 +1422,10 @@ function imporUnit_(r) {
     var tb = clean_(d.tb), gs = clean_(d.gs);
     if (tb && !ISO_.test(tb)) { errors.push('Baris ' + line + ': tanggal beli tidak valid.'); return; }
     if (gs && !ISO_.test(gs)) { errors.push('Baris ' + line + ': garansi sampai tidak valid.'); return; }
-    newU.push([p + '-' + pad3_(seq[p]), jid, u, sl, loc, clean_(d.sn), tb, gs, str_(d.cat).trim(), '', '', pmv]);
+    newU.push([p + '-' + pad3_(seq[p]), jid, u, sl, loc, clean_(d.sn), tb, gs, str_(d.cat).trim(), '', '', pmv, '']);
   });
   if (newJ.length) { var js = sheet_('Jenis'); js.getRange(js.getLastRow() + 1, 1, newJ.length, 6).setValues(newJ); }
-  if (newU.length) { var us = sheet_('Unit'); us.getRange(us.getLastRow() + 1, 1, newU.length, 12).setValues(newU); }
+  if (newU.length) { var us = sheet_('Unit'); us.getRange(us.getLastRow() + 1, 1, newU.length, HEADERS['Unit'].length).setValues(newU); }
   if (newU.length) log_('', 'Impor Excel', newU.length + ' unit, ' + newJ.length + ' jenis baru' + (skipped.length ? ', ' + skipped.length + ' baris dilewati' : ''), r.oleh);
   return { ok: true, unit: newU.length, jenis: newJ.length, skipped: skipped.slice(0, 30), errors: errors.slice(0, 30), nSkipped: skipped.length, nErrors: errors.length };
 }

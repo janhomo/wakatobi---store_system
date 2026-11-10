@@ -99,7 +99,8 @@ label.lbl{display:block; font-size:14px; color:var(--muted); margin:0 0 4px}
 .note.bad{background:var(--bad-bg); color:var(--bad)}
 .note.info{background:var(--accent-soft); color:var(--ink)}
 .card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px}
-.dkpi{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:4px}
+.dkpi{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:4px; align-items:start}
+.kpiwrap{min-width:0}
 .kpi{background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:2px}
 .kpi b{font-family:var(--f-display); font-size:32px; line-height:1; color:var(--ink)}
 .kpi small{font-size:13px; font-weight:600; color:var(--muted)}
@@ -114,6 +115,14 @@ label.lbl{display:block; font-size:14px; color:var(--muted); margin:0 0 4px}
 .kpi.kpiopen[aria-expanded="true"] .top svg{transform:rotate(90deg)}
 .kpanel{overflow:hidden; max-height:0; transition:max-height .25s ease}
 .kpanel.open{max-height:1000px; margin-top:8px}
+.statstrip{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px}
+.schip{flex:1 1 90px; min-width:82px; background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:10px; padding:8px 6px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:1px}
+.schip.bad{border-left-color:var(--bad)} .schip.bad b{color:var(--bad)}
+.schip.warn{border-left-color:var(--warn)} .schip.warn b{color:var(--warn)}
+.schip b{font-family:var(--f-display); font-size:22px; line-height:1.1; color:var(--ink)}
+.schip small{font-size:11px; font-weight:600; color:var(--muted); line-height:1.2}
+button.schip{font:inherit; cursor:pointer; width:auto}
+button.schip[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent)}
 .card h3{margin:0 0 10px; font-family:var(--f-display); font-weight:700; font-size:22px; letter-spacing:.03em; text-transform:uppercase}
 .card h4{margin:14px 0 8px; font-size:15px}
 .h2{font-family:var(--f-display); font-weight:700; font-size:22px; letter-spacing:.03em; text-transform:uppercase; margin:18px 0 8px}
@@ -501,6 +510,9 @@ textarea.field.tall{min-height:160px}
 .tbl tbody tr[data-action]{cursor:pointer}
 .tbl tbody tr[data-action]:hover{background:var(--accent-soft)}
 .tbl.small{font-size:13px}
+.ltable td:not(:first-child):not(:last-child),.ltable th:not(:first-child):not(:last-child){text-align:right}
+.ltable td:last-child{min-width:160px}
+.ltable .lket{min-height:34px; padding:4px 8px; font-size:13px}
 .tbl tr.badrow td{background:var(--bad-bg); color:var(--bad)}
 .impl{margin:8px 0 0; padding-left:18px; font-size:14px; color:var(--muted)}
 .impl.bad{color:var(--bad)}
@@ -723,12 +735,12 @@ function setTheme(t) {
 const KONDISI = ['Normal', 'Servis', 'Rusak', 'Rusak total', 'Belum dicek'];
 const MJENIS = ['Servis rutin', 'Ganti sparepart', 'Perbaikan', 'Kalibrasi', 'Pengecekan', 'Lainnya'];
 const S = {
-  view: 'mesin', nm: null, wj: null, jid: null, kode: null, tid: null, mid: null, tab: 'unit', filter: '', q: '',
+  view: 'dasbor', nm: null, wj: null, jid: null, kode: null, tid: null, mid: null, tab: 'unit', filter: '', q: '',
   jenis: [], units: [], kategori: [], tempat: [], material: [], pekerja: [], maintServer: [], pengServer: [], pengDate: null, belumServer: [], skema: {}, cfg: { jamPulang: '17:00', pengedit: ['Abidin', 'Vikar', 'La Ode Riyan Syaputra'] },
-  loaded: false, loadError: null, tok: lsGet('qrg.tok', ''), me: lsGet('qrg.me', ''), dkOpen: {},
+  loaded: false, loadError: null, tok: lsGet('qrg.tok', ''), me: lsGet('qrg.me', ''), dkChip: null,
   ov: [], pending: null, form: null, confirmDel: null, skForm: null,
   rwDate: null, rwArsip: false, rwOpenM: {}, rwSel: {}, rw: { list: null, error: false }, riw: { key: null, list: null, error: false }, logs: { list: null, error: false },
-  mrId: null, mrBulan: null, mrMonths: null, mrLog: null,
+  mrId: null, mrBulan: null, mrMonths: null, mrLog: null, mrMode: 'edit', mrLedger: null,
   sampah: { list: null, error: false }, sampahUndo: null,
   scan: null, picker: null, justAdded: null, focus: null
 };
@@ -1012,7 +1024,7 @@ function go(view, o = {}) {
 }
 function back() {
   if (S.ov.length) { history.back(); return; }
-  if (history.state && history.state.d > 0) history.back(); else go('mesin', { root: true });
+  if (history.state && history.state.d > 0) history.back(); else go('dasbor', { root: true });
 }
 function pushOv(name) {
   S.ov.push(name);
@@ -1028,7 +1040,7 @@ function closeOv(name) {
   else if (name === 'stok') { $('#stokSheet').hidden = true; S.stokEd = null; }
 }
 window.addEventListener('popstate', e => {
-  const st = e.state || { v: 'mesin', d: 0, ovn: 0 };
+  const st = e.state || { v: 'dasbor', d: 0, ovn: 0 };
   const target = st.ovn || 0;
   while (S.ov.length > target) closeOv(S.ov.pop());
   if (st.v !== S.view || (st.nm || null) !== S.nm || (st.jid || null) !== S.jid || (st.kode || null) !== S.kode || (st.tid || null) !== S.tid || (st.mid || null) !== S.mid || (st.tab || 'unit') !== S.tab) {
@@ -1133,6 +1145,7 @@ const DICT_EN = {
   'Cetak QR tempat': 'Print place QR', 'Memuat…': 'Loading…', 'Tersimpan': 'Saved',
   'Belum kembali': 'Not returned yet', 'Rusak / servis': 'Broken / in service',
   'Servis jatuh tempo': 'Service due', 'Stok menipis': 'Low stock', 'Sedang dipakai': 'In use now',
+  'Total unit': 'Total units', 'Total material': 'Total materials', 'Aktivitas Terbaru': 'Recent Activity', 'Belum ada aktivitas.': 'No activity yet.',
   'Mesin tanpa rak': 'Machines without a rack', 'Baca saja': 'View only',
   'Pilih file Excel': 'Choose Excel file', 'Unduh contoh': 'Download example',
   'Pilih dari galeri': 'Choose from gallery', 'Ambil foto': 'Take photo', 'Hapus foto': 'Delete photo',
@@ -1289,7 +1302,8 @@ const DICT_FRAG = {
   'Riwayat belum bisa dimuat. Cek sinyal.': "History couldn't be loaded. Check your signal.",
   'Baik)': 'Good)', 'Rusak)': 'Broken)', 'memindahkan catatan tanggal ini ke sheet Arsip di Google Sheet. Datanya tetap tersimpan, hanya hilang dari daftar Riwayat.': ' moves this date’s entries to the Arsip sheet in the Google Sheet. The data stays saved, it just disappears from the History list.',
   'Kolom ini muncul saat mengisi riwayat maintenance untuk ': 'These columns appear when filling in maintenance history for ',
-  'Ubah kolom ': 'Edit column ', 'Hapus kolom ': 'Delete column '
+  'Ubah kolom ': 'Edit column ', 'Hapus kolom ': 'Delete column ',
+  ' mengambil': ' took', ' mengembalikan': ' returned'
 };
 const FRAG_KEYS = Object.keys(DICT_FRAG).sort((a, b) => b.length - a.length);
 /* kata status yang hanya ditukar kalau langsung mengikuti angka (hindari mengubah kata yang sama
@@ -1782,6 +1796,7 @@ function viewUnit() {
     fld('uu', 'No. unit', u.u, { mode: 'numeric' }) +
     '<div><label class="lbl">Kondisi</label>' + kseg('uk', u.off ? u.cond : u.cond) + '</div>' +
     placeField('uloc', u.loc) + pmField('upm', u.pm) +
+    fld('upic', 'PIC Perawatan (boleh kosong)', u.pic) +
     fld('usn', 'No. seri pabrik', u.sn) +
     '<div class="two stk">' + fld('utb', 'Tanggal beli', u.tb, { type: 'date' }) + fld('ugs', 'Garansi sampai', u.gs, { type: 'date' }) + '</div>' +
     '<div><label class="lbl" for="ucat">Catatan</label><textarea id="ucat" class="field">' + esc(u.cat) + '</textarea></div>' +
@@ -1892,7 +1907,7 @@ function liveRw() {
     let h = S.rw.list.map(b => {
       const open = !!S.rwOpenM[b.bulan];
       const hariHtml = !open ? '' : '<div class="days">' + b.hari.map(d => {
-        const disabled = !d.arsip; // hanya yang sudah diarsipkan yang boleh dipindah ke Sampah
+        const disabled = !!d.belum; // boleh dipindah ke Sampah kalau semua mesin hari itu sudah kembali, diarsipkan atau belum
         return '<div class="dayrow"><input type="checkbox" class="rwchk" data-tgl="' + esc(d.tgl) + '" aria-label="Pilih ' + esc(fmtShort(d.tgl)) + '"' + (disabled ? ' disabled' : '') + (S.rwSel[d.tgl] ? ' checked' : '') + '>' +
           '<button class="nm" data-action="rwopen" data-tgl="' + esc(d.tgl) + '" data-arsip="' + (d.arsip ? 1 : 0) + '"><b>' + esc(fmtShort(d.tgl)) + '</b><small>' + d.jumlah + ' pengambilan' + (d.belum ? ' · ' + d.belum + ' belum kembali' : d.arsip ? ' · sudah diarsipkan' : ' · sudah kembali semua') + '</small></button></div>';
       }).join('') + '</div>';
@@ -2094,7 +2109,7 @@ function viewProfil() {
   else {
     const gs = u.gs ? esc(fmtShort(u.gs)) + (daysFromToday(u.gs) < 0 ? ' <span class="pill late">Habis</span>' : ' <span class="pill ok">Berlaku</span>') : '—';
     body = '<dl class="dl">' + row('Kategori', esc(j.c || '—')) + row('Merek · tipe', (esc(subText(j)) || '—') + ' <button class="ulink" data-action="jedit">Ubah</button>') +
-      row('Pemilik', u.pm ? esc(u.pm) : '<span class="muted">Belum diisi</span>') + row('Lokasi simpan', hasPlace(u) ? '<button class="ulink" data-action="opentempat" data-id="' + esc(u.loc) + '">' + esc(placeText(u)) + '</button>' : 'Belum punya tempat') +
+      row('Pemilik', u.pm ? esc(u.pm) : '<span class="muted">Belum diisi</span>') + row('PIC Perawatan', u.pic ? esc(u.pic) : '<span class="muted">Belum diisi</span>') + row('Lokasi simpan', hasPlace(u) ? '<button class="ulink" data-action="opentempat" data-id="' + esc(u.loc) + '">' + esc(placeText(u)) + '</button>' : 'Belum punya tempat') +
       row('Servis berikutnya', '<span class="sv ' + sv.c + '">' + esc(sv.t) + '</span>') + row('No. seri', esc(u.sn) || '—') +
       row('Tanggal beli', u.tb ? esc(fmtShort(u.tb)) : '—') + row('Garansi sampai', gs) + (u.cat ? row('Catatan', esc(u.cat)) : '') + '</dl>' +
       '<div class="two" style="margin-top:12px"><button class="btn ghost small" data-action="uedit" data-k="' + esc(u.k) + '">Ubah unit</button><a class="btn ghost small" href="label.html?kode=' + esc(u.k) + '">Cetak label QR</a></div>' +
@@ -2129,8 +2144,9 @@ async function loadRiwayatUnit() {
 /* ---------- Dasbor: baca saja, dari data yang sudah dimuat (bootstrap). Tidak ada tombol ubah data. ---------- */
 function dasborStats() {
   const open = openEntries(), late = open.filter(isLate);
-  const act = S.units.filter(u => !u.off);
-  const broken = act.filter(u => u.s === 'bad' || u.cond === 'Servis').filter(u => !heldMap().has(u.k));
+  const act = S.units.filter(u => !u.off), held = heldMap();
+  const rusakTotal = act.filter(u => u.cond === 'Rusak total');
+  const broken = act.filter(u => !held.has(u.k) && (u.cond === 'Servis Resort' || u.cond === 'Servis Bali' || u.cond === 'Rusak'));
   const due = [];
   act.forEach(u => { const n = nextService(u.k); if (n) { const d = daysFromToday(n); if (d <= 7) due.push({ u, d }); } });
   due.sort((a, b) => a.d - b.d);
@@ -2138,40 +2154,66 @@ function dasborStats() {
   const empty = places.filter(p => { const sm = placeSummary(p.id); return !sm.units.length && !sm.mats.length; });
   const noPlace = act.filter(u => !hasPlace(u));
   const low = allMaterial().filter(m => !m.off && isLow(m));
-  return { open, late, broken, due, places, empty, noPlace, low };
+  const material = allMaterial().filter(m => !m.off);
+  return { open, late, broken, rusakTotal, due, places, empty, noPlace, low, material, act };
 }
-function dkpi(n, label, sub, kind) {
-  return '<div class="kpi ' + kind + '"><b>' + n + '</b><small>' + esc(label) + '</small>' + (sub ? '<span class="s">' + esc(sub) + '</span>' : '') + '</div>';
+function drow(a, b, tag, kind, jid) {
+  return '<div class="trow">' + (jid !== undefined ? thumbHtml(jid, 22, 'sm') : '') + '<span class="nm"><b>' + esc(a) + '</b><small class="muted">' + esc(b) + '</small></span>' + (tag ? '<span class="pill ' + kind + '">' + esc(tag) + '</span>' : '') + '</div>';
 }
-function dkpiOpen(id, n, label, sub, kind, rowsHtml, emptyMsg) {
-  const open = S.dkOpen && S.dkOpen[id];
-  return '<button class="kpi kpiopen ' + kind + '" data-action="dkpi" data-id="' + id + '" aria-expanded="' + !!open + '">' +
-    '<span class="top"><b>' + n + '</b>' + ic('chev', 18) + '</span><small>' + esc(label) + '</small>' + (sub ? '<span class="s">' + esc(sub) + '</span>' : '') + '</button>' +
-    '<div class="kpanel' + (open ? ' open' : '') + '">' + (n > 0 ? '<div class="tbox">' + (rowsHtml || '') + '</div>' : '<p class="muted" style="margin:6px 0 0">' + esc(emptyMsg || 'Tidak ada.') + '</p>') + '</div>';
+function schip(id, n, label, kind, clickable) {
+  const inner = '<b>' + n + '</b><small>' + esc(label) + '</small>';
+  if (!clickable) return '<div class="schip ' + kind + '">' + inner + '</div>';
+  const sel = S.dkChip === id;
+  return '<button class="schip ' + kind + '" data-action="dkchip" data-id="' + id + '" aria-pressed="' + sel + '">' + inner + '</button>';
 }
-function drow(a, b, tag, kind) {
-  return '<div class="trow"><span class="nm"><b>' + esc(a) + '</b><small class="muted">' + esc(b) + '</small></span>' + (tag ? '<span class="pill ' + kind + '">' + esc(tag) + '</span>' : '') + '</div>';
+/* ---------- Aktivitas terbaru: gabungan ambil + kembali, diurutkan dari yang paling baru. ---------- */
+function aktivitasTerbaru(n) {
+  const ev = [];
+  allEntries().forEach(e => {
+    ev.push({ t: e.ts, tipe: 'ambil', e });
+    if (e.kembali) ev.push({ t: e.kembali, tipe: 'kembali', e });
+  });
+  ev.sort((a, b) => (a.t < b.t ? 1 : -1));
+  return ev.slice(0, n);
 }
+
 function viewDasbor() {
   if (!S.loaded) return '<p class="empty">' + (S.loadError ? 'Data belum bisa dimuat. Cek sinyal lalu buka lagi.' : 'Memuat…') + '</p>';
-  const d = dasborStats(), act = S.units.filter(u => !u.off);
-  const lateRows = d.late.slice(0, 10).map(e => drow(e.mesin + (e.kode ? ' · ' + e.kode : ''), e.nama + ' · sejak ' + fmtDT(e.ts), 'Terlambat', 'bad'));
-  const brokenRows = d.broken.slice(0, 10).map(u => drow(jenisOf(u).n + ' · ' + u.k, u.sl, u.sl, u.s));
-  const dueRows = d.due.slice(0, 10).map(x => drow(jenisOf(x.u).n + ' · ' + x.u.k, x.d < 0 ? 'Terlewat ' + (-x.d) + ' hari' : x.d + ' hari lagi', x.d < 0 ? 'Lewat' : x.d + ' hari', x.d < 0 ? 'bad' : 'warn'));
-  const lowRows = d.low.slice(0, 10).map(m => drow(m.n, 'Sisa ' + fmtQty(m.q) + ' ' + m.s + (m.lo ? ' · batas ' + fmtQty(m.lo) : ''), 'Menipis', 'warn'));
-  return '<p class="note info" style="margin-bottom:10px">Dasbor baca saja. Data sama dengan Sheet, diperbarui otomatis tiap kali dibuka. Tekan kotak merah/kuning untuk lihat daftarnya.</p>' +
-    '<div class="dkpi">' +
-    dkpi(d.open.length, 'Sedang dipakai', 'dari ' + act.length + ' unit', 'info') +
-    dkpi(d.noPlace.length, 'Mesin tanpa rak', d.empty.length + ' rak kosong', 'info') +
+  const d = dasborStats();
+  const chipRows = {
+    dipakai: d.open.slice(0, 10).map(e => drow(e.mesin + (e.kode ? ' · ' + e.kode : ''), e.nama + ' · sejak ' + fmtDT(e.ts), '', 'info', U[e.kode] ? U[e.kode].j : '')),
+    late: d.late.slice(0, 10).map(e => drow(e.mesin + (e.kode ? ' · ' + e.kode : ''), e.nama + ' · sejak ' + fmtDT(e.ts), 'Terlambat', 'bad', U[e.kode] ? U[e.kode].j : '')),
+    broken: d.broken.slice(0, 10).map(u => drow(jenisOf(u).n + ' · ' + u.k, u.sl, u.sl, u.s, u.j)),
+    rusaktotal: d.rusakTotal.slice(0, 10).map(u => drow(jenisOf(u).n + ' · ' + u.k, u.sl, u.sl, 'bad', u.j)),
+    due: d.due.slice(0, 10).map(x => drow(jenisOf(x.u).n + ' · ' + x.u.k, x.d < 0 ? 'Terlewat ' + (-x.d) + ' hari' : x.d + ' hari lagi', x.d < 0 ? 'Lewat' : x.d + ' hari', x.d < 0 ? 'bad' : 'warn', x.u.j)),
+    low: d.low.slice(0, 10).map(m => drow(m.n, 'Sisa ' + fmtQty(m.q) + ' ' + m.s + (m.lo ? ' · batas ' + fmtQty(m.lo) : ''), 'Menipis', 'warn'))
+  };
+  const chipTitle = { dipakai: 'Sedang dipakai', late: 'Terlambat', broken: 'Rusak / servis', rusaktotal: 'Rusak total', due: 'Servis jatuh tempo', low: 'Stok menipis' };
+  const chipEmpty = { dipakai: 'Tidak ada yang dipakai.', late: 'Tidak ada yang terlambat.', broken: 'Tidak ada mesin servis/rusak.', rusaktotal: 'Tidak ada mesin rusak total.', due: 'Tidak ada dalam 7 hari ke depan.', low: 'Tidak ada yang menipis.' };
+  const sel = S.dkChip;
+  const selPanel = sel && chipRows[sel] !== undefined
+    ? '<div class="h2" style="margin-top:10px">' + esc(chipTitle[sel]) + '</div>' +
+      (chipRows[sel].length ? '<div class="tbox">' + chipRows[sel].join('') + '</div>' : '<p class="muted">' + esc(chipEmpty[sel]) + '</p>')
+    : '';
+  const akt = aktivitasTerbaru(8);
+  const aktRows = akt.map(x => x.tipe === 'ambil'
+    ? drow(x.e.nama + ' mengambil', (U[x.e.kode] ? jenisOf(U[x.e.kode]).n : x.e.mesin) + (x.e.kode ? ' · ' + x.e.kode : '') + ' · ' + fmtDT(x.e.ts), '', 'info', U[x.e.kode] ? U[x.e.kode].j : '')
+    : drow(x.e.nama + ' mengembalikan', (U[x.e.kode] ? jenisOf(U[x.e.kode]).n : x.e.mesin) + (x.e.kode ? ' · ' + x.e.kode : '') + ' · ' + fmtDT(x.e.kembali), x.e.kondisi && x.e.kondisi !== 'Normal' ? x.e.kondisi : '', 'bad', U[x.e.kode] ? U[x.e.kode].j : ''));
+  return '<p class="note info" style="margin-bottom:10px">Dasbor baca saja. Data sama dengan Sheet, diperbarui otomatis tiap kali dibuka. Tekan kotak untuk lihat daftarnya.</p>' +
+    '<div class="statstrip">' +
+    schip('unit', d.act.length, 'Total unit', 'info', false) +
+    schip('dipakai', d.open.length, 'Sedang dipakai', 'info', true) +
+    schip('late', d.late.length, 'Terlambat', d.late.length ? 'bad' : 'info', true) +
+    schip('broken', d.broken.length, 'Rusak / servis', d.broken.length ? 'warn' : 'info', true) +
+    schip('rusaktotal', d.rusakTotal.length, 'Rusak total', d.rusakTotal.length ? 'bad' : 'info', true) +
+    schip('material', d.material.length, 'Total material', 'info', false) +
+    schip('noplace', d.noPlace.length, 'Mesin tanpa rak', 'info', false) +
+    schip('due', d.due.length, 'Servis jatuh tempo', d.due.length ? 'warn' : 'info', true) +
+    schip('low', d.low.length, 'Stok menipis', d.low.length ? 'warn' : 'info', true) +
     '</div>' +
-    '<div class="dkpi" style="margin-top:10px">' +
-    dkpiOpen('late', d.late.length, 'Terlambat', 'lewat jam ' + (S.cfg.jamPulang || '17:00'), d.late.length ? 'bad' : 'info', lateRows.join(''), 'Tidak ada yang terlambat.') +
-    dkpiOpen('broken', d.broken.length, 'Rusak / servis', '', d.broken.length ? 'warn' : 'info', brokenRows.join(''), 'Tidak ada mesin rusak.') +
-    '</div>' +
-    '<div class="dkpi" style="margin-top:10px">' +
-    dkpiOpen('due', d.due.length, 'Servis jatuh tempo', 'dalam 7 hari', d.due.length ? 'warn' : 'info', dueRows.join(''), 'Tidak ada dalam 7 hari ke depan.') +
-    dkpiOpen('low', d.low.length, 'Stok menipis', 'material', d.low.length ? 'warn' : 'info', lowRows.join(''), 'Tidak ada yang menipis.') +
-    '</div>' +
+    selPanel +
+    '<div class="h2" style="margin-top:16px">Aktivitas Terbaru</div>' +
+    (aktRows.length ? '<div class="tbox">' + aktRows.join('') + '</div>' : '<p class="muted">Belum ada aktivitas.</p>') +
     '<div style="margin:16px 0"><button class="btn ghost small" data-action="dasborprint">' + ic('print', 20) + 'Cetak ringkasan</button></div>';
 }
 /* ---------- foto per jenis: disimpan kecil (sekitar 360 px) di sheet Foto, disalin ke HP ---------- */
@@ -2753,15 +2795,63 @@ function liveMatRiwayat() {
       S.mrMonths.list.map(b => '<button class="daterow2" data-action="matriwopen" data-b="' + esc(b.bulan) + '"><span><b>' + esc(b.label) + '</b><br><small class="muted">' + b.jumlah + ' catatan</small></span>' +
         (b.bulan === curBulan ? '<span class="pill ok">Berjalan</span>' : '') + '</button>').join('') + '</div>';
   }
-  if (!S.mrLog || S.mrLog.list === null) return '<p class="empty">Memuat…</p>';
-  if (S.mrLog.error) return '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
-  if (!S.mrLog.list.length) return '<p class="empty">Tidak ada catatan di bulan ini.</p>';
+  const modeToggle = isSemen(m) ? '<div class="utabs" role="tablist" style="margin-bottom:12px">' +
+    '<button role="tab" data-action="matriwmode" data-m="edit" aria-selected="' + (S.mrMode !== 'harian') + '">Per transaksi</button>' +
+    '<button role="tab" data-action="matriwmode" data-m="harian" aria-selected="' + (S.mrMode === 'harian') + '">Harian</button></div>' : '';
+  if (isSemen(m) && S.mrMode === 'harian') return modeToggle + liveLedgerHarian();
+  if (!S.mrLog || S.mrLog.list === null) return modeToggle + '<p class="empty">Memuat…</p>';
+  if (S.mrLog.error) return modeToggle + '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
+  if (!S.mrLog.list.length) return modeToggle + '<p class="empty">Tidak ada catatan di bulan ini.</p>';
   const curBulan = today().slice(0, 7), bisaSampah = S.mrBulan !== curBulan;
   const rows = S.mrLog.list.map(r => { const { dept, note } = parseStokCat(r.cat); return '<tr><td>' + esc(fmtShort(r.t)) + '</td><td>' + esc(r.tipe) + '</td><td>' + esc(fmtQty(r.j)) + '</td><td>' + esc(fmtQty(r.q)) + '</td><td>' + esc(r.o + (dept ? ' / ' + dept : '')) + '</td><td>' + esc(note) + '</td></tr>'; }).join('');
-  return '<p class="stats">' + S.mrLog.list.length + ' catatan</p>' +
+  return modeToggle + '<p class="stats">' + S.mrLog.list.length + ' catatan</p>' +
     '<div class="two" style="margin-bottom:12px"><button class="btn" data-action="matriwprint">Cetak</button>' +
     (bisaSampah ? '<button class="btn ghost" data-action="matriwsampah">Pindahkan bulan ini ke Sampah</button>' : '<button class="btn ghost" disabled title="Bulan berjalan belum bisa dipindah">Bulan berjalan</button>') + '</div>' +
-    '<div class="tblwrap"><table class="datatbl"><thead><tr><th>Waktu</th><th>Jenis</th><th>Jumlah</th><th>Stok Sesudah</th><th>Nama/Departemen</th><th>Catatan</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    '<div class="tblwrap"><table class="tbl small"><thead><tr><th>Waktu</th><th>Jenis</th><th>Jumlah</th><th>Stok Sesudah</th><th>Nama/Departemen</th><th>Catatan</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+function fmtTglLedger(iso) { const p = iso.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+async function loadMatLedgerBulan() {
+  S.mrLedger = { list: null, error: false, tutup: false }; renderLive();
+  try { const res = await api('ledgerBulan', { id: S.mrId, bulan: S.mrBulan }); S.mrLedger.list = res.ledger; S.mrLedger.tutup = !!res.tutup; }
+  catch (e) { S.mrLedger.list = []; S.mrLedger.error = true; }
+  renderLive();
+}
+function liveLedgerHarian() {
+  if (!S.mrLedger || S.mrLedger.list === null) return '<p class="empty">Memuat…</p>';
+  if (S.mrLedger.error) return '<p class="empty">Riwayat harian belum bisa dimuat. Cek sinyal.</p>';
+  const curBulan = today().slice(0, 7), tutup = S.mrLedger.tutup;
+  const rows = S.mrLedger.list.map(r => '<tr><td>' + esc(fmtTglLedger(r.tgl)) + '</td><td>' + esc(fmtQty(r.awal)) + '</td><td>' + (r.masuk ? esc(fmtQty(r.masuk)) : '') + '</td><td>' + (r.keluar ? esc(fmtQty(r.keluar)) : '') + '</td><td>' + (r.pinjam ? esc(fmtQty(r.pinjam)) : '') + '</td><td>' + (r.kembali ? esc(fmtQty(r.kembali)) : '') + '</td><td><b>' + esc(fmtQty(r.akhir)) + '</b></td><td><input class="field lket" data-tgl="' + esc(r.tgl) + '" value="' + esc(r.ket) + '" placeholder="diisi manual" autocomplete="off" ' + (tutup ? 'disabled' : '') + '></td></tr>').join('');
+  const tutupBtn = tutup
+    ? '<span class="pill ok">Bulan ditutup</span>'
+    : (S.mrBulan === curBulan
+      ? '<button class="btn ghost" disabled title="Bulan berjalan belum bisa ditutup">Bulan berjalan</button>'
+      : '<button class="btn ghost" data-action="matriwtutup">Tutup Bulan</button>');
+  return '<p class="note">Stock Awal/Akhir dihitung otomatis dari Stok Log. Kolom Keterangan diisi manual, tersimpan sendiri saat pindah dari kolomnya.</p>' +
+    (tutup ? '<p class="note">Bulan ini sudah ditutup. Stock Akhir terkunci jadi Stock Awal bulan depan, transaksinya sudah boleh dihapus ke Sampah.</p>' : '<p class="note">Tutup bulan dulu sebelum transaksinya boleh dihapus ke Sampah.</p>') +
+    '<div class="two" style="margin-bottom:12px"><button class="btn" data-action="matriwexport">Unduh Excel</button>' + tutupBtn + '</div>' +
+    '<div class="tblwrap"><table class="tbl small ltable"><thead><tr><th>Tanggal</th><th>Stock Awal</th><th>Pemasukan</th><th>Pemakaian Project</th><th>Pinjaman Resort</th><th>Pengembalian Resort</th><th>Stock Akhir</th><th>Keterangan</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+function tutupBulanLedger() {
+  ensureMe(async () => {
+    try {
+      const r = await api('tutupBulan', { matId: S.mrId, bulan: S.mrBulan, oleh: S.me });
+      S.mrLedger.tutup = true; toast('Bulan ditutup. Stock Akhir: ' + fmtQty(r.akhir) + '.'); renderLive();
+    } catch (e) { toast(e.message || (e.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal menutup bulan.')); }
+  });
+}
+function exportLedgerExcel() {
+  const m = M[S.mrId]; if (!m || !S.mrLedger || !S.mrLedger.list) return;
+  const aoa = [['Tanggal', 'Stock Awal', 'Pemasukan', 'Pemakaian Project', 'Pinjaman Resort', 'Pengembalian Resort', 'Stock Akhir', 'Keterangan']];
+  S.mrLedger.list.forEach(r => aoa.push([fmtTglLedger(r.tgl), r.awal, r.masuk || '', r.keluar || '', r.pinjam || '', r.kembali || '', r.akhir, r.ket || '']));
+  const wb = XLSX.utils.book_new(), sh = XLSX.utils.aoa_to_sheet(aoa);
+  XLSX.utils.book_append_sheet(wb, sh, labelBulanId(S.mrBulan).slice(0, 31));
+  XLSX.writeFile(wb, 'Riwayat_Harian_' + m.n.replace(/\s+/g, '_') + '_' + S.mrBulan + '.xlsx');
+}
+function simpanKeteranganHarian(tgl, ket) {
+  ensureMe(async () => {
+    try { await api('simpanCatatanHarian', { matId: S.mrId, tgl, ket: ket.trim(), oleh: S.me }); if (S.mrLedger && S.mrLedger.list) { const r = S.mrLedger.list.find(x => x.tgl === tgl); if (r) r.ket = ket.trim(); } toast('Keterangan disimpan.'); }
+    catch (e) { toast(e.message || (e.code === 'network' ? 'Tidak ada sinyal, keterangan belum tersimpan.' : 'Gagal menyimpan keterangan.')); }
+  });
 }
 function printMatRiwayat() {
   const m = M[S.mrId]; if (!m || !S.mrLog || !S.mrLog.list) return;
@@ -3517,7 +3607,7 @@ async function callEdit(action, payload, doneText, after) {
 }
 function saveUnit() {
   const u = U[S.kode]; if (!u) return;
-  const f = { u: clean(val('uu')), sl: ksegVal('uk'), loc: clean(val('uloc')), pm: clean(val('upm')), sn: clean(val('usn')), tb: val('utb'), gs: val('ugs'), cat: val('ucat').trim() };
+  const f = { u: clean(val('uu')), sl: ksegVal('uk'), loc: clean(val('uloc')), pm: clean(val('upm')), pic: clean(val('upic')), sn: clean(val('usn')), tb: val('utb'), gs: val('ugs'), cat: val('ucat').trim() };
   if (!f.u) { toast('Isi nomor unit.'); return; }
   callEdit('editUnit', { kode: u.k, f }, j => j.changed ? 'Perubahan disimpan.' : 'Tidak ada yang berubah.');
 }
@@ -3768,11 +3858,18 @@ document.addEventListener('click', async e => {
     case 'rwkesampah': {
       const tgl = Object.keys(S.rwSel).filter(k => S.rwSel[k]);
       if (!tgl.length) break;
-      try { const j = await api('pindahSampah', { sumber: 'Arsip', tgl, oleh: S.me }); toast('Dipindahkan ke Sampah: ' + j.jumlah + ' catatan.'); S.rwSel = {}; loadRingkasan(); }
-      catch (err) { toast(err.message || (err.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal memindahkan ke Sampah.')); }
+      const arsipMap = {};
+      (S.rw.list || []).forEach(b => b.hari.forEach(d => { arsipMap[d.tgl] = d.arsip; }));
+      const tglArsip = tgl.filter(t => arsipMap[t]), tglLive = tgl.filter(t => !arsipMap[t]);
+      try {
+        let total = 0;
+        if (tglArsip.length) total += (await api('pindahSampah', { sumber: 'Arsip', tgl: tglArsip, oleh: S.me })).jumlah;
+        if (tglLive.length) total += (await api('pindahSampah', { sumber: 'Pengambilan', tgl: tglLive, oleh: S.me })).jumlah;
+        toast('Dipindahkan ke Sampah: ' + total + ' catatan.'); S.rwSel = {}; loadRingkasan();
+      } catch (err) { toast(err.message || (err.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal memindahkan ke Sampah.')); }
       break;
     }
-    case 'dkpi': { const id = t.dataset.id; S.dkOpen[id] = !S.dkOpen[id]; render(); break; }
+    case 'dkchip': { const id = t.dataset.id; S.dkChip = S.dkChip === id ? null : id; render(); break; }
     case 'print': printDay(); break;
     case 'export': exportXlsx(); break;
     case 'exportmat': exportMaterialXlsx(); break;
@@ -3781,12 +3878,15 @@ document.addEventListener('click', async e => {
       catch (err) { toast(err.message || (err.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal mengarsipkan.')); }
       break;
     /* riwayat material per bulan (Semen dkk) */
-    case 'matriw': S.mrId = t.dataset.id; S.mrBulan = null; go('matriw'); break;
+    case 'matriw': S.mrId = t.dataset.id; S.mrBulan = null; S.mrMode = 'edit'; go('matriw'); break;
     case 'matriwback': back(); break;
     case 'matriwbulan': S.mrBulan = null; render(); break;
-    case 'matriwopen': S.mrBulan = t.dataset.b; render(); loadMatRiwayatBulan(); break;
+    case 'matriwopen': S.mrBulan = t.dataset.b; S.mrMode = 'edit'; render(); loadMatRiwayatBulan(); break;
+    case 'matriwmode': S.mrMode = t.dataset.m; renderLive(); if (S.mrMode === 'harian' && !S.mrLedger) loadMatLedgerBulan(); break;
+    case 'matriwexport': exportLedgerExcel(); break;
     case 'matriwprint': printMatRiwayat(); break;
     case 'matriwsampah': matRiwayatKeSampah(); break;
+    case 'matriwtutup': tutupBulanLedger(); break;
     /* sampah */
     case 'spulih': sampahPulihkan(t.dataset.id); break;
     case 'shapus': {
@@ -3873,6 +3973,7 @@ document.addEventListener('change', e => {
   if (id === 'fiFile') { const fs = e.target.files; e.target.value = ''; if (fs && fs.length) fiPicked(fs); return; }
   if (id === 'fileCam' || id === 'fileGal') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) fotoPicked(f); return; }
   if (e.target.classList && e.target.classList.contains('rwchk')) { S.rwSel[e.target.dataset.tgl] = e.target.checked; renderLive(); return; }
+  if (e.target.classList && e.target.classList.contains('lket')) { simpanKeteranganHarian(e.target.dataset.tgl, e.target.value); return; }
   if (id === 'tkat') { $('#tkatBox').hidden = v !== '__new'; updateCodePrev(); }
   else if (id === 'jkat') $('#jkatBox').hidden = v !== '__new';
   else if (id === 'tmerek') $('#tmerekBox').hidden = v !== '__new';

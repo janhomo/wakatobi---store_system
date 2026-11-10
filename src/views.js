@@ -450,6 +450,7 @@ function viewUnit() {
     fld('uu', 'No. unit', u.u, { mode: 'numeric' }) +
     '<div><label class="lbl">Kondisi</label>' + kseg('uk', u.off ? u.cond : u.cond) + '</div>' +
     placeField('uloc', u.loc) + pmField('upm', u.pm) +
+    fld('upic', 'PIC Perawatan (boleh kosong)', u.pic) +
     fld('usn', 'No. seri pabrik', u.sn) +
     '<div class="two stk">' + fld('utb', 'Tanggal beli', u.tb, { type: 'date' }) + fld('ugs', 'Garansi sampai', u.gs, { type: 'date' }) + '</div>' +
     '<div><label class="lbl" for="ucat">Catatan</label><textarea id="ucat" class="field">' + esc(u.cat) + '</textarea></div>' +
@@ -560,7 +561,7 @@ function liveRw() {
     let h = S.rw.list.map(b => {
       const open = !!S.rwOpenM[b.bulan];
       const hariHtml = !open ? '' : '<div class="days">' + b.hari.map(d => {
-        const disabled = !d.arsip; // hanya yang sudah diarsipkan yang boleh dipindah ke Sampah
+        const disabled = !!d.belum; // boleh dipindah ke Sampah kalau semua mesin hari itu sudah kembali, diarsipkan atau belum
         return '<div class="dayrow"><input type="checkbox" class="rwchk" data-tgl="' + esc(d.tgl) + '" aria-label="Pilih ' + esc(fmtShort(d.tgl)) + '"' + (disabled ? ' disabled' : '') + (S.rwSel[d.tgl] ? ' checked' : '') + '>' +
           '<button class="nm" data-action="rwopen" data-tgl="' + esc(d.tgl) + '" data-arsip="' + (d.arsip ? 1 : 0) + '"><b>' + esc(fmtShort(d.tgl)) + '</b><small>' + d.jumlah + ' pengambilan' + (d.belum ? ' · ' + d.belum + ' belum kembali' : d.arsip ? ' · sudah diarsipkan' : ' · sudah kembali semua') + '</small></button></div>';
       }).join('') + '</div>';
@@ -762,7 +763,7 @@ function viewProfil() {
   else {
     const gs = u.gs ? esc(fmtShort(u.gs)) + (daysFromToday(u.gs) < 0 ? ' <span class="pill late">Habis</span>' : ' <span class="pill ok">Berlaku</span>') : '—';
     body = '<dl class="dl">' + row('Kategori', esc(j.c || '—')) + row('Merek · tipe', (esc(subText(j)) || '—') + ' <button class="ulink" data-action="jedit">Ubah</button>') +
-      row('Pemilik', u.pm ? esc(u.pm) : '<span class="muted">Belum diisi</span>') + row('Lokasi simpan', hasPlace(u) ? '<button class="ulink" data-action="opentempat" data-id="' + esc(u.loc) + '">' + esc(placeText(u)) + '</button>' : 'Belum punya tempat') +
+      row('Pemilik', u.pm ? esc(u.pm) : '<span class="muted">Belum diisi</span>') + row('PIC Perawatan', u.pic ? esc(u.pic) : '<span class="muted">Belum diisi</span>') + row('Lokasi simpan', hasPlace(u) ? '<button class="ulink" data-action="opentempat" data-id="' + esc(u.loc) + '">' + esc(placeText(u)) + '</button>' : 'Belum punya tempat') +
       row('Servis berikutnya', '<span class="sv ' + sv.c + '">' + esc(sv.t) + '</span>') + row('No. seri', esc(u.sn) || '—') +
       row('Tanggal beli', u.tb ? esc(fmtShort(u.tb)) : '—') + row('Garansi sampai', gs) + (u.cat ? row('Catatan', esc(u.cat)) : '') + '</dl>' +
       '<div class="two" style="margin-top:12px"><button class="btn ghost small" data-action="uedit" data-k="' + esc(u.k) + '">Ubah unit</button><a class="btn ghost small" href="label.html?kode=' + esc(u.k) + '">Cetak label QR</a></div>' +
