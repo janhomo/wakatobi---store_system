@@ -60,7 +60,7 @@ function viewTambahTempat() {
   const t = T[S.tid];
   if (!t) return '<p class="empty">' + (S.loaded ? 'Tempat tidak ditemukan.' : 'Memuat…') + '</p>';
   const f = S.form || (S.form = { tab: 'mesin', q: '', filt: 'belum', sel: [], selM: [] });
-  const tabs = [['mesin', 'Mesin'], ['material', 'Material']].map(([k, l]) => '<button role="tab" data-action="atab" data-t="' + k + '" aria-selected="' + (f.tab === k) + '">' + l + '</button>').join('');
+  const tabs = [['mesin', 'Mesin/Alat'], ['material', 'Material']].map(([k, l]) => '<button role="tab" data-action="atab" data-t="' + k + '" aria-selected="' + (f.tab === k) + '">' + l + '</button>').join('');
   return '<div class="utabs" role="tablist">' + tabs + '</div>' +
     '<div class="two1"><input id="aq" class="field" type="search" placeholder="' + (f.tab === 'mesin' ? 'Cari mesin atau kode' : 'Cari material') + '" value="' + esc(f.q) + '" autocomplete="off" aria-label="Cari">' +
     (f.tab === 'mesin' ? '<button class="btn ghost small" data-action="ascan">' + ic('qr', 20) + 'Scan</button>' : '') + '</div>' +

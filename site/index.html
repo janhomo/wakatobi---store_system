@@ -606,9 +606,9 @@ body.pinned .top .in:has(+ .prog){max-width:none}
 <div class="savebar" id="savebar" hidden role="status" aria-live="polite"></div>
 <div class="syncbar" id="sync" hidden></div>
 <main class="wrap" id="app"></main>
-<button class="fab" id="fab" data-action="tambah" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Mesin baru</button>
+<button class="fab" id="fab" data-action="tambah" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Mesin/Alat baru</button>
 <nav class="bnav" id="bnav" aria-label="Navigasi utama"><div class="in">
-  <a href="#" data-action="root" data-view="mesin" id="nvMesin"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>Mesin</a>
+  <a href="#" data-action="root" data-view="mesin" id="nvMesin"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>Mesin/Alat</a>
   <div class="mid"><button class="scanfab" data-action="scan" aria-label="Scan QR"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/><path d="M8 12h8"/></svg></button></div>
   <a href="#" data-action="root" data-view="hari" id="nvHari"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>Hari Ini<span class="badge" id="hariBadge" hidden></span></a>
 </div></nav>
@@ -1116,7 +1116,7 @@ const merekList = () => {
 const LANG = { cur: (() => { const v = lsGet('qrg.lang', 'id'); return v === 'en' ? 'en' : 'id'; })() };
 const isEN = () => LANG.cur === 'en';
 const DICT_EN = {
-  'Mesin': 'Machines', 'Penyimpanan': 'Storage', 'Material': 'Material', 'Hari Ini': 'Today',
+  'Mesin': 'Machines', 'Mesin/Alat': 'Machines/Tools', 'Mesin/Alat baru': 'New machine/tool', 'Penyimpanan': 'Storage', 'Material': 'Material', 'Hari Ini': 'Today',
   'Riwayat per tanggal': 'History by date', 'Scan QR': 'Scan QR', 'Saran': 'Suggestions', 'Merek': 'Brand',
   'Pekerja': 'Workers', 'Impor Excel': 'Import Excel', 'Impor isi rak': 'Import rack contents',
   'Log perubahan': 'Change log', 'Cetak label QR': 'Print QR labels', 'Dasbor': 'Dashboard',
@@ -1348,14 +1348,14 @@ function setLang(l) {
 function hdrInfo() {
   const j = J[curJid()];
   switch (S.view) {
-    case 'mesin': return { root: 1, title: 'Mesin', sub: S.loaded ? nameGroups().size + ' mesin · ' + S.units.filter(u => !u.off).length + ' unit' : 'Memuat…', right: S.loaded && !isWide() ? { a: 'tambah', i: 'plus', l: 'Mesin baru', t: 'Mesin baru' } : null };
+    case 'mesin': return { root: 1, title: 'Mesin/Alat', sub: S.loaded ? nameGroups().size + ' mesin · ' + S.units.filter(u => !u.off).length + ' unit' : 'Memuat…', right: S.loaded && !isWide() ? { a: 'tambah', i: 'plus', l: 'Mesin/Alat baru', t: 'Mesin/Alat baru' } : null };
     case 'dasbor': return { root: 1, title: 'Dasbor', sub: 'Baca saja · ' + fmtDate(today()) };
     case 'fotoimpor': return { root: 1, title: 'Impor foto massal', sub: 'Satu foto per jenis mesin' };
     case 'imporrak': return { root: 1, title: 'Impor isi rak', sub: 'Isi tempat sekaligus dari Excel' };
-    case 'nama': { const g = nameGroup(S.nm); return { title: g ? g.name : 'Mesin', sub: g ? g.jenis.length + ' merek/model · ' + nameUnits(g).filter(u => !u.off).length + ' unit' : '' }; }
+    case 'nama': { const g = nameGroup(S.nm); return { title: g ? g.name : 'Mesin/Alat', sub: g ? g.jenis.length + ' merek/model · ' + nameUnits(g).filter(u => !u.off).length + ' unit' : '' }; }
     case 'saran': return { root: 1, title: 'Saran', sub: S.loaded ? saranList().length + ' saran' : 'Memuat…' };
     case 'hari': return { root: 1, title: 'Hari Ini', sub: fmtDate(today()) };
-    case 'jenis': return { title: j ? j.n : 'Mesin', sub: j ? subText(j) : '', right: j ? { a: 'jedit', i: 'edit', l: 'Ubah jenis' } : null };
+    case 'jenis': return { title: j ? j.n : 'Mesin/Alat', sub: j ? subText(j) : '', right: j ? { a: 'jedit', i: 'edit', l: 'Ubah jenis' } : null };
     case 'profil': { const u = U[S.kode]; return { title: u ? u.k : 'Unit', sub: u ? unitTitle(u) : '', right: u ? { a: 'uedit', i: 'edit', l: 'Ubah unit', k: u.k } : null }; }
     case 'tempatlist': return { root: 1, title: 'Penyimpanan', sub: S.loaded ? topPlaces().length + ' tempat' : 'Memuat…' };
     case 'tempat': { const t = T[S.tid]; const p = t && t.ind ? T[t.ind] : null; return { title: t ? t.n : 'Tempat', sub: t ? (p ? p.n + ' · ' : '') + [t.l, t.id].filter(Boolean).join(' · ') : '' }; }
@@ -1411,7 +1411,7 @@ function renderDrawer() {
   $('#drawer').innerHTML = '<button class="dbg" data-action="dclose" aria-label="Tutup menu"></button><aside role="dialog" aria-label="Menu">' +
     '<div class="dh"><img src="logo-gelap.png" alt="Wakatobi Project Villa" width="168" height="117"><small>QR Aset Gudang · Construction site</small></div>' +
     '<nav>' +
-    '<div class="sec">Utama</div>' + it('dasbor', 'chart', 'Dasbor') + it('mesin', 'grid', 'Mesin') + it('tempatlist', 'box', 'Penyimpanan') + it('material', 'layers', 'Material') +
+    '<div class="sec">Utama</div>' + it('dasbor', 'chart', 'Dasbor') + it('mesin', 'grid', 'Mesin/Alat') + it('tempatlist', 'box', 'Penyimpanan') + it('material', 'layers', 'Material') +
     it('hari', 'clock', 'Hari Ini', open ? '<span class="cnt">' + open + '</span>' : '') + it('riwayat', 'list', 'Riwayat per tanggal') +
     '<button class="it" data-action="dscan">' + ic('qr', 24) + '<span>Scan QR</span></button>' +
     '<div class="sec">Admin</div>' + it('saran', 'alert', 'Saran', saranList().length ? '<span class="cnt soft">' + saranList().length + '</span>' : '') + it('merek', 'tag', 'Merek') + it('pekerja', 'users', 'Pekerja') +
@@ -1497,9 +1497,9 @@ function aggStats(g, held) {
 function viewMesin() {
   if (!S.jenis.length) {
     return '<p class="empty" id="jempty">' + (!S.loaded ? (S.loadError === 'config' ? 'Server belum diatur. Isi alamat di config.js.' : S.loadError ? 'Data belum bisa dimuat. Cek sinyal lalu buka lagi.' : 'Memuat data mesin…')
-      : 'Belum ada mesin. Tekan + Mesin baru untuk menambah.') + '</p>';
+      : 'Belum ada mesin. Tekan + Mesin/Alat baru untuk menambah.') + '</p>';
   }
-  const list = '<div class="lhead"><b>Mesin</b>' + (isWide() ? '<button class="btn small" data-action="tambah">' + ic('plus', 20) + 'Mesin baru</button>' : '') + '</div>' +
+  const list = '<div class="lhead"><b>Mesin/Alat</b>' + (isWide() ? '<button class="btn small" data-action="tambah">' + ic('plus', 20) + 'Mesin/Alat baru</button>' : '') + '</div>' +
     '<p class="stats" id="stats"></p>' +
     '<input id="q" class="field" type="search" placeholder="Cari kode, nama, merek, atau model" value="' + esc(S.q) + '" autocomplete="off" aria-label="Cari mesin" style="margin-bottom:10px">' +
     '<div class="fchips" id="fchips" role="group" aria-label="Filter">' + FILTERS.map(([v, l]) => '<button class="fchip" data-action="filter" data-f="' + v + '" aria-pressed="' + (S.filter === v) + '">' + l + '</button>').join('') + '</div>' +
@@ -2512,7 +2512,7 @@ function viewTambahTempat() {
   const t = T[S.tid];
   if (!t) return '<p class="empty">' + (S.loaded ? 'Tempat tidak ditemukan.' : 'Memuat…') + '</p>';
   const f = S.form || (S.form = { tab: 'mesin', q: '', filt: 'belum', sel: [], selM: [] });
-  const tabs = [['mesin', 'Mesin'], ['material', 'Material']].map(([k, l]) => '<button role="tab" data-action="atab" data-t="' + k + '" aria-selected="' + (f.tab === k) + '">' + l + '</button>').join('');
+  const tabs = [['mesin', 'Mesin/Alat'], ['material', 'Material']].map(([k, l]) => '<button role="tab" data-action="atab" data-t="' + k + '" aria-selected="' + (f.tab === k) + '">' + l + '</button>').join('');
   return '<div class="utabs" role="tablist">' + tabs + '</div>' +
     '<div class="two1"><input id="aq" class="field" type="search" placeholder="' + (f.tab === 'mesin' ? 'Cari mesin atau kode' : 'Cari material') + '" value="' + esc(f.q) + '" autocomplete="off" aria-label="Cari">' +
     (f.tab === 'mesin' ? '<button class="btn ghost small" data-action="ascan">' + ic('qr', 20) + 'Scan</button>' : '') + '</div>' +

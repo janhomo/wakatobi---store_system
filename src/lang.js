@@ -8,7 +8,7 @@
 const LANG = { cur: (() => { const v = lsGet('qrg.lang', 'id'); return v === 'en' ? 'en' : 'id'; })() };
 const isEN = () => LANG.cur === 'en';
 const DICT_EN = {
-  'Mesin': 'Machines', 'Penyimpanan': 'Storage', 'Material': 'Material', 'Hari Ini': 'Today',
+  'Mesin': 'Machines', 'Mesin/Alat': 'Machines/Tools', 'Mesin/Alat baru': 'New machine/tool', 'Penyimpanan': 'Storage', 'Material': 'Material', 'Hari Ini': 'Today',
   'Riwayat per tanggal': 'History by date', 'Scan QR': 'Scan QR', 'Saran': 'Suggestions', 'Merek': 'Brand',
   'Pekerja': 'Workers', 'Impor Excel': 'Import Excel', 'Impor isi rak': 'Import rack contents',
   'Log perubahan': 'Change log', 'Cetak label QR': 'Print QR labels', 'Dasbor': 'Dashboard',

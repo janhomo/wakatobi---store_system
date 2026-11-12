@@ -2,14 +2,14 @@
 function hdrInfo() {
   const j = J[curJid()];
   switch (S.view) {
-    case 'mesin': return { root: 1, title: 'Mesin', sub: S.loaded ? nameGroups().size + ' mesin · ' + S.units.filter(u => !u.off).length + ' unit' : 'Memuat…', right: S.loaded && !isWide() ? { a: 'tambah', i: 'plus', l: 'Mesin baru', t: 'Mesin baru' } : null };
+    case 'mesin': return { root: 1, title: 'Mesin/Alat', sub: S.loaded ? nameGroups().size + ' mesin · ' + S.units.filter(u => !u.off).length + ' unit' : 'Memuat…', right: S.loaded && !isWide() ? { a: 'tambah', i: 'plus', l: 'Mesin/Alat baru', t: 'Mesin/Alat baru' } : null };
     case 'dasbor': return { root: 1, title: 'Dasbor', sub: 'Baca saja · ' + fmtDate(today()) };
     case 'fotoimpor': return { root: 1, title: 'Impor foto massal', sub: 'Satu foto per jenis mesin' };
     case 'imporrak': return { root: 1, title: 'Impor isi rak', sub: 'Isi tempat sekaligus dari Excel' };
-    case 'nama': { const g = nameGroup(S.nm); return { title: g ? g.name : 'Mesin', sub: g ? g.jenis.length + ' merek/model · ' + nameUnits(g).filter(u => !u.off).length + ' unit' : '' }; }
+    case 'nama': { const g = nameGroup(S.nm); return { title: g ? g.name : 'Mesin/Alat', sub: g ? g.jenis.length + ' merek/model · ' + nameUnits(g).filter(u => !u.off).length + ' unit' : '' }; }
     case 'saran': return { root: 1, title: 'Saran', sub: S.loaded ? saranList().length + ' saran' : 'Memuat…' };
     case 'hari': return { root: 1, title: 'Hari Ini', sub: fmtDate(today()) };
-    case 'jenis': return { title: j ? j.n : 'Mesin', sub: j ? subText(j) : '', right: j ? { a: 'jedit', i: 'edit', l: 'Ubah jenis' } : null };
+    case 'jenis': return { title: j ? j.n : 'Mesin/Alat', sub: j ? subText(j) : '', right: j ? { a: 'jedit', i: 'edit', l: 'Ubah jenis' } : null };
     case 'profil': { const u = U[S.kode]; return { title: u ? u.k : 'Unit', sub: u ? unitTitle(u) : '', right: u ? { a: 'uedit', i: 'edit', l: 'Ubah unit', k: u.k } : null }; }
     case 'tempatlist': return { root: 1, title: 'Penyimpanan', sub: S.loaded ? topPlaces().length + ' tempat' : 'Memuat…' };
     case 'tempat': { const t = T[S.tid]; const p = t && t.ind ? T[t.ind] : null; return { title: t ? t.n : 'Tempat', sub: t ? (p ? p.n + ' · ' : '') + [t.l, t.id].filter(Boolean).join(' · ') : '' }; }
@@ -65,7 +65,7 @@ function renderDrawer() {
   $('#drawer').innerHTML = '<button class="dbg" data-action="dclose" aria-label="Tutup menu"></button><aside role="dialog" aria-label="Menu">' +
     '<div class="dh"><img src="logo-gelap.png" alt="Wakatobi Project Villa" width="168" height="117"><small>QR Aset Gudang · Construction site</small></div>' +
     '<nav>' +
-    '<div class="sec">Utama</div>' + it('dasbor', 'chart', 'Dasbor') + it('mesin', 'grid', 'Mesin') + it('tempatlist', 'box', 'Penyimpanan') + it('material', 'layers', 'Material') +
+    '<div class="sec">Utama</div>' + it('dasbor', 'chart', 'Dasbor') + it('mesin', 'grid', 'Mesin/Alat') + it('tempatlist', 'box', 'Penyimpanan') + it('material', 'layers', 'Material') +
     it('hari', 'clock', 'Hari Ini', open ? '<span class="cnt">' + open + '</span>' : '') + it('riwayat', 'list', 'Riwayat per tanggal') +
     '<button class="it" data-action="dscan">' + ic('qr', 24) + '<span>Scan QR</span></button>' +
     '<div class="sec">Admin</div>' + it('saran', 'alert', 'Saran', saranList().length ? '<span class="cnt soft">' + saranList().length + '</span>' : '') + it('merek', 'tag', 'Merek') + it('pekerja', 'users', 'Pekerja') +
@@ -151,9 +151,9 @@ function aggStats(g, held) {
 function viewMesin() {
   if (!S.jenis.length) {
     return '<p class="empty" id="jempty">' + (!S.loaded ? (S.loadError === 'config' ? 'Server belum diatur. Isi alamat di config.js.' : S.loadError ? 'Data belum bisa dimuat. Cek sinyal lalu buka lagi.' : 'Memuat data mesin…')
-      : 'Belum ada mesin. Tekan + Mesin baru untuk menambah.') + '</p>';
+      : 'Belum ada mesin. Tekan + Mesin/Alat baru untuk menambah.') + '</p>';
   }
-  const list = '<div class="lhead"><b>Mesin</b>' + (isWide() ? '<button class="btn small" data-action="tambah">' + ic('plus', 20) + 'Mesin baru</button>' : '') + '</div>' +
+  const list = '<div class="lhead"><b>Mesin/Alat</b>' + (isWide() ? '<button class="btn small" data-action="tambah">' + ic('plus', 20) + 'Mesin/Alat baru</button>' : '') + '</div>' +
     '<p class="stats" id="stats"></p>' +
     '<input id="q" class="field" type="search" placeholder="Cari kode, nama, merek, atau model" value="' + esc(S.q) + '" autocomplete="off" aria-label="Cari mesin" style="margin-bottom:10px">' +
     '<div class="fchips" id="fchips" role="group" aria-label="Filter">' + FILTERS.map(([v, l]) => '<button class="fchip" data-action="filter" data-f="' + v + '" aria-pressed="' + (S.filter === v) + '">' + l + '</button>').join('') + '</div>' +
