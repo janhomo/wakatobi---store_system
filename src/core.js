@@ -371,7 +371,7 @@ function pushOv(name) {
 }
 function closeTop() { if (S.ov.length) history.back(); }
 function closeOv(name) {
-  if (name === 'scan') { stopCamera(); $('#scan').hidden = true; S.scan = null; if (S.view === 'tambahtempat') render(); }
+  if (name === 'scan') { stopCamera(); stopNfc(); $('#scan').hidden = true; S.scan = null; if (S.view === 'tambahtempat') render(); }
   else if (name === 'picker') { $('#picker').hidden = true; S.picker = null; }
   else if (name === 'drawer') { if (!S.pinned) $('#drawer').hidden = true; }
   else if (name === 'foto') { $('#fotoSheet').hidden = true; S.fotoEd = null; }

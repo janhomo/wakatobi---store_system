@@ -26,13 +26,27 @@
     </div>
     <button data-action="torch" id="torchBtn" hidden>Lampu</button>
   </div>
-  <div class="qrtypebar">
-    <div class="qrtype" role="tablist" aria-label="Jenis QR">
-      <button data-action="scanqrtype" data-type="mesin" aria-selected="true">QR mesin</button>
-      <button data-action="scanqrtype" data-type="rak" aria-selected="false">QR rak</button>
+  <div class="methodbar">
+    <div class="method" role="tablist" aria-label="Cara baca">
+      <button data-action="scanmethod" data-method="qr" aria-selected="true">Scan QR</button>
+      <button data-action="scanmethod" data-method="nfc" aria-selected="false" id="btnMethodNfc">Tempel NFC</button>
     </div>
   </div>
-  <div class="mid"><div class="frame" id="frame"></div><p class="hint" id="hint"></p></div>
+  <div class="qrtypebar">
+    <div class="qrtype" role="tablist" aria-label="Jenis kode">
+      <button data-action="scanqrtype" data-type="mesin" aria-selected="true">Mesin/Alat</button>
+      <button data-action="scanqrtype" data-type="rak" aria-selected="false">Rak</button>
+    </div>
+  </div>
+  <div class="mid">
+    <div class="frame" id="frame"></div>
+    <div class="nfcstage" id="nfcstage" hidden>
+      <div class="pulsewrap"><div class="pulsering"></div><div class="pulsering d2"></div><div class="pulsering d3"></div>
+        <div class="phoneic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></div>
+      </div>
+    </div>
+    <p class="hint" id="hint"></p>
+  </div>
   <section class="sheet" id="sheet" aria-label="Daftar scan"></section>
 </div>
 <div id="picker" hidden></div>

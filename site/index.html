@@ -298,12 +298,26 @@ details summary{cursor:pointer; min-height:44px; display:flex; align-items:cente
 #scan .qrtype{display:flex; gap:0; border:1.5px solid #fff8; border-radius:22px; overflow:hidden}
 #scan .qrtype button{border:0; border-radius:0; background:#0008; min-height:38px; padding:5px 14px; color:#fff; font-weight:600; font-size:13px}
 #scan .qrtype button[aria-selected="true"]{background:#fff; color:#000}
+#scan .methodbar{position:relative; z-index:2; display:flex; justify-content:center; padding:0 12px 10px}
+#scan .method{display:flex; gap:0; border:1.5px solid #fff8; border-radius:22px; overflow:hidden}
+#scan .method button{border:0; border-radius:0; background:#0008; min-height:38px; padding:5px 16px; color:#fff; font-weight:700; font-size:13px}
+#scan .method button[aria-selected="true"]{background:var(--accent); color:var(--accent-ink)}
+#scan .method button:disabled{opacity:.4}
 #scan .mid{position:relative; z-index:2; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:34px; gap:14px; min-height:0}
 #scan .frame{width:min(46vw,200px); aspect-ratio:1; border:4px solid #fffc; border-radius:18px; box-shadow:0 0 0 100vmax #0004; transition:border-color .15s}
 #scan .frame.ok{border-color:#3DDC84}
 #scan .frame.warn{border-color:#FFC53D}
 #scan .frame.bad{border-color:#FF5B4F}
 #scan .hint{margin:0; padding:0 24px; text-align:center; color:#E9EDEF; font-size:15px; font-weight:600}
+#scan .nfcstage{display:flex; align-items:center; justify-content:center; width:min(46vw,200px); aspect-ratio:1}
+#scan .pulsewrap{position:relative; width:84px; height:84px; display:flex; align-items:center; justify-content:center}
+#scan .pulsering{position:absolute; inset:0; border-radius:50%; background:#ffffff33; animation:scanpulse 1.6s ease-out infinite}
+#scan .pulsering.d2{animation-delay:.5s}
+#scan .pulsering.d3{animation-delay:1s}
+@keyframes scanpulse{0%{transform:scale(.55); opacity:.8}100%{transform:scale(1.4); opacity:0}}
+#scan .phoneic{position:relative; width:52px; height:52px; border-radius:14px; background:var(--accent); color:var(--accent-ink); display:flex; align-items:center; justify-content:center}
+#scan .nfcstage.ok .phoneic{background:#3DDC84; color:#06330f}
+#scan .nfcstage.ok .pulsering{display:none}
 #scan .sheet{position:relative; z-index:3; background:var(--surface); color:var(--ink); border-radius:22px 22px 0 0; padding:10px 16px calc(16px + env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; gap:10px; max-height:72vh; overflow:auto}
 #scan .grab{width:44px; height:4px; border-radius:2px; background:var(--line); margin:0 auto; flex-shrink:0}
 #scan .sh-h{display:flex; align-items:center; justify-content:space-between}
@@ -627,13 +641,27 @@ body.pinned .top .in:has(+ .prog){max-width:none}
     </div>
     <button data-action="torch" id="torchBtn" hidden>Lampu</button>
   </div>
-  <div class="qrtypebar">
-    <div class="qrtype" role="tablist" aria-label="Jenis QR">
-      <button data-action="scanqrtype" data-type="mesin" aria-selected="true">QR mesin</button>
-      <button data-action="scanqrtype" data-type="rak" aria-selected="false">QR rak</button>
+  <div class="methodbar">
+    <div class="method" role="tablist" aria-label="Cara baca">
+      <button data-action="scanmethod" data-method="qr" aria-selected="true">Scan QR</button>
+      <button data-action="scanmethod" data-method="nfc" aria-selected="false" id="btnMethodNfc">Tempel NFC</button>
     </div>
   </div>
-  <div class="mid"><div class="frame" id="frame"></div><p class="hint" id="hint"></p></div>
+  <div class="qrtypebar">
+    <div class="qrtype" role="tablist" aria-label="Jenis kode">
+      <button data-action="scanqrtype" data-type="mesin" aria-selected="true">Mesin/Alat</button>
+      <button data-action="scanqrtype" data-type="rak" aria-selected="false">Rak</button>
+    </div>
+  </div>
+  <div class="mid">
+    <div class="frame" id="frame"></div>
+    <div class="nfcstage" id="nfcstage" hidden>
+      <div class="pulsewrap"><div class="pulsering"></div><div class="pulsering d2"></div><div class="pulsering d3"></div>
+        <div class="phoneic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></div>
+      </div>
+    </div>
+    <p class="hint" id="hint"></p>
+  </div>
   <section class="sheet" id="sheet" aria-label="Daftar scan"></section>
 </div>
 <div id="picker" hidden></div>
@@ -1033,7 +1061,7 @@ function pushOv(name) {
 }
 function closeTop() { if (S.ov.length) history.back(); }
 function closeOv(name) {
-  if (name === 'scan') { stopCamera(); $('#scan').hidden = true; S.scan = null; if (S.view === 'tambahtempat') render(); }
+  if (name === 'scan') { stopCamera(); stopNfc(); $('#scan').hidden = true; S.scan = null; if (S.view === 'tambahtempat') render(); }
   else if (name === 'picker') { $('#picker').hidden = true; S.picker = null; }
   else if (name === 'drawer') { if (!S.pinned) $('#drawer').hidden = true; }
   else if (name === 'foto') { $('#fotoSheet').hidden = true; S.fotoEd = null; }
@@ -3242,6 +3270,43 @@ function saranTolakSet(id, batal) {
 let stream = null, starting = false, scanning = false, detector = null, lastCode = '', lastAt = 0, lastTry = 0, fbTimer = null, torchOn = false;
 const cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
 
+/* ---------- NFC: Web NFC (NDEFReader). Hanya jalan di Android + Chrome, lewat HTTPS. ---------- */
+const NFC_SUPPORTED = 'NDEFReader' in window;
+let nfcAbort = null, nfcStarting = false;
+async function startNfc() {
+  if (nfcAbort) return true;
+  if (!NFC_SUPPORTED) { setFb({ type: 'bad', text: 'NFC tidak didukung di HP/browser ini. Pakai Chrome di Android, atau gunakan Scan QR.' }); return false; }
+  if (nfcStarting) return true;
+  nfcStarting = true;
+  try {
+    nfcAbort = new AbortController();
+    const reader = new NDEFReader();
+    await reader.scan({ signal: nfcAbort.signal });
+    reader.onreading = ev => {
+      if (!S.scan || S.scan.method !== 'nfc' || S.scan.paused || S.scan.done || !$('#picker').hidden || !$('#stokSheet').hidden) return;
+      let text = '';
+      for (const rec of ev.message.records) {
+        if (rec.recordType === 'text') { try { text = new TextDecoder(rec.encoding || 'utf-8').decode(rec.data); } catch (e) {} }
+        else if (rec.recordType === 'url') { try { text = new TextDecoder().decode(rec.data); } catch (e) {} }
+        if (text) break;
+      }
+      if (text) onCode(text); else setFb({ type: 'bad', text: 'Tag NFC ini tidak berisi kode yang dikenal.' });
+    };
+    reader.onreadingerror = () => { if (S.scan && S.scan.method === 'nfc') setFb({ type: 'bad', text: 'Gagal membaca tag NFC, coba tempel lagi.' }); };
+    nfcStarting = false;
+    return true;
+  } catch (e) {
+    nfcStarting = false; nfcAbort = null;
+    const msg = e && e.name === 'NotAllowedError' ? 'Izin NFC ditolak. Aktifkan izin NFC untuk situs ini di pengaturan Chrome.' : 'NFC tidak bisa diaktifkan. Pastikan NFC HP menyala.';
+    setFb({ type: 'bad', text: msg });
+    return false;
+  }
+}
+function stopNfc() {
+  if (nfcAbort) { try { nfcAbort.abort(); } catch (e) {} nfcAbort = null; }
+  nfcStarting = false;
+}
+
 async function startCamera() {
   if (stream) return true;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
@@ -3305,7 +3370,7 @@ async function scanLoop() {
 async function openScan(o = {}) {
   if (S.scan) return;
   try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume && audioCtx.resume(); } catch (e) {}
-  S.scan = { mode: o.mode || 'ambil', basket: [], done: null, paused: false, fb: null, qrType: 'mesin' };
+  S.scan = { mode: o.mode || 'ambil', basket: [], done: null, paused: false, fb: null, qrType: 'mesin', method: 'qr' };
   $('#scan').hidden = false; pushOv('scan');
   (o.preset || []).forEach(k => addToBasket(k));
   if (S.scan.basket.length) S.scan.paused = true;
@@ -3316,6 +3381,13 @@ async function openScan(o = {}) {
     if (S.scan.basket.length) toast('Kamera tidak bisa dibuka. Daftar tetap bisa dicatat.');
     else { toast('Kamera tidak bisa dibuka. Izinkan kamera untuk situs ini di pengaturan browser.'); closeTop(); }
   }
+}
+function scanSetMethod(m) {
+  const sc = S.scan; if (!sc || sc.method === m) return;
+  if (m === 'nfc' && !NFC_SUPPORTED) { toast('NFC tidak didukung di HP/browser ini. Pakai Chrome di Android.'); return; }
+  sc.method = m; sc.fb = null;
+  if (m === 'nfc') { stopCamera(); renderScan(); startNfc(); }
+  else { stopNfc(); renderScan(); startCamera(); }
 }
 function setFb(fb) {
   if (!S.scan) return;
@@ -3329,13 +3401,13 @@ function onCode(text) {
   const sc = S.scan;
   if (sc.mode === 'tambah') {
     const f = S.form;
-    if (!U[code] || U[code].off) { setFb({ type: 'bad', text: 'QR ini bukan mesin yang aktif.' }); beep(false); return; }
+    if (!U[code] || U[code].off) { setFb({ type: 'bad', text: 'Kode ini bukan mesin yang aktif.' }); beep(false); return; }
     if (f && !f.sel.includes(code)) f.sel.push(code);
     beep(true); setFb({ type: 'ok', text: code + ' dipilih. ' + (f ? f.sel.length : 0) + ' mesin terpilih.' }); return;
   }
   const mat = /^MAT-\d{3}$/.test(code);
-  if (sc.qrType === 'rak' && !isLok(code) && !mat) { setFb({ type: 'bad', text: 'Itu bukan QR rak. Pindahkan switch ke QR mesin.' }); beep(false); return; }
-  if (sc.qrType === 'mesin' && isLok(code)) { setFb({ type: 'bad', text: 'Itu QR rak. Pindahkan switch ke QR rak.' }); beep(false); return; }
+  if (sc.qrType === 'rak' && !isLok(code) && !mat) { setFb({ type: 'bad', text: 'Itu bukan kode rak. Pindahkan ke Mesin/Alat.' }); beep(false); return; }
+  if (sc.qrType === 'mesin' && isLok(code)) { setFb({ type: 'bad', text: 'Itu kode rak. Pindahkan ke Rak.' }); beep(false); return; }
   if (isLok(code)) {
     if (!T[code]) { setFb({ type: 'bad', text: code + ' tidak ada di daftar tempat.' }); beep(false); return; }
     beep(true); sc.place = code; sc.paused = true; sc.fb = null; renderScan(); return;
@@ -3346,7 +3418,7 @@ function onCode(text) {
   }
   if (sc.mode === 'lihat') {
     if (U[code]) { beep(true); const k = code; go('profil', { kode: k, jid: U[k].j }); }
-    else { setFb({ type: 'bad', text: 'QR ini bukan mesin gudang.' }); beep(false); }
+    else { setFb({ type: 'bad', text: 'Kode ini bukan mesin gudang.' }); beep(false); }
     return;
   }
   const fb = sc.mode === 'kembali' ? scanKembali(code) : scanAmbil(code);
@@ -3354,7 +3426,7 @@ function onCode(text) {
 }
 function scanAmbil(code) {
   const u = U[code];
-  if (!u) return { type: 'bad', text: 'QR ini bukan mesin gudang.' };
+  if (!u) return { type: 'bad', text: 'Kode ini bukan mesin gudang.' };
   if (u.off) return { type: 'bad', text: code + ' sudah dinonaktifkan, tidak bisa diambil.' };
   if (u.s === 'bad') return { type: 'bad', text: code + ' ' + u.sl.toLowerCase() + ', tidak bisa diambil.' };
   if (S.scan.basket.some(b => b.kode === code)) return { type: 'info', text: code + ' sudah ada di daftar.' };
@@ -3374,7 +3446,7 @@ function addToBasket(code) {
 }
 function scanKembali(code) {
   const u = U[code];
-  if (!u) return { type: 'bad', text: 'QR ini bukan mesin gudang.' };
+  if (!u) return { type: 'bad', text: 'Kode ini bukan mesin gudang.' };
   if (S.scan.basket.some(b => b.kode === code)) return { type: 'info', text: code + ' sudah ada di daftar.' };
   if (!openEntries().some(e => e.kode === code)) return { type: 'info', text: code + ' tidak sedang diambil (sudah di tempat).' };
   const item = addToBasket(code); S.scan.paused = true;
@@ -3400,15 +3472,25 @@ function renderScan() {
   const sc = S.scan; if (!sc) return;
   document.querySelectorAll('#scan .mode button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === sc.mode)));
   document.querySelectorAll('#scan .qrtype button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.type === sc.qrType)));
-  $('#frame').className = 'frame' + (sc.fb && sc.fb.type !== 'info' ? ' ' + sc.fb.type : '');
-  $('#hint').textContent = sc.place ? '' : sc.mode === 'tambah' ? 'Arahkan kamera ke QR mesin.' : sc.done ? '' : sc.paused ? 'Daftar siap. Tekan Tambah mesin untuk scan lagi.' : sc.mode === 'lihat' ? 'Arahkan kamera ke QR. Detail mesin akan terbuka.' : sc.qrType === 'rak' ? 'Arahkan kamera ke QR rak.' : 'Arahkan kamera ke QR mesin.';
+  document.querySelectorAll('#scan .method button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.method === sc.method)));
+  const nfcMode = sc.method === 'nfc';
+  $('#frame').hidden = nfcMode;
+  $('#nfcstage').hidden = !nfcMode;
+  if (nfcMode) $('#torchBtn').hidden = true;
+  if (nfcMode) $('#nfcstage').className = 'nfcstage' + (sc.fb && sc.fb.type === 'ok' ? ' ok' : '');
+  else $('#frame').className = 'frame' + (sc.fb && sc.fb.type !== 'info' ? ' ' + sc.fb.type : '');
+  const target = sc.qrType === 'rak' ? 'rak' : 'mesin/alat';
+  $('#hint').textContent = sc.place ? '' : sc.mode === 'tambah' ? (nfcMode ? 'Tempelkan HP ke tag NFC mesin.' : 'Arahkan kamera ke QR mesin.') :
+    sc.done ? '' : sc.paused ? 'Daftar siap. Tekan Tambah mesin untuk scan lagi.' :
+    sc.mode === 'lihat' ? (nfcMode ? 'Tempelkan HP ke tag NFC. Detail mesin akan terbuka.' : 'Arahkan kamera ke QR. Detail mesin akan terbuka.') :
+    nfcMode ? 'Tempelkan HP ke tag NFC ' + target + '.' : 'Arahkan kamera ke QR ' + target + '.';
   const sh = $('#sheet');
   $('#scan .mode').hidden = sc.mode === 'tambah' || sc.qrType === 'rak';
   $('#scan .qrtypebar').hidden = sc.mode === 'tambah';
   if (sc.place) { sh.innerHTML = placePopup(sc.place); return; }
   if (sc.mode === 'tambah') {
     const n = S.form ? S.form.sel.length : 0;
-    sh.innerHTML = '<div class="grab"></div><div class="sh-h"><span class="t">Pilih mesin</span><span class="n">' + n + '</span></div>' + (sc.fb ? '<div class="fb ' + sc.fb.type + '">' + esc(sc.fb.text) + '</div>' : '<p class="muted" style="margin:0;font-size:15px">Scan QR mesin satu per satu. Yang di-scan ikut terpilih.</p>') +
+    sh.innerHTML = '<div class="grab"></div><div class="sh-h"><span class="t">Pilih mesin</span><span class="n">' + n + '</span></div>' + (sc.fb ? '<div class="fb ' + sc.fb.type + '">' + esc(sc.fb.text) + '</div>' : '<p class="muted" style="margin:0;font-size:15px">Scan QR atau tempel NFC mesin satu per satu. Yang terbaca ikut terpilih.</p>') +
       '<div class="yn"><button class="yes" data-action="scanclose">Selesai</button></div>';
     return;
   }
@@ -3424,7 +3506,7 @@ function renderScan() {
   if (sc.fb) h += '<div class="fb ' + sc.fb.type + '">' + esc(sc.fb.text) + (sc.fb.sub ? '<br><small>' + esc(sc.fb.sub) + '</small>' : '') + '</div>';
   if (sc.mode !== 'lihat') {
     h += sc.basket.map(bitemHtml).join('');
-    if (!n && !sc.fb) h += '<p class="muted" style="margin:0;font-size:15px">' + (sc.mode === 'ambil' ? 'Scan QR mesin yang diambil. Satu per satu, lalu pilih nama untuk tiap mesin.' : 'Scan QR mesin yang dikembalikan.') + '</p>';
+    if (!n && !sc.fb) h += '<p class="muted" style="margin:0;font-size:15px">' + (sc.mode === 'ambil' ? 'Scan QR atau tempel NFC mesin yang diambil. Satu per satu, lalu pilih nama untuk tiap mesin.' : 'Scan QR atau tempel NFC mesin yang dikembalikan.') + '</p>';
     if (n && sc.paused) h += '<button class="dashed" data-action="scanmore">' + ic('plus', 20) + 'Tambah mesin</button>';
     if (n) {
       const need = sc.mode === 'ambil' && sc.basket.some(b => !b.name);
@@ -3834,7 +3916,8 @@ document.addEventListener('click', async e => {
     case 'scanclose': closeTop(); break;
     case 'scanmode': scanSetMode(t.dataset.mode); break;
     case 'scanqrtype': scanSetQrType(t.dataset.type); break;
-    case 'scanmore': if (S.scan) { S.scan.paused = false; S.scan.fb = null; lastCode = ''; renderScan(); if (!stream) startCamera(); } break;
+    case 'scanmethod': scanSetMethod(t.dataset.method); break;
+    case 'scanmore': if (S.scan) { S.scan.paused = false; S.scan.fb = null; lastCode = ''; renderScan(); if (S.scan.method === 'nfc') { if (!nfcAbort) startNfc(); } else if (!stream) startCamera(); } break;
     case 'bremove': if (S.scan) { S.scan.basket = S.scan.basket.filter(b => b.kode !== t.dataset.k); if (!S.scan.basket.length) S.scan.paused = false; renderScan(); } break;
     case 'bkond': { const b = S.scan && S.scan.basket.find(x => x.kode === t.dataset.k); if (b) { b.kondisi = t.dataset.v; renderScan(); } break; }
     case 'bname': {
@@ -3995,8 +4078,11 @@ function openCode(k) {
 }
 window.addEventListener('hashchange', () => { const k = codeFromHash(); if (k) { history.replaceState(history.state, '', URL_); openCode(k); } });
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { if (S.scan) stopCamera(); }
-  else { flush(); loadAll(true); if (S.scan && !S.scan.done) startCamera(); }
+  if (document.hidden) { if (S.scan) { stopCamera(); stopNfc(); } }
+  else {
+    flush(); loadAll(true);
+    if (S.scan && !S.scan.done) { if (S.scan.method === 'nfc') startNfc(); else startCamera(); }
+  }
 });
 window.addEventListener('online', () => { flush(); loadAll(true); });
 

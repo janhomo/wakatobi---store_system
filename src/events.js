@@ -251,7 +251,8 @@ document.addEventListener('click', async e => {
     case 'scanclose': closeTop(); break;
     case 'scanmode': scanSetMode(t.dataset.mode); break;
     case 'scanqrtype': scanSetQrType(t.dataset.type); break;
-    case 'scanmore': if (S.scan) { S.scan.paused = false; S.scan.fb = null; lastCode = ''; renderScan(); if (!stream) startCamera(); } break;
+    case 'scanmethod': scanSetMethod(t.dataset.method); break;
+    case 'scanmore': if (S.scan) { S.scan.paused = false; S.scan.fb = null; lastCode = ''; renderScan(); if (S.scan.method === 'nfc') { if (!nfcAbort) startNfc(); } else if (!stream) startCamera(); } break;
     case 'bremove': if (S.scan) { S.scan.basket = S.scan.basket.filter(b => b.kode !== t.dataset.k); if (!S.scan.basket.length) S.scan.paused = false; renderScan(); } break;
     case 'bkond': { const b = S.scan && S.scan.basket.find(x => x.kode === t.dataset.k); if (b) { b.kondisi = t.dataset.v; renderScan(); } break; }
     case 'bname': {
@@ -412,8 +413,11 @@ function openCode(k) {
 }
 window.addEventListener('hashchange', () => { const k = codeFromHash(); if (k) { history.replaceState(history.state, '', URL_); openCode(k); } });
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { if (S.scan) stopCamera(); }
-  else { flush(); loadAll(true); if (S.scan && !S.scan.done) startCamera(); }
+  if (document.hidden) { if (S.scan) { stopCamera(); stopNfc(); } }
+  else {
+    flush(); loadAll(true);
+    if (S.scan && !S.scan.done) { if (S.scan.method === 'nfc') startNfc(); else startCamera(); }
+  }
 });
 window.addEventListener('online', () => { flush(); loadAll(true); });
 

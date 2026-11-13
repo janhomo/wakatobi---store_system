@@ -285,12 +285,26 @@ details summary{cursor:pointer; min-height:44px; display:flex; align-items:cente
 #scan .qrtype{display:flex; gap:0; border:1.5px solid #fff8; border-radius:22px; overflow:hidden}
 #scan .qrtype button{border:0; border-radius:0; background:#0008; min-height:38px; padding:5px 14px; color:#fff; font-weight:600; font-size:13px}
 #scan .qrtype button[aria-selected="true"]{background:#fff; color:#000}
+#scan .methodbar{position:relative; z-index:2; display:flex; justify-content:center; padding:0 12px 10px}
+#scan .method{display:flex; gap:0; border:1.5px solid #fff8; border-radius:22px; overflow:hidden}
+#scan .method button{border:0; border-radius:0; background:#0008; min-height:38px; padding:5px 16px; color:#fff; font-weight:700; font-size:13px}
+#scan .method button[aria-selected="true"]{background:var(--accent); color:var(--accent-ink)}
+#scan .method button:disabled{opacity:.4}
 #scan .mid{position:relative; z-index:2; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:34px; gap:14px; min-height:0}
 #scan .frame{width:min(46vw,200px); aspect-ratio:1; border:4px solid #fffc; border-radius:18px; box-shadow:0 0 0 100vmax #0004; transition:border-color .15s}
 #scan .frame.ok{border-color:#3DDC84}
 #scan .frame.warn{border-color:#FFC53D}
 #scan .frame.bad{border-color:#FF5B4F}
 #scan .hint{margin:0; padding:0 24px; text-align:center; color:#E9EDEF; font-size:15px; font-weight:600}
+#scan .nfcstage{display:flex; align-items:center; justify-content:center; width:min(46vw,200px); aspect-ratio:1}
+#scan .pulsewrap{position:relative; width:84px; height:84px; display:flex; align-items:center; justify-content:center}
+#scan .pulsering{position:absolute; inset:0; border-radius:50%; background:#ffffff33; animation:scanpulse 1.6s ease-out infinite}
+#scan .pulsering.d2{animation-delay:.5s}
+#scan .pulsering.d3{animation-delay:1s}
+@keyframes scanpulse{0%{transform:scale(.55); opacity:.8}100%{transform:scale(1.4); opacity:0}}
+#scan .phoneic{position:relative; width:52px; height:52px; border-radius:14px; background:var(--accent); color:var(--accent-ink); display:flex; align-items:center; justify-content:center}
+#scan .nfcstage.ok .phoneic{background:#3DDC84; color:#06330f}
+#scan .nfcstage.ok .pulsering{display:none}
 #scan .sheet{position:relative; z-index:3; background:var(--surface); color:var(--ink); border-radius:22px 22px 0 0; padding:10px 16px calc(16px + env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; gap:10px; max-height:72vh; overflow:auto}
 #scan .grab{width:44px; height:4px; border-radius:2px; background:var(--line); margin:0 auto; flex-shrink:0}
 #scan .sh-h{display:flex; align-items:center; justify-content:space-between}
