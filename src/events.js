@@ -300,7 +300,7 @@ document.addEventListener('click', async e => {
     case 'matriwback': back(); break;
     case 'matriwbulan': S.mrBulan = null; render(); break;
     case 'matriwopen': S.mrBulan = t.dataset.b; S.mrMode = 'edit'; render(); loadMatRiwayatBulan(); break;
-    case 'matriwmode': S.mrMode = t.dataset.m; renderLive(); if (S.mrMode === 'harian' && !S.mrLedger) loadMatLedgerBulan(); break;
+    case 'matriwmode': S.mrMode = t.dataset.m; renderLive(); if (S.mrMode === 'harian') loadMatLedgerBulan(); break;
     case 'matriwexport': exportLedgerExcel(); break;
     case 'matriwprint': printMatRiwayat(); break;
     case 'matriwsampah': matRiwayatKeSampah(); break;

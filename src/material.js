@@ -239,9 +239,11 @@ function liveMatRiwayat() {
 }
 function fmtTglLedger(iso) { const p = iso.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
 async function loadMatLedgerBulan() {
-  S.mrLedger = { list: null, error: false, tutup: false }; renderLive();
-  try { const res = await api('ledgerBulan', { id: S.mrId, bulan: S.mrBulan }); S.mrLedger.list = res.ledger; S.mrLedger.tutup = !!res.tutup; }
-  catch (e) { S.mrLedger.list = []; S.mrLedger.error = true; }
+  const id = S.mrId, bulan = S.mrBulan, ledger = { list: null, error: false, tutup: false };
+  S.mrLedger = ledger; renderLive();
+  try { const res = await api('ledgerBulan', { id, bulan }); ledger.list = res.ledger; ledger.tutup = !!res.tutup; }
+  catch (e) { ledger.list = []; ledger.error = true; }
+  if (S.mrLedger !== ledger) return; // user sudah pindah bulan/material, abaikan hasil lama
   renderLive();
 }
 function liveLedgerHarian() {

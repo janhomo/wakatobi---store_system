@@ -1253,10 +1253,9 @@ function tambahSemenAwal_() {
   addMaterial_({ nama: 'Semen', kategori: 'Bahan Bangunan', satuan: 'sak', stok: 562, oleh: 'Sistem' });
   return true;
 }
-// Riwayat transaksi stok Semen Juni-Oktober 2026, dari catatan manual lapangan (Google Sheet).
+// Riwayat transaksi stok Semen Juni-November 2026, sama dengan Google Sheet Pendataan_Semen_2026.
 // Dibuat sekali lewat setup(): koreksi stok awal ke 1378 (30 Juni), lalu catat tiap transaksi harian.
-// Data sumber punya selisih 36 sak yang tak terjelaskan antara 30 Sep (akhir 781) dan 1 Okt (awal 817);
-// dicatat sebagai satu entri Masuk 1 Okt dengan catatan penjelasan, bukan "diperbaiki" diam-diam.
+// Stok akhir 7 November = 1108 (sesuai sheet).
 var RIWAYAT_SEMEN_ = [
   ["2026-06-30","Keluar",38], ["2026-07-01","Keluar",16], ["2026-07-02","Keluar",3], ["2026-07-03","Keluar",20], ["2026-07-04","Keluar",15], ["2026-07-06","Keluar",7],
   ["2026-07-07","Keluar",20], ["2026-07-08","Keluar",59], ["2026-07-09","Keluar",30], ["2026-07-10","Keluar",33], ["2026-07-11","Keluar",7], ["2026-07-12","Keluar",7],
@@ -1278,7 +1277,9 @@ var RIWAYAT_SEMEN_ = [
   ["2026-10-10","Pinjam",4], ["2026-10-11","Pinjam",4], ["2026-10-12","Keluar",44], ["2026-10-12","Pinjam",6], ["2026-10-13","Keluar",24], ["2026-10-13","Pinjam",5],
   ["2026-10-14","Keluar",1], ["2026-10-14","Pinjam",4], ["2026-10-15","Keluar",1], ["2026-10-15","Pinjam",5], ["2026-10-16","Masuk",1000], ["2026-10-19","Keluar",1],
   ["2026-10-20","Keluar",50], ["2026-10-21","Keluar",78], ["2026-10-22","Keluar",67], ["2026-10-22","Pinjam",18], ["2026-10-23","Keluar",6], ["2026-10-23","Pinjam",2],
-  ["2026-10-24","Pinjam",3], ["2026-10-25","Pinjam",8], ["2026-10-01","Masuk",36]
+  ["2026-10-24","Pinjam",3], ["2026-10-25","Pinjam",8], ["2026-10-26","Pinjam",5], ["2026-10-27","Pinjam",4], ["2026-10-28","Pinjam",2], ["2026-10-29","Keluar",3],
+  ["2026-10-29","Pinjam",1], ["2026-10-30","Keluar",27], ["2026-10-30","Pinjam",2], ["2026-10-31","Keluar",11], ["2026-10-31","Pinjam",4], ["2026-11-01","Pinjam",4],
+  ["2026-11-02","Keluar",2], ["2026-11-03","Keluar",4], ["2026-11-04","Keluar",67], ["2026-11-07","Keluar",38]
 ];
 function tambahRiwayatSemenAwal_() {
   if (findRow_('Stok Log', 'semen-riwayat-awal')) return false;
@@ -1291,9 +1292,7 @@ function tambahRiwayatSemenAwal_() {
     var tgl = op[0], tipe = op[1], jml = op[2];
     seen[tgl] = (seen[tgl] || 0) + 1;
     var rid = 'semen-riwayat-' + tgl + '-' + tipe.toLowerCase() + (seen[tgl] > 1 ? '-' + seen[tgl] : '');
-    var cat = (tgl === '2026-10-01' && tipe === 'Masuk' && jml === 36)
-      ? 'Penyesuaian selisih tercatat di sumber data (36 sak)'
-      : 'Impor riwayat (catatan lapangan)';
+    var cat = 'Impor riwayat (catatan lapangan)';
     stok_({ id: rid, mat: id, tipe: tipe, jumlah: jml, nama: 'Sistem', waktu: tgl + 'T12:00:00', cat: cat });
   });
   return true;
