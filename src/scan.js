@@ -375,7 +375,23 @@ function fillPicker() {
     '<button class="row" data-action="pickname" data-n="' + esc(clean(pk.q)) + '">+ Pakai nama “' + esc(clean(pk.q)) + '”</button>' :
     '<button class="row" data-action="picknew" data-n="' + esc(clean(pk.q)) + '">+ Tambah “' + esc(clean(pk.q)) + '” sebagai nama baru</button>';
   if (!h) h = '<p class="empty">Tidak ada yang cocok.</p>';
+  if (pk.manualOther !== false) {
+    h += pk.manualOpen ?
+      '<div class="manualrow"><input id="pickmanual" class="field" type="text" placeholder="Tulis nama" autocomplete="off" aria-label="Nama manual" value="' + esc(pk.manualV || '') + '"><button class="btn small" data-action="pickmanualgo">Pakai nama ini</button></div>' :
+      '<button class="row other" data-action="pickother">+ Nama lain (tulis manual)</button>';
+  }
   el.innerHTML = h;
+}
+function pickOther() {
+  const pk = S.picker; if (!pk) return;
+  pk.manualOpen = true; fillPicker();
+  setTimeout(() => { const i = $('#pickmanual'); i && i.focus(); }, 30);
+}
+function pickManualGo() {
+  const pk = S.picker; if (!pk) return;
+  const i = $('#pickmanual'), v = clean(i ? i.value : '');
+  if (!v) { toast('Tulis nama dulu.'); return; }
+  pickName(v);
 }
 function pickName(n) {
   const pk = S.picker; if (!pk) return;

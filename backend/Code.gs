@@ -39,7 +39,7 @@ var HEADERS = {
   'Tempat': ['ID Tempat', 'Nama', 'Lokasi', 'Status', 'Induk'],
   'Panduan': ['ID Jenis', 'Versi', 'Peringatan', 'Alat dan Bahan', 'Langkah', 'Interval (bulan)', 'Tautan Manual', 'Oleh', 'Waktu'],
   'Material': ['ID Material', 'Nama', 'Kategori', 'Merek', 'Satuan', 'Stok', 'Batas Menipis', 'Tempat', 'Status'],
-  'Stok Log': ['ID', 'Waktu', 'ID Material', 'Jenis', 'Jumlah', 'Stok Sesudah', 'Oleh', 'Catatan'],
+  'Stok Log': ['ID', 'Waktu', 'ID Material', 'Jenis', 'Jumlah', 'Stok Sesudah', 'Oleh', 'Catatan', 'Project', 'Resort'],
   'Skema Maintenance': ['ID Jenis', 'ID Kolom', 'Label', 'Tipe', 'Status', 'Oleh', 'Waktu'],
   // Riwayat lama yang dipindahkan dari Arsip / Stok Log / Log Perubahan, menunggu dihapus permanen atau dipulihkan.
   'Sampah': ['ID', 'Sumber', 'Label', 'Jumlah', 'Data', 'Dipindahkan', 'Oleh'],
@@ -209,6 +209,7 @@ function route_(req) {
     case 'pengambilan': return { ok: true, pengambilan: listPengambilan_(req.tgl) };
     case 'ringkasan': return { ok: true, ringkasan: ringkasan_() };
     case 'riwayatBulan': return { ok: true, bulan: riwayatBulan_() };
+    case 'pengambilanBulan': return { ok: true, pengambilan: pengambilanBulan_(clean_(req.bulan)) };
     case 'listArsipTgl': return { ok: true, pengambilan: listArsipTgl_(clean_(req.tgl)) };
     case 'riwayat': return { ok: true, riwayat: riwayat_([clean_(req.kode)]) };
     case 'riwayatJenis': return { ok: true, riwayat: riwayat_(kodeJenis_(clean_(req.id))) };
@@ -260,6 +261,7 @@ function route_(req) {
     case 'statusMaterial': return statusMaterial_(req);
     case 'stok': return stok_(req);
     case 'stokLog': return { ok: true, log: stokLog_(clean_(req.id)) };
+    case 'stokRekapPeminjam': return stokRekapPeminjam_(req);
     case 'imporUnit': return imporUnit_(req);
     case 'imporRak': return imporRak_(req);
     case 'buatRak': return buatRak_(req);
@@ -440,6 +442,13 @@ function riwayatBulan_() {
     return { bulan: b, label: labelBulan_(b), hari: hari };
   });
 }
+// Semua catatan Pengambilan + Arsip untuk satu bulan penuh, dipakai cetak bulanan. Tidak dibatasi seperti listPengambilan_ per tanggal.
+function pengambilanBulan_(bulan) {
+  var out = [];
+  filled_('Pengambilan').forEach(function (r) { if (ds_(r[1]).slice(0, 7) === bulan) out.push(entry_(r)); });
+  filled_('Arsip').forEach(function (r) { if (ds_(r[1]).slice(0, 7) === bulan) out.push(entry_(r)); });
+  return out.sort(function (a, b) { return a.tgl === b.tgl ? (a.ts < b.ts ? -1 : 1) : (a.tgl < b.tgl ? -1 : 1); });
+}
 function listArsipTgl_(tgl) {
   return filled_('Arsip').filter(function (r) { return ds_(r[1]) === tgl; }).map(entry_);
 }
@@ -456,7 +465,7 @@ function logBulanList_() {
 // Riwayat stok 1 material untuk 1 bulan penuh (dipakai cetak + pindah ke Sampah). Tidak dibatasi 60 seperti stokLog_.
 function stokLogBulan_(mat, bulan) {
   return filled_('Stok Log').filter(function (r) { return str_(r[2]) === mat && ts_(r[1]).slice(0, 7) === bulan; })
-    .map(function (r) { return { id: str_(r[0]), t: ts_(r[1]), tipe: str_(r[3]), j: Number(r[4]) || 0, q: Number(r[5]) || 0, o: str_(r[6]), cat: str_(r[7]) }; })
+    .map(function (r) { return { id: str_(r[0]), t: ts_(r[1]), tipe: str_(r[3]), j: Number(r[4]) || 0, q: Number(r[5]) || 0, o: str_(r[6]), cat: str_(r[7]), project: str_(r[8]), resort: str_(r[9]) }; })
     .sort(function (a, b) { return a.t < b.t ? 1 : -1; });
 }
 function matBulanList_(mat) {
@@ -1368,14 +1377,31 @@ function stok_(r) {
     if (after < 0) return err_('Stok ' + clean_(f.row[1]) + ' tidak cukup. Sisa ' + cur + ' ' + clean_(f.row[4]) + '.');
   } else if (tipe === 'Masuk' || tipe === 'Kembali') after = round3_(cur + j);
   else after = round3_(j);
+  var project = clean_(r.project), resort = clean_(r.resort);
+  if (project && resort) return err_('Pilih Project atau Resort, bukan dua-duanya.');
+  if (project) { var dp = deptOf_(project); if (dp === null) return err_('Project harus dari daftar departemen.'); project = dp; }
   sheet_('Material').getRange(f.i + 2, 6, 1, 1).setValues([[after]]);
-  sheet_('Stok Log').appendRow([id, okTime_(r.waktu), mat, tipe, round3_(j), after, nama, str_(r.cat).trim()]);
+  sheet_('Stok Log').appendRow([id, okTime_(r.waktu), mat, tipe, round3_(j), after, nama, str_(r.cat).trim(), project, resort]);
   return { ok: true, stok: after };
 }
 function stokLog_(mat) {
   return filled_('Stok Log').filter(function (r) { return str_(r[2]) === mat; }).map(function (r) {
-    return { id: str_(r[0]), t: ts_(r[1]), tipe: str_(r[3]), j: Number(r[4]) || 0, q: Number(r[5]) || 0, o: str_(r[6]), cat: str_(r[7]) };
+    return { id: str_(r[0]), t: ts_(r[1]), tipe: str_(r[3]), j: Number(r[4]) || 0, q: Number(r[5]) || 0, o: str_(r[6]), cat: str_(r[7]), project: str_(r[8]), resort: str_(r[9]) };
   }).sort(function (a, b) { return a.t < b.t ? 1 : -1; }).slice(0, 60);
+}
+// Total sak per Project, dan per Resort (termasuk yang sudah dikembalikan), untuk satu material.
+function stokRekapPeminjam_(r) {
+  var mat = clean_(r.mat);
+  if (!mat) return err_('Material tidak dipilih.');
+  var proj = {}, resort = {};
+  filled_('Stok Log').forEach(function (row) {
+    if (str_(row[2]) !== mat) return;
+    var tipe = str_(row[3]), j = Number(row[4]) || 0, p = str_(row[8]), rs = str_(row[9]);
+    if (tipe === 'Keluar' && p) proj[p] = (proj[p] || 0) + j;
+    if (tipe === 'Pinjam' && rs) resort[rs] = (resort[rs] || 0) + j; // total dipinjam, termasuk yang sudah dikembalikan
+  });
+  var toList = function (o) { return Object.keys(o).sort().map(function (k) { return { nama: k, jumlah: round3_(o[k]) }; }); };
+  return { ok: true, project: toList(proj), resort: toList(resort) };
 }
 
 /* ---------- impor banyak unit dari Excel (satu kali jalan, tercatat di Log Perubahan) ---------- */

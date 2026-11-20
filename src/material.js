@@ -13,6 +13,13 @@ function parseStokCat(cat) {
   const mm = /^Departemen:\s*([^·]+?)\s*(?:·\s*(.*))?$/.exec(cat || '');
   return mm ? { dept: mm[1].trim(), note: mm[2] || '' } : { dept: '', note: cat || '' };
 }
+// Label Project/Resort untuk ditampilkan. Data baru pakai kolom Project/Resort; data lama (sebelum fitur ini) masih di dalam Catatan.
+function stokWhoLabel(r) {
+  if (r.project) return 'Project: ' + r.project;
+  if (r.resort) return 'Resort: ' + r.resort;
+  const { dept } = parseStokCat(r.cat);
+  return dept;
+}
 async function exportMaterialXlsx() {
   toast('Menyiapkan Excel…');
   const mats = allMaterial();
@@ -26,8 +33,8 @@ async function exportMaterialXlsx() {
       const t = r.t ? new Date(r.t) : null;
       const tgl = r.t ? String(r.t).slice(0, 10) : '';
       const hari = t && !isNaN(t) ? t.toLocaleDateString('id-ID', { weekday: 'long' }) : '';
-      const { dept, note } = parseStokCat(r.cat);
-      const namaDept = r.o + (dept ? ' / ' + dept : '');
+      const who = stokWhoLabel(r), note = r.project || r.resort ? (r.cat || '') : parseStokCat(r.cat).note;
+      const namaDept = r.o + (who ? ' / ' + who : '');
       a2.push([tgl, hari, m.n, r.tipe, r.j, namaDept, note]);
     });
   }
@@ -100,7 +107,7 @@ function openStok(id, tipe) {
   if (S.ov.includes('stok')) return;
   const m = allMaterial().find(x => x.id === id); if (!m) return;
   if (m.off) { toast('Material ini nonaktif.'); return; }
-  S.stokEd = { mat: id, tipe: tipe || 'Keluar', jumlah: '1', cat: '', nama: lsGet('qrg.stokNama', '') || S.me || '', dept: lsGet('qrg.stokDept', '') };
+  S.stokEd = { mat: id, tipe: tipe || 'Keluar', jumlah: '1', cat: '', nama: lsGet('qrg.stokNama', '') || S.me || '', pr: lsGet('qrg.stokPr', ''), project: lsGet('qrg.stokProject', ''), resort: lsGet('qrg.stokResort', '') };
   $('#stokSheet').hidden = false; pushOv('stok'); renderStok();
 }
 const stokNum = () => { const v = Number(String(S.stokEd.jumlah).replace(',', '.')); return isFinite(v) ? v : NaN; };
@@ -142,7 +149,12 @@ function renderStok() {
     '<input id="stokJ" class="field" type="text" inputmode="decimal" value="' + esc(f.jumlah) + '" autocomplete="off" aria-label="Jumlah"><button class="rnd big" data-action="stokstep" data-d="1" aria-label="Tambah satu">+</button></div></div>' +
     (f.tipe === 'Koreksi' ? '' : '<div class="fchips qchips">' + [1, 5, 10, 25, 50].map(n => '<button class="fchip" data-action="stokq" data-n="' + n + '">' + n + '</button>').join('') + '</div>') +
     '<div><label class="lbl">' + esc(siapaQ) + '</label><button type="button" class="namebar' + (f.nama ? '' : ' need') + '" data-action="stoknama"><span class="g">' + (f.nama ? esc(f.nama) : 'Pilih atau ketik nama') + '</span>' + ic('chev', 18) + '</button></div>' +
-    '<div><label class="lbl" for="stokD">Departemen (boleh kosong, bisa diketik bebas)</label><input id="stokD" class="field" type="text" value="' + esc(f.dept) + '" autocomplete="off" placeholder="contoh: Dapur Resort"></div>' +
+    '<div><label class="lbl">Project atau Resort (boleh kosong)</label><div class="utabs" role="tablist" style="margin-bottom:8px">' +
+      ['project', 'resort'].map(k => '<button role="tab" data-action="stokpr" data-k="' + k + '" aria-selected="' + (f.pr === k) + '">' + (k === 'project' ? 'Project' : 'Resort') + '</button>').join('') +
+      '</div>' +
+      (f.pr === 'project' ? '<select id="stokProject" class="field" aria-label="Pilih Project"><option value="">Pilih Project</option>' + deptList().map(d => '<option' + (norm(d) === norm(f.project) ? ' selected' : '') + '>' + esc(d) + '</option>').join('') + '</select>' : '') +
+      (f.pr === 'resort' ? '<input id="stokResort" class="field" type="text" value="' + esc(f.resort) + '" autocomplete="off" placeholder="Tulis nama Resort">' : '') +
+    '</div>' +
     '<div><label class="lbl" for="stokC">Catatan (boleh kosong)</label><input id="stokC" class="field" type="text" value="' + esc(f.cat) + '" autocomplete="off" placeholder="contoh: untuk lantai 2"></div>' +
     '<p class="after" id="stokAfter"></p>' +
     '<button class="btn" id="stokGo" data-action="stokgo">…</button>' +
@@ -155,10 +167,9 @@ function stokSubmit() {
   if (!f.nama) { toast('Pilih nama pekerja dulu.'); return; }
   if (!(j >= 0) || (f.tipe !== 'Koreksi' && !(j > 0))) { toast('Isi jumlah dengan angka.'); return; }
   if (STOK_KURANG.includes(f.tipe) && a < 0) { toast('Stok tidak cukup.'); return; }
-  lsSet('qrg.stokNama', f.nama); lsSet('qrg.stokDept', f.dept || '');
-  const dept = clean(f.dept), catNote = clean(f.cat);
-  const cat = dept ? ('Departemen: ' + dept + (catNote ? ' · ' + catNote : '')) : catNote;
-  enqueue('stok', { id: uid(), mat: m.id, tipe: f.tipe, jumlah: j, nama: f.nama, cat: cat, waktu: nowIso() });
+  lsSet('qrg.stokNama', f.nama); lsSet('qrg.stokPr', f.pr || ''); lsSet('qrg.stokProject', f.project || ''); lsSet('qrg.stokResort', f.resort || '');
+  const project = f.pr === 'project' ? clean(f.project) : '', resort = f.pr === 'resort' ? clean(f.resort) : '';
+  enqueue('stok', { id: uid(), mat: m.id, tipe: f.tipe, jumlah: j, nama: f.nama, cat: clean(f.cat), project: project, resort: resort, waktu: nowIso() });
   const txt = f.tipe === 'Keluar' ? 'Dikurangi ' + fmtQty(j) + ' ' + m.s : f.tipe === 'Masuk' ? 'Ditambah ' + fmtQty(j) + ' ' + m.s :
     f.tipe === 'Pinjam' ? 'Dicatat dipinjam ' + fmtQty(j) + ' ' + m.s : f.tipe === 'Kembali' ? 'Dicatat dikembalikan ' + fmtQty(j) + ' ' + m.s : 'Stok disetel ' + fmtQty(j) + ' ' + m.s;
   closeTop(); toast(txt + '. Sisa ' + fmtQty(a) + '.'); refresh();
@@ -207,6 +218,24 @@ async function loadMatRiwayat() {
   try { S.mrMonths.list = (await api('matBulanList', { id: S.mrId })).bulan; } catch (e) { S.mrMonths.list = []; S.mrMonths.error = true; }
   renderLive();
 }
+async function loadMatRekap() {
+  S.mrRekap = { project: null, resort: null, error: false }; renderLive();
+  try { const r = await api('stokRekapPeminjam', { mat: S.mrId }); S.mrRekap = { project: r.project, resort: r.resort, error: false }; }
+  catch (e) { S.mrRekap = { project: [], resort: [], error: true }; }
+  renderLive();
+}
+function renderMatRekap() {
+  const rk = S.mrRekap; if (!rk) return '';
+  if (rk.project === null) return '<p class="empty">Memuat rekap…</p>';
+  if (rk.error) return '<p class="empty">Rekap belum bisa dimuat. Cek sinyal.</p>';
+  const row = x => '<tr><td>' + esc(x.nama) + '</td><td>' + esc(fmtQty(x.jumlah)) + ' sak</td></tr>';
+  return '<div class="card" style="margin-bottom:12px">' +
+    '<p class="stats">Total pemakaian per Project</p>' +
+    (rk.project.length ? '<div class="tblwrap"><table class="tbl small"><thead><tr><th>Project</th><th>Jumlah</th></tr></thead><tbody>' + rk.project.map(row).join('') + '</tbody></table></div>' : '<p class="empty">Belum ada.</p>') +
+    '<p class="stats" style="margin-top:12px">Total pinjaman per Resort (termasuk yang sudah dikembalikan)</p>' +
+    (rk.resort.length ? '<div class="tblwrap"><table class="tbl small"><thead><tr><th>Resort</th><th>Jumlah</th></tr></thead><tbody>' + rk.resort.map(row).join('') + '</tbody></table></div>' : '<p class="empty">Belum ada.</p>') +
+    '</div>';
+}
 async function loadMatRiwayatBulan() {
   S.mrLog = { list: null, error: false }; renderLive();
   try { S.mrLog.list = (await api('stokLogBulan', { id: S.mrId, bulan: S.mrBulan })).log; } catch (e) { S.mrLog.list = []; S.mrLog.error = true; }
@@ -219,7 +248,8 @@ function liveMatRiwayat() {
     if (S.mrMonths.error) return '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
     if (!S.mrMonths.list.length) return '<p class="empty">Belum ada riwayat stok untuk ' + esc(m.n) + '.</p>';
     const curBulan = today().slice(0, 7);
-    return '<p class="stats">Pilih bulan untuk lihat dan cetak riwayat ' + esc(m.n) + '.</p><div class="dategrid">' +
+    return (isSemen(m) ? '<button class="btn ghost small" style="margin-bottom:12px" data-action="matriwrekap">' + (S.mrRekap ? 'Tutup Rekap Project/Resort' : 'Lihat Rekap Project/Resort') + '</button>' + (S.mrRekap ? renderMatRekap() : '') : '') +
+      '<p class="stats">Pilih bulan untuk lihat dan cetak riwayat ' + esc(m.n) + '.</p><div class="dategrid">' +
       S.mrMonths.list.map(b => '<button class="daterow2" data-action="matriwopen" data-b="' + esc(b.bulan) + '"><span><b>' + esc(b.label) + '</b><br><small class="muted">' + b.jumlah + ' catatan</small></span>' +
         (b.bulan === curBulan ? '<span class="pill ok">Berjalan</span>' : '') + '</button>').join('') + '</div>';
   }
@@ -229,7 +259,7 @@ function liveMatRiwayat() {
   if (S.mrLog.error) return modeToggle + '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
   if (!S.mrLog.list.length) return modeToggle + '<p class="empty">Tidak ada catatan di bulan ini.</p>';
   const curBulan = today().slice(0, 7), bisaSampah = S.mrBulan !== curBulan;
-  const rows = S.mrLog.list.map(r => { const { dept, note } = parseStokCat(r.cat); return '<tr><td>' + esc(fmtShort(r.t)) + '</td><td>' + esc(r.tipe) + '</td><td>' + esc(fmtQty(r.j)) + '</td><td>' + esc(fmtQty(r.q)) + '</td><td>' + esc(r.o + (dept ? ' / ' + dept : '')) + '</td><td>' + esc(note) + '</td></tr>'; }).join('');
+  const rows = S.mrLog.list.map(r => { const who = stokWhoLabel(r), note = r.project || r.resort ? (r.cat || '') : parseStokCat(r.cat).note; return '<tr><td>' + esc(fmtShort(r.t)) + '</td><td>' + esc(r.tipe) + '</td><td>' + esc(fmtQty(r.j)) + '</td><td>' + esc(fmtQty(r.q)) + '</td><td>' + esc(r.o + (who ? ' / ' + who : '')) + '</td><td>' + esc(note) + '</td></tr>'; }).join('');
   return modeToggle + '<p class="stats">' + S.mrLog.list.length + ' catatan</p>' +
     '<div class="two" style="margin-bottom:12px"><button class="btn" data-action="matriwprint">Cetak</button>' +
     (bisaSampah ? '<button class="btn ghost" data-action="matriwsampah">Pindahkan bulan ini ke Sampah</button>' : '<button class="btn ghost" disabled title="Bulan berjalan belum bisa dipindah">Bulan berjalan</button>') + '</div>' +
@@ -283,10 +313,9 @@ function simpanKeteranganHarian(tgl, ket) {
 }
 function printMatRiwayat() {
   const m = M[S.mrId]; if (!m || !S.mrLog || !S.mrLog.list) return;
-  const rows = S.mrLog.list.map(r => { const { dept, note } = parseStokCat(r.cat); return '<tr><td>' + esc(fmtShort(r.t)) + '</td><td>' + esc(r.tipe) + '</td><td>' + esc(fmtQty(r.j)) + '</td><td>' + esc(fmtQty(r.q)) + '</td><td>' + esc(r.o + (dept ? ' / ' + dept : '')) + '</td><td>' + esc(note) + '</td></tr>'; }).join('');
-  $('#printArea').innerHTML = '<h1>Riwayat Stok ' + esc(m.n) + '</h1><p>Construction site · ' + esc(labelBulanId(S.mrBulan)) + '</p>' +
-    '<table><thead><tr><th>Waktu</th><th>Jenis</th><th>Jumlah</th><th>Stok Sesudah</th><th>Nama/Departemen</th><th>Catatan</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-    '<div class="foot"><span>Mengetahui: ______________________</span></div>';
+  const rows = S.mrLog.list.map(r => { const who = stokWhoLabel(r), note = r.project || r.resort ? (r.cat || '') : parseStokCat(r.cat).note; return '<tr><td>' + esc(fmtShort(r.t)) + '</td><td>' + esc(r.tipe) + '</td><td>' + esc(fmtQty(r.j)) + '</td><td>' + esc(fmtQty(r.q)) + '</td><td>' + esc(r.o + (who ? ' / ' + who : '')) + '</td><td>' + esc(note) + '</td></tr>'; }).join('');
+  $('#printArea').innerHTML = printHeader('Riwayat Stok ' + m.n, 'Construction site · ' + esc(labelBulanId(S.mrBulan))) +
+    '<table><thead><tr><th>Waktu</th><th>Jenis</th><th>Jumlah</th><th>Stok Sesudah</th><th>Nama/Departemen</th><th>Catatan</th></tr></thead><tbody>' + rows + '</tbody></table>';
   setTimeout(() => window.print(), 50);
 }
 async function matRiwayatKeSampah() {

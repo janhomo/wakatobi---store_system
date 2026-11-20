@@ -197,6 +197,7 @@ document.addEventListener('click', async e => {
     case 'stokstep': if (S.stokEd) { const j = Math.max(0, Math.round(((stokNum() || 0) + Number(t.dataset.d)) * 1000) / 1000); S.stokEd.jumlah = String(j); $('#stokJ').value = S.stokEd.jumlah; stokPreview(); } break;
     case 'stokq': if (S.stokEd) { S.stokEd.jumlah = t.dataset.n; $('#stokJ').value = t.dataset.n; stokPreview(); } break;
     case 'stoknama': openPicker({ title: 'Siapa?', sub: 'Pilih dari daftar, atau ketik nama lain (tidak harus pekerja terdaftar).', freeName: true, onPick: n => { if (S.stokEd) { S.stokEd.nama = n; renderStok(); } } }); break;
+    case 'stokpr': if (S.stokEd) { S.stokEd.pr = S.stokEd.pr === t.dataset.k ? '' : t.dataset.k; renderStok(); } break;
     case 'stokgo': stokSubmit(); break;
     /* panduan */
     case 'pdedit': go('panduan', { jid: curJid() }); break;
@@ -269,10 +270,13 @@ document.addEventListener('click', async e => {
     case 'pickclose': closeTop(); break;
     case 'pickname': pickName(t.dataset.n); break;
     case 'picknew': { const n = clean(t.dataset.n); if (n && await saveWorkers([...S.pekerja, { n, d: '' }])) pickName(n); break; }
+    case 'pickother': pickOther(); break;
+    case 'pickmanualgo': pickManualGo(); break;
     /* riwayat */
     case 'rwopen': S.rwDate = t.dataset.tgl; S.rwArsip = t.dataset.arsip === '1'; render(); if (S.rwArsip) loadArsipHari(); else loadAll(true); break;
     case 'rwback': S.rwDate = null; S.rwArsip = false; render(); loadRingkasan(); break;
     case 'rwbulan': S.rwOpenM[t.dataset.b] = !S.rwOpenM[t.dataset.b]; renderLive(); break;
+    case 'rwprintbulan': printBulan(t.dataset.b); break;
     case 'rwkesampah': {
       const tgl = Object.keys(S.rwSel).filter(k => S.rwSel[k]);
       if (!tgl.length) break;
@@ -288,7 +292,6 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'dkchip': { const id = t.dataset.id; S.dkChip = S.dkChip === id ? null : id; render(); break; }
-    case 'print': printDay(); break;
     case 'export': exportXlsx(); break;
     case 'exportmat': exportMaterialXlsx(); break;
     case 'arsip':
@@ -305,6 +308,7 @@ document.addEventListener('click', async e => {
     case 'matriwprint': printMatRiwayat(); break;
     case 'matriwsampah': matRiwayatKeSampah(); break;
     case 'matriwtutup': tutupBulanLedger(); break;
+    case 'matriwrekap': if (S.mrRekap) { S.mrRekap = null; renderLive(); } else loadMatRekap(); break;
     /* sampah */
     case 'spulih': sampahPulihkan(t.dataset.id); break;
     case 'shapus': {
@@ -372,7 +376,9 @@ document.addEventListener('input', e => {
   else if (id === 'aq') { if (S.form) { S.form.q = e.target.value; renderTambahTempat(); } }
   else if (id === 'stokJ') { if (S.stokEd) { S.stokEd.jumlah = e.target.value; stokPreview(); } }
   else if (id === 'stokC') { if (S.stokEd) S.stokEd.cat = e.target.value; }
-  else if (id === 'stokD') { if (S.stokEd) S.stokEd.dept = e.target.value; }
+  else if (id === 'stokProject') { if (S.stokEd) S.stokEd.project = e.target.value; }
+  else if (id === 'stokResort') { if (S.stokEd) S.stokEd.resort = e.target.value; }
+  else if (id === 'rwProj') { S.rwPrintProj = e.target.value; lsSet('qrg.rwproj', e.target.value); }
   else if (id === 'cropZoom') { if (S.fotoEd) { S.fotoEd.zoom = Number(e.target.value); drawCrop(); } }
   else if (id === 'tq') { S.form.q = e.target.value; const q = norm(e.target.value); $('#tlist').innerHTML = tambahList(S.jenis.filter(j => !q || norm([j.n, j.b, j.m].join(' ')).includes(q)).sort((a, b) => byName(a.n, b.n) || byName(a.b, b.b))); }
   else if (id === 'pickq') { S.picker.q = e.target.value; fillPicker(); }
@@ -399,6 +405,7 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'newName') { e.preventDefault(); const b = document.querySelector('[data-action="addname"]'); if (b) b.click(); }
+  if (e.key === 'Enter' && e.target.id === 'pickmanual') { e.preventDefault(); pickManualGo(); }
 });
 
 /* ---------- hash (stiker lama: #BOR-014) dan siklus aplikasi ---------- */

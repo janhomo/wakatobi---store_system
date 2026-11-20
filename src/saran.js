@@ -1,7 +1,8 @@
 /* ---------- Saran: aturan sederhana (tanpa AI). Tidak ada yang berubah sebelum Terima ditekan. ---------- */
 const KAT_RULES = [
   [/kipas|blower|fan\b|kompresor/, 'Peralatan Udara'],
-  [/gurinda|grinder|marble|cutter|potong/, 'Gurinda/Mesin Potong'],
+  [/gurinda|gerinda|grinder/, 'Gurinda/Mesin Potong'],
+  [/marble|cutter|potong/, 'Mesin Potong'],
   [/impact|bor\b|breker|breaker|drill/, 'Bor/Breker'],
   [/amplas|sander/, 'Mesin Amplas'],
   [/water ?jet|pembersih|steam/, 'Mesin Pembersihan'],

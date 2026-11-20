@@ -78,7 +78,8 @@ const S = {
   loaded: false, loadError: null, tok: lsGet('qrg.tok', ''), me: lsGet('qrg.me', ''), dkChip: null,
   ov: [], pending: null, form: null, confirmDel: null, skForm: null,
   rwDate: null, rwArsip: false, rwOpenM: {}, rwSel: {}, rw: { list: null, error: false }, riw: { key: null, list: null, error: false }, logs: { list: null, error: false },
-  mrId: null, mrBulan: null, mrMonths: null, mrLog: null, mrMode: 'edit', mrLedger: null,
+  mrId: null, mrBulan: null, mrMonths: null, mrLog: null, mrMode: 'edit', mrLedger: null, mrRekap: null,
+  rwPrintProj: lsGet('qrg.rwproj', ''),
   sampah: { list: null, error: false }, sampahUndo: null,
   scan: null, picker: null, justAdded: null, focus: null
 };

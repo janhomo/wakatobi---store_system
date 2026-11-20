@@ -558,14 +558,16 @@ function liveRw() {
     if (S.rw.error) return '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
     if (!S.rw.list.length) return '<p class="empty">Belum ada riwayat.</p>';
     const selN = Object.values(S.rwSel).filter(Boolean).length;
-    let h = S.rw.list.map(b => {
+    let h = '<input id="rwProj" class="field" type="text" placeholder="Nama project (untuk cetak), contoh: Project Villa 6" value="' + esc(S.rwPrintProj) + '" autocomplete="off" aria-label="Nama project" style="margin-bottom:12px">';
+    h += S.rw.list.map(b => {
       const open = !!S.rwOpenM[b.bulan];
       const hariHtml = !open ? '' : '<div class="days">' + b.hari.map(d => {
         const disabled = !!d.belum; // boleh dipindah ke Sampah kalau semua mesin hari itu sudah kembali, diarsipkan atau belum
         return '<div class="dayrow"><input type="checkbox" class="rwchk" data-tgl="' + esc(d.tgl) + '" aria-label="Pilih ' + esc(fmtShort(d.tgl)) + '"' + (disabled ? ' disabled' : '') + (S.rwSel[d.tgl] ? ' checked' : '') + '>' +
           '<button class="nm" data-action="rwopen" data-tgl="' + esc(d.tgl) + '" data-arsip="' + (d.arsip ? 1 : 0) + '"><b>' + esc(fmtShort(d.tgl)) + '</b><small>' + d.jumlah + ' pengambilan' + (d.belum ? ' · ' + d.belum + ' belum kembali' : d.arsip ? ' · sudah diarsipkan' : ' · sudah kembali semua') + '</small></button></div>';
       }).join('') + '</div>';
-      return '<div class="card"><button class="mhead" aria-expanded="' + open + '" data-action="rwbulan" data-b="' + esc(b.bulan) + '">' + esc(b.label) + ' <span class="cnt">' + b.hari.length + ' hari</span>' + ic('chev', 20) + '</button>' + hariHtml + '</div>';
+      return '<div class="card"><div class="cardhead"><button class="mhead" aria-expanded="' + open + '" data-action="rwbulan" data-b="' + esc(b.bulan) + '">' + esc(b.label) + ' <span class="cnt">' + b.hari.length + ' hari</span>' + ic('chev', 20) + '</button>' +
+        '<button class="btn small ghost" data-action="rwprintbulan" data-b="' + esc(b.bulan) + '">Cetak</button></div>' + hariHtml + '</div>';
     }).join('');
     h += '<div class="actionbar"><button class="btn" data-action="rwkesampah"' + (selN ? '' : ' disabled') + '>Pindahkan' + (selN ? ' ' + selN : '') + ' ke Sampah</button></div>';
     return h;
@@ -576,7 +578,7 @@ function liveRw() {
     const list = S.rwArsipData.list, groups = groupBy(list);
     if (!groups.length) return '<p class="empty">Tidak ada catatan pada tanggal ini.</p>';
     return '<p class="stats">' + groups.length + ' pekerja · ' + list.length + ' pengambilan · sudah diarsipkan</p>' +
-      '<div style="margin-bottom:12px"><button class="btn" data-action="print">Cetak</button></div>' +
+      '<p class="note">Cetak sekarang per bulan. Buka <b>← Semua tanggal</b> lalu tombol Cetak di bulan ini.</p>' +
       groups.map(g => '<section class="grp"><header><h3>' + esc(g.name) + (g.dept ? ' <small>' + esc(g.dept) + '</small>' : '') + '</h3><span class="muted">' + g.items.length + ' mesin</span></header><ul>' +
         g.items.map(e => '<li>' + entryLines(e) + '</li>').join('') + '</ul></section>').join('');
   }
@@ -584,7 +586,8 @@ function liveRw() {
   const list = entriesFor(S.rwDate), groups = groupBy(list), openN = list.filter(e => !e.kembali).length;
   if (!groups.length) return '<p class="empty">Tidak ada catatan pada tanggal ini.</p>';
   let h = '<p class="stats">' + groups.length + ' pekerja · ' + list.length + ' pengambilan · ' + (openN ? '<b style="color:var(--bad)">' + openN + ' belum kembali</b>' : 'semua sudah kembali') + '</p>' +
-    '<div class="two" style="margin-bottom:12px"><button class="btn" data-action="print">Cetak</button><button class="btn ghost" data-action="export">Unduh Excel</button></div>' +
+    '<p class="note">Cetak sekarang per bulan. Buka <b>← Semua tanggal</b> lalu tombol Cetak di bulan ini.</p>' +
+    '<div class="two" style="margin-bottom:12px"><button class="btn ghost" data-action="export">Unduh Excel</button></div>' +
     groups.map(g => '<section class="grp"><header><h3>' + esc(g.name) + (g.dept ? ' <small>' + esc(g.dept) + '</small>' : '') + '</h3><span class="muted">' + g.items.length + ' mesin</span></header><ul>' +
       g.items.map(e => '<li>' + entryLines(e) + '</li>').join('') + '</ul></section>').join('');
   h += '<section class="card"><h3>Arsip</h3>';
@@ -593,22 +596,38 @@ function liveRw() {
   return h + '</section>';
 }
 function dayRows(d) { return (S.rwArsip ? (S.rwArsipData && S.rwArsipData.list || []) : entriesFor(d)).sort((a, b) => byName(norm(a.nama), norm(b.nama)) || byTs(a, b)); }
-function printDay() {
-  const rows = dayRows(S.rwDate);
-  const tr = rows.map((e, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(e.nama) + (e.dept || deptOf(e.nama) ? '<br><small>' + esc(e.dept || deptOf(e.nama)) + '</small>' : '') + '</td><td>' + esc(e.kode) + '</td><td>' + esc(e.mesin) + '</td><td>' + esc(fmtHM(e.ts)) + '</td><td>' + (e.kembali ? esc(fmtHM(e.kembali)) : '') + '</td><td>' + esc(e.kondisi || '') + '</td></tr>').join('');
-  $('#printArea').innerHTML = '<h1>Catatan Pengambilan dan Pengembalian Mesin</h1><p>Construction site · ' + esc(fmtDate(S.rwDate)) + '</p>' +
-    '<table><thead><tr><th>No</th><th>Nama / Departemen</th><th>Kode</th><th>Mesin</th><th>Jam Ambil</th><th>Jam Kembali</th><th>Kondisi</th></tr></thead><tbody>' + tr + '</tbody></table>' +
-    '<div class="foot"><span>Mengetahui: ______________________</span></div>';
+// Header standar untuk semua dokumen cetak di sistem: logo di kiri atas, "Mengetahui" di kanan atas, tanpa kolom No.
+function printHeader(title, sub) {
+  return '<div class="phead2"><img class="plogo" src="logo-gelap.png" alt="Wakatobi"><div class="pmeta"><span>Mengetahui:</span><div class="ttdline"></div></div></div>' +
+    '<h1>' + esc(title) + '</h1><p class="psub">' + sub + '</p>';
+}
+function unitNoLabel(kode) { const u = U[kode]; return u && u.u !== '' && u.u != null ? String(u.u) : ''; }
+async function printBulan(bulan) {
+  toast('Menyiapkan cetak…');
+  let list;
+  try { list = (await api('pengambilanBulan', { bulan })).pengambilan || []; }
+  catch (e) { toast(e.message || (e.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal memuat data bulan ini.')); return; }
+  list = list.slice().sort((a, b) => a.tgl === b.tgl ? byTs(a, b) : (a.tgl < b.tgl ? -1 : 1));
+  const total = list.length, cut = list.slice(0, 24);
+  const rows = cut.map(e => {
+    const noUnit = unitNoLabel(e.kode);
+    return '<tr><td>' + esc(fmtShort(e.tgl)) + '</td><td>' + esc(e.nama) + (e.dept || deptOf(e.nama) ? '<br><small>' + esc(e.dept || deptOf(e.nama)) + '</small>' : '') + '</td><td>' + esc(e.kode) + (noUnit ? '<br><small>Unit ' + esc(noUnit) + '</small>' : '') + '</td><td>' + esc(e.mesin) + '</td><td>' + esc(fmtHM(e.ts)) + '</td><td>' + (e.kembali ? esc(fmtHM(e.kembali)) : '') + '</td><td>' + esc(e.kondisi || '') + '</td></tr>';
+  }).join('');
+  const projek = clean(S.rwPrintProj) || 'Project';
+  $('#printArea').innerHTML = '<style>@page{size:A4 portrait; margin:12mm}</style>' +
+    printHeader('Catatan Pengambilan dan Pengembalian Mesin', esc(projek) + ' · ' + esc(labelBulanId(bulan))) +
+    '<table><thead><tr><th>Tanggal</th><th>Nama / Departemen</th><th>Kode</th><th>Mesin</th><th>Jam Ambil</th><th>Jam Kembali</th><th>Kondisi</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    (total > 24 ? '<p class="note" style="margin-top:4mm;font-size:9pt">Menampilkan 24 dari ' + total + ' catatan bulan ini. Data lengkap tetap ada di sistem.</p>' : '');
   setTimeout(() => window.print(), 50);
 }
 function exportXlsx() {
   const rows = dayRows(S.rwDate), tgl = S.rwDate.split('-').reverse().join('-');
-  const a1 = [['No', 'Tanggal', 'Nama Pekerja', 'Departemen', 'Kode Unit', 'Mesin', 'Model', 'Jam Ambil', 'Jam Kembali', 'Kondisi Kembali', 'Status', 'Catatan']];
-  rows.forEach((e, i) => a1.push([i + 1, tgl, e.nama, e.dept || deptOf(e.nama), e.kode, e.mesin, e.model || '', fmtHM(e.ts), fmtHM(e.kembali), e.kondisi || '', e.kembali ? 'Sudah kembali' : 'Belum kembali', e.cat || '']));
+  const a1 = [['Tanggal', 'Nama Pekerja', 'Departemen', 'Kode Unit', 'Mesin', 'Model', 'Jam Ambil', 'Jam Kembali', 'Kondisi Kembali', 'Status', 'Catatan']];
+  rows.forEach(e => a1.push([tgl, e.nama, e.dept || deptOf(e.nama), e.kode, e.mesin, e.model || '', fmtHM(e.ts), fmtHM(e.kembali), e.kondisi || '', e.kembali ? 'Sudah kembali' : 'Belum kembali', e.cat || '']));
   const a2 = [['Tanggal', 'Nama Pekerja', 'Departemen', 'Jumlah Mesin', 'Mesin yang Diambil']];
   groupBy(rows).forEach(g => a2.push([tgl, g.name, g.dept, g.items.length, g.items.map(e => e.kode + ' ' + e.mesin).join(', ')]));
   const wb = XLSX.utils.book_new(), s1 = XLSX.utils.aoa_to_sheet(a1), s2 = XLSX.utils.aoa_to_sheet(a2);
-  s1['!cols'] = [{ wch: 5 }, { wch: 12 }, { wch: 24 }, { wch: 18 }, { wch: 11 }, { wch: 32 }, { wch: 22 }, { wch: 10 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 26 }];
+  s1['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 18 }, { wch: 11 }, { wch: 32 }, { wch: 22 }, { wch: 10 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 26 }];
   s2['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 18 }, { wch: 13 }, { wch: 80 }];
   XLSX.utils.book_append_sheet(wb, s1, 'Rincian'); XLSX.utils.book_append_sheet(wb, s2, 'Per Pekerja');
   XLSX.writeFile(wb, 'Pengambilan_Mesin_' + S.rwDate + '.xlsx');

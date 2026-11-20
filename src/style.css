@@ -208,6 +208,8 @@ details summary{cursor:pointer; min-height:44px; display:flex; align-items:cente
 .dategrid{display:flex; flex-direction:column; gap:6px}
 .daterow2{width:100%; display:flex; justify-content:space-between; align-items:center; gap:12px; text-align:left; padding:12px 14px; min-height:56px; background:var(--surface); border:1px solid var(--line); border-radius:10px}
 .daterow2:hover{border-color:var(--accent)}
+.cardhead{display:flex; align-items:center; gap:8px; padding-right:10px}
+.cardhead .mhead{flex:1; padding-right:0}
 .mhead{width:100%; display:flex; align-items:center; gap:8px; padding:14px; background:none; border:0; text-align:left; font-family:var(--f-display); font-weight:700; font-size:17px; text-transform:uppercase; letter-spacing:.02em}
 .mhead svg{margin-left:auto; color:var(--muted); transition:transform .2s; flex-shrink:0}
 .mhead[aria-expanded="true"] svg{transform:rotate(90deg)}
@@ -344,6 +346,9 @@ details summary{cursor:pointer; min-height:44px; display:flex; align-items:cente
 #picker .row{width:100%; display:flex; align-items:center; gap:10px; padding:10px 12px; min-height:56px; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:10px; font-size:18px; font-weight:600; margin-bottom:6px}
 #picker .row small{font-weight:400; color:var(--muted); font-size:14px}
 #picker .same{border-color:var(--accent); background:var(--accent-soft); color:var(--accent)}
+#picker .row.other{border-style:dashed; color:var(--muted); font-weight:500; margin-top:8px}
+#picker .manualrow{display:flex; gap:8px; margin-top:8px}
+#picker .manualrow .field{flex:1}
 
 #printArea{display:none}
 @media print{
@@ -359,6 +364,11 @@ details summary{cursor:pointer; min-height:44px; display:flex; align-items:cente
   #printArea tr{height:10mm}
   #printArea .ttd{width:28mm}
   #printArea .foot{margin-top:10mm; display:flex; justify-content:space-between}
+  #printArea .phead2{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6mm}
+  #printArea .plogo{height:16mm; width:auto}
+  #printArea .pmeta{text-align:right; font-size:10pt}
+  #printArea .ttdline{margin-top:14mm; border-top:1px solid #000; width:50mm}
+  #printArea .psub{color:#333}
 }
 
 /* tambahan */

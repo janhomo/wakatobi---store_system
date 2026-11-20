@@ -221,6 +221,8 @@ details summary{cursor:pointer; min-height:44px; display:flex; align-items:cente
 .dategrid{display:flex; flex-direction:column; gap:6px}
 .daterow2{width:100%; display:flex; justify-content:space-between; align-items:center; gap:12px; text-align:left; padding:12px 14px; min-height:56px; background:var(--surface); border:1px solid var(--line); border-radius:10px}
 .daterow2:hover{border-color:var(--accent)}
+.cardhead{display:flex; align-items:center; gap:8px; padding-right:10px}
+.cardhead .mhead{flex:1; padding-right:0}
 .mhead{width:100%; display:flex; align-items:center; gap:8px; padding:14px; background:none; border:0; text-align:left; font-family:var(--f-display); font-weight:700; font-size:17px; text-transform:uppercase; letter-spacing:.02em}
 .mhead svg{margin-left:auto; color:var(--muted); transition:transform .2s; flex-shrink:0}
 .mhead[aria-expanded="true"] svg{transform:rotate(90deg)}
@@ -357,6 +359,9 @@ details summary{cursor:pointer; min-height:44px; display:flex; align-items:cente
 #picker .row{width:100%; display:flex; align-items:center; gap:10px; padding:10px 12px; min-height:56px; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:10px; font-size:18px; font-weight:600; margin-bottom:6px}
 #picker .row small{font-weight:400; color:var(--muted); font-size:14px}
 #picker .same{border-color:var(--accent); background:var(--accent-soft); color:var(--accent)}
+#picker .row.other{border-style:dashed; color:var(--muted); font-weight:500; margin-top:8px}
+#picker .manualrow{display:flex; gap:8px; margin-top:8px}
+#picker .manualrow .field{flex:1}
 
 #printArea{display:none}
 @media print{
@@ -372,6 +377,11 @@ details summary{cursor:pointer; min-height:44px; display:flex; align-items:cente
   #printArea tr{height:10mm}
   #printArea .ttd{width:28mm}
   #printArea .foot{margin-top:10mm; display:flex; justify-content:space-between}
+  #printArea .phead2{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6mm}
+  #printArea .plogo{height:16mm; width:auto}
+  #printArea .pmeta{text-align:right; font-size:10pt}
+  #printArea .ttdline{margin-top:14mm; border-top:1px solid #000; width:50mm}
+  #printArea .psub{color:#333}
 }
 
 /* tambahan */
@@ -768,7 +778,8 @@ const S = {
   loaded: false, loadError: null, tok: lsGet('qrg.tok', ''), me: lsGet('qrg.me', ''), dkChip: null,
   ov: [], pending: null, form: null, confirmDel: null, skForm: null,
   rwDate: null, rwArsip: false, rwOpenM: {}, rwSel: {}, rw: { list: null, error: false }, riw: { key: null, list: null, error: false }, logs: { list: null, error: false },
-  mrId: null, mrBulan: null, mrMonths: null, mrLog: null, mrMode: 'edit', mrLedger: null,
+  mrId: null, mrBulan: null, mrMonths: null, mrLog: null, mrMode: 'edit', mrLedger: null, mrRekap: null,
+  rwPrintProj: lsGet('qrg.rwproj', ''),
   sampah: { list: null, error: false }, sampahUndo: null,
   scan: null, picker: null, justAdded: null, focus: null
 };
@@ -1932,14 +1943,16 @@ function liveRw() {
     if (S.rw.error) return '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
     if (!S.rw.list.length) return '<p class="empty">Belum ada riwayat.</p>';
     const selN = Object.values(S.rwSel).filter(Boolean).length;
-    let h = S.rw.list.map(b => {
+    let h = '<input id="rwProj" class="field" type="text" placeholder="Nama project (untuk cetak), contoh: Project Villa 6" value="' + esc(S.rwPrintProj) + '" autocomplete="off" aria-label="Nama project" style="margin-bottom:12px">';
+    h += S.rw.list.map(b => {
       const open = !!S.rwOpenM[b.bulan];
       const hariHtml = !open ? '' : '<div class="days">' + b.hari.map(d => {
         const disabled = !!d.belum; // boleh dipindah ke Sampah kalau semua mesin hari itu sudah kembali, diarsipkan atau belum
         return '<div class="dayrow"><input type="checkbox" class="rwchk" data-tgl="' + esc(d.tgl) + '" aria-label="Pilih ' + esc(fmtShort(d.tgl)) + '"' + (disabled ? ' disabled' : '') + (S.rwSel[d.tgl] ? ' checked' : '') + '>' +
           '<button class="nm" data-action="rwopen" data-tgl="' + esc(d.tgl) + '" data-arsip="' + (d.arsip ? 1 : 0) + '"><b>' + esc(fmtShort(d.tgl)) + '</b><small>' + d.jumlah + ' pengambilan' + (d.belum ? ' · ' + d.belum + ' belum kembali' : d.arsip ? ' · sudah diarsipkan' : ' · sudah kembali semua') + '</small></button></div>';
       }).join('') + '</div>';
-      return '<div class="card"><button class="mhead" aria-expanded="' + open + '" data-action="rwbulan" data-b="' + esc(b.bulan) + '">' + esc(b.label) + ' <span class="cnt">' + b.hari.length + ' hari</span>' + ic('chev', 20) + '</button>' + hariHtml + '</div>';
+      return '<div class="card"><div class="cardhead"><button class="mhead" aria-expanded="' + open + '" data-action="rwbulan" data-b="' + esc(b.bulan) + '">' + esc(b.label) + ' <span class="cnt">' + b.hari.length + ' hari</span>' + ic('chev', 20) + '</button>' +
+        '<button class="btn small ghost" data-action="rwprintbulan" data-b="' + esc(b.bulan) + '">Cetak</button></div>' + hariHtml + '</div>';
     }).join('');
     h += '<div class="actionbar"><button class="btn" data-action="rwkesampah"' + (selN ? '' : ' disabled') + '>Pindahkan' + (selN ? ' ' + selN : '') + ' ke Sampah</button></div>';
     return h;
@@ -1950,7 +1963,7 @@ function liveRw() {
     const list = S.rwArsipData.list, groups = groupBy(list);
     if (!groups.length) return '<p class="empty">Tidak ada catatan pada tanggal ini.</p>';
     return '<p class="stats">' + groups.length + ' pekerja · ' + list.length + ' pengambilan · sudah diarsipkan</p>' +
-      '<div style="margin-bottom:12px"><button class="btn" data-action="print">Cetak</button></div>' +
+      '<p class="note">Cetak sekarang per bulan. Buka <b>← Semua tanggal</b> lalu tombol Cetak di bulan ini.</p>' +
       groups.map(g => '<section class="grp"><header><h3>' + esc(g.name) + (g.dept ? ' <small>' + esc(g.dept) + '</small>' : '') + '</h3><span class="muted">' + g.items.length + ' mesin</span></header><ul>' +
         g.items.map(e => '<li>' + entryLines(e) + '</li>').join('') + '</ul></section>').join('');
   }
@@ -1958,7 +1971,8 @@ function liveRw() {
   const list = entriesFor(S.rwDate), groups = groupBy(list), openN = list.filter(e => !e.kembali).length;
   if (!groups.length) return '<p class="empty">Tidak ada catatan pada tanggal ini.</p>';
   let h = '<p class="stats">' + groups.length + ' pekerja · ' + list.length + ' pengambilan · ' + (openN ? '<b style="color:var(--bad)">' + openN + ' belum kembali</b>' : 'semua sudah kembali') + '</p>' +
-    '<div class="two" style="margin-bottom:12px"><button class="btn" data-action="print">Cetak</button><button class="btn ghost" data-action="export">Unduh Excel</button></div>' +
+    '<p class="note">Cetak sekarang per bulan. Buka <b>← Semua tanggal</b> lalu tombol Cetak di bulan ini.</p>' +
+    '<div class="two" style="margin-bottom:12px"><button class="btn ghost" data-action="export">Unduh Excel</button></div>' +
     groups.map(g => '<section class="grp"><header><h3>' + esc(g.name) + (g.dept ? ' <small>' + esc(g.dept) + '</small>' : '') + '</h3><span class="muted">' + g.items.length + ' mesin</span></header><ul>' +
       g.items.map(e => '<li>' + entryLines(e) + '</li>').join('') + '</ul></section>').join('');
   h += '<section class="card"><h3>Arsip</h3>';
@@ -1967,22 +1981,38 @@ function liveRw() {
   return h + '</section>';
 }
 function dayRows(d) { return (S.rwArsip ? (S.rwArsipData && S.rwArsipData.list || []) : entriesFor(d)).sort((a, b) => byName(norm(a.nama), norm(b.nama)) || byTs(a, b)); }
-function printDay() {
-  const rows = dayRows(S.rwDate);
-  const tr = rows.map((e, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(e.nama) + (e.dept || deptOf(e.nama) ? '<br><small>' + esc(e.dept || deptOf(e.nama)) + '</small>' : '') + '</td><td>' + esc(e.kode) + '</td><td>' + esc(e.mesin) + '</td><td>' + esc(fmtHM(e.ts)) + '</td><td>' + (e.kembali ? esc(fmtHM(e.kembali)) : '') + '</td><td>' + esc(e.kondisi || '') + '</td></tr>').join('');
-  $('#printArea').innerHTML = '<h1>Catatan Pengambilan dan Pengembalian Mesin</h1><p>Construction site · ' + esc(fmtDate(S.rwDate)) + '</p>' +
-    '<table><thead><tr><th>No</th><th>Nama / Departemen</th><th>Kode</th><th>Mesin</th><th>Jam Ambil</th><th>Jam Kembali</th><th>Kondisi</th></tr></thead><tbody>' + tr + '</tbody></table>' +
-    '<div class="foot"><span>Mengetahui: ______________________</span></div>';
+// Header standar untuk semua dokumen cetak di sistem: logo di kiri atas, "Mengetahui" di kanan atas, tanpa kolom No.
+function printHeader(title, sub) {
+  return '<div class="phead2"><img class="plogo" src="logo-gelap.png" alt="Wakatobi"><div class="pmeta"><span>Mengetahui:</span><div class="ttdline"></div></div></div>' +
+    '<h1>' + esc(title) + '</h1><p class="psub">' + sub + '</p>';
+}
+function unitNoLabel(kode) { const u = U[kode]; return u && u.u !== '' && u.u != null ? String(u.u) : ''; }
+async function printBulan(bulan) {
+  toast('Menyiapkan cetak…');
+  let list;
+  try { list = (await api('pengambilanBulan', { bulan })).pengambilan || []; }
+  catch (e) { toast(e.message || (e.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal memuat data bulan ini.')); return; }
+  list = list.slice().sort((a, b) => a.tgl === b.tgl ? byTs(a, b) : (a.tgl < b.tgl ? -1 : 1));
+  const total = list.length, cut = list.slice(0, 24);
+  const rows = cut.map(e => {
+    const noUnit = unitNoLabel(e.kode);
+    return '<tr><td>' + esc(fmtShort(e.tgl)) + '</td><td>' + esc(e.nama) + (e.dept || deptOf(e.nama) ? '<br><small>' + esc(e.dept || deptOf(e.nama)) + '</small>' : '') + '</td><td>' + esc(e.kode) + (noUnit ? '<br><small>Unit ' + esc(noUnit) + '</small>' : '') + '</td><td>' + esc(e.mesin) + '</td><td>' + esc(fmtHM(e.ts)) + '</td><td>' + (e.kembali ? esc(fmtHM(e.kembali)) : '') + '</td><td>' + esc(e.kondisi || '') + '</td></tr>';
+  }).join('');
+  const projek = clean(S.rwPrintProj) || 'Project';
+  $('#printArea').innerHTML = '<style>@page{size:A4 portrait; margin:12mm}</style>' +
+    printHeader('Catatan Pengambilan dan Pengembalian Mesin', esc(projek) + ' · ' + esc(labelBulanId(bulan))) +
+    '<table><thead><tr><th>Tanggal</th><th>Nama / Departemen</th><th>Kode</th><th>Mesin</th><th>Jam Ambil</th><th>Jam Kembali</th><th>Kondisi</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    (total > 24 ? '<p class="note" style="margin-top:4mm;font-size:9pt">Menampilkan 24 dari ' + total + ' catatan bulan ini. Data lengkap tetap ada di sistem.</p>' : '');
   setTimeout(() => window.print(), 50);
 }
 function exportXlsx() {
   const rows = dayRows(S.rwDate), tgl = S.rwDate.split('-').reverse().join('-');
-  const a1 = [['No', 'Tanggal', 'Nama Pekerja', 'Departemen', 'Kode Unit', 'Mesin', 'Model', 'Jam Ambil', 'Jam Kembali', 'Kondisi Kembali', 'Status', 'Catatan']];
-  rows.forEach((e, i) => a1.push([i + 1, tgl, e.nama, e.dept || deptOf(e.nama), e.kode, e.mesin, e.model || '', fmtHM(e.ts), fmtHM(e.kembali), e.kondisi || '', e.kembali ? 'Sudah kembali' : 'Belum kembali', e.cat || '']));
+  const a1 = [['Tanggal', 'Nama Pekerja', 'Departemen', 'Kode Unit', 'Mesin', 'Model', 'Jam Ambil', 'Jam Kembali', 'Kondisi Kembali', 'Status', 'Catatan']];
+  rows.forEach(e => a1.push([tgl, e.nama, e.dept || deptOf(e.nama), e.kode, e.mesin, e.model || '', fmtHM(e.ts), fmtHM(e.kembali), e.kondisi || '', e.kembali ? 'Sudah kembali' : 'Belum kembali', e.cat || '']));
   const a2 = [['Tanggal', 'Nama Pekerja', 'Departemen', 'Jumlah Mesin', 'Mesin yang Diambil']];
   groupBy(rows).forEach(g => a2.push([tgl, g.name, g.dept, g.items.length, g.items.map(e => e.kode + ' ' + e.mesin).join(', ')]));
   const wb = XLSX.utils.book_new(), s1 = XLSX.utils.aoa_to_sheet(a1), s2 = XLSX.utils.aoa_to_sheet(a2);
-  s1['!cols'] = [{ wch: 5 }, { wch: 12 }, { wch: 24 }, { wch: 18 }, { wch: 11 }, { wch: 32 }, { wch: 22 }, { wch: 10 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 26 }];
+  s1['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 18 }, { wch: 11 }, { wch: 32 }, { wch: 22 }, { wch: 10 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 26 }];
   s2['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 18 }, { wch: 13 }, { wch: 80 }];
   XLSX.utils.book_append_sheet(wb, s1, 'Rincian'); XLSX.utils.book_append_sheet(wb, s2, 'Per Pekerja');
   XLSX.writeFile(wb, 'Pengambilan_Mesin_' + S.rwDate + '.xlsx');
@@ -2613,6 +2643,13 @@ function parseStokCat(cat) {
   const mm = /^Departemen:\s*([^·]+?)\s*(?:·\s*(.*))?$/.exec(cat || '');
   return mm ? { dept: mm[1].trim(), note: mm[2] || '' } : { dept: '', note: cat || '' };
 }
+// Label Project/Resort untuk ditampilkan. Data baru pakai kolom Project/Resort; data lama (sebelum fitur ini) masih di dalam Catatan.
+function stokWhoLabel(r) {
+  if (r.project) return 'Project: ' + r.project;
+  if (r.resort) return 'Resort: ' + r.resort;
+  const { dept } = parseStokCat(r.cat);
+  return dept;
+}
 async function exportMaterialXlsx() {
   toast('Menyiapkan Excel…');
   const mats = allMaterial();
@@ -2626,8 +2663,8 @@ async function exportMaterialXlsx() {
       const t = r.t ? new Date(r.t) : null;
       const tgl = r.t ? String(r.t).slice(0, 10) : '';
       const hari = t && !isNaN(t) ? t.toLocaleDateString('id-ID', { weekday: 'long' }) : '';
-      const { dept, note } = parseStokCat(r.cat);
-      const namaDept = r.o + (dept ? ' / ' + dept : '');
+      const who = stokWhoLabel(r), note = r.project || r.resort ? (r.cat || '') : parseStokCat(r.cat).note;
+      const namaDept = r.o + (who ? ' / ' + who : '');
       a2.push([tgl, hari, m.n, r.tipe, r.j, namaDept, note]);
     });
   }
@@ -2700,7 +2737,7 @@ function openStok(id, tipe) {
   if (S.ov.includes('stok')) return;
   const m = allMaterial().find(x => x.id === id); if (!m) return;
   if (m.off) { toast('Material ini nonaktif.'); return; }
-  S.stokEd = { mat: id, tipe: tipe || 'Keluar', jumlah: '1', cat: '', nama: lsGet('qrg.stokNama', '') || S.me || '', dept: lsGet('qrg.stokDept', '') };
+  S.stokEd = { mat: id, tipe: tipe || 'Keluar', jumlah: '1', cat: '', nama: lsGet('qrg.stokNama', '') || S.me || '', pr: lsGet('qrg.stokPr', ''), project: lsGet('qrg.stokProject', ''), resort: lsGet('qrg.stokResort', '') };
   $('#stokSheet').hidden = false; pushOv('stok'); renderStok();
 }
 const stokNum = () => { const v = Number(String(S.stokEd.jumlah).replace(',', '.')); return isFinite(v) ? v : NaN; };
@@ -2742,7 +2779,12 @@ function renderStok() {
     '<input id="stokJ" class="field" type="text" inputmode="decimal" value="' + esc(f.jumlah) + '" autocomplete="off" aria-label="Jumlah"><button class="rnd big" data-action="stokstep" data-d="1" aria-label="Tambah satu">+</button></div></div>' +
     (f.tipe === 'Koreksi' ? '' : '<div class="fchips qchips">' + [1, 5, 10, 25, 50].map(n => '<button class="fchip" data-action="stokq" data-n="' + n + '">' + n + '</button>').join('') + '</div>') +
     '<div><label class="lbl">' + esc(siapaQ) + '</label><button type="button" class="namebar' + (f.nama ? '' : ' need') + '" data-action="stoknama"><span class="g">' + (f.nama ? esc(f.nama) : 'Pilih atau ketik nama') + '</span>' + ic('chev', 18) + '</button></div>' +
-    '<div><label class="lbl" for="stokD">Departemen (boleh kosong, bisa diketik bebas)</label><input id="stokD" class="field" type="text" value="' + esc(f.dept) + '" autocomplete="off" placeholder="contoh: Dapur Resort"></div>' +
+    '<div><label class="lbl">Project atau Resort (boleh kosong)</label><div class="utabs" role="tablist" style="margin-bottom:8px">' +
+      ['project', 'resort'].map(k => '<button role="tab" data-action="stokpr" data-k="' + k + '" aria-selected="' + (f.pr === k) + '">' + (k === 'project' ? 'Project' : 'Resort') + '</button>').join('') +
+      '</div>' +
+      (f.pr === 'project' ? '<select id="stokProject" class="field" aria-label="Pilih Project"><option value="">Pilih Project</option>' + deptList().map(d => '<option' + (norm(d) === norm(f.project) ? ' selected' : '') + '>' + esc(d) + '</option>').join('') + '</select>' : '') +
+      (f.pr === 'resort' ? '<input id="stokResort" class="field" type="text" value="' + esc(f.resort) + '" autocomplete="off" placeholder="Tulis nama Resort">' : '') +
+    '</div>' +
     '<div><label class="lbl" for="stokC">Catatan (boleh kosong)</label><input id="stokC" class="field" type="text" value="' + esc(f.cat) + '" autocomplete="off" placeholder="contoh: untuk lantai 2"></div>' +
     '<p class="after" id="stokAfter"></p>' +
     '<button class="btn" id="stokGo" data-action="stokgo">…</button>' +
@@ -2755,10 +2797,9 @@ function stokSubmit() {
   if (!f.nama) { toast('Pilih nama pekerja dulu.'); return; }
   if (!(j >= 0) || (f.tipe !== 'Koreksi' && !(j > 0))) { toast('Isi jumlah dengan angka.'); return; }
   if (STOK_KURANG.includes(f.tipe) && a < 0) { toast('Stok tidak cukup.'); return; }
-  lsSet('qrg.stokNama', f.nama); lsSet('qrg.stokDept', f.dept || '');
-  const dept = clean(f.dept), catNote = clean(f.cat);
-  const cat = dept ? ('Departemen: ' + dept + (catNote ? ' · ' + catNote : '')) : catNote;
-  enqueue('stok', { id: uid(), mat: m.id, tipe: f.tipe, jumlah: j, nama: f.nama, cat: cat, waktu: nowIso() });
+  lsSet('qrg.stokNama', f.nama); lsSet('qrg.stokPr', f.pr || ''); lsSet('qrg.stokProject', f.project || ''); lsSet('qrg.stokResort', f.resort || '');
+  const project = f.pr === 'project' ? clean(f.project) : '', resort = f.pr === 'resort' ? clean(f.resort) : '';
+  enqueue('stok', { id: uid(), mat: m.id, tipe: f.tipe, jumlah: j, nama: f.nama, cat: clean(f.cat), project: project, resort: resort, waktu: nowIso() });
   const txt = f.tipe === 'Keluar' ? 'Dikurangi ' + fmtQty(j) + ' ' + m.s : f.tipe === 'Masuk' ? 'Ditambah ' + fmtQty(j) + ' ' + m.s :
     f.tipe === 'Pinjam' ? 'Dicatat dipinjam ' + fmtQty(j) + ' ' + m.s : f.tipe === 'Kembali' ? 'Dicatat dikembalikan ' + fmtQty(j) + ' ' + m.s : 'Stok disetel ' + fmtQty(j) + ' ' + m.s;
   closeTop(); toast(txt + '. Sisa ' + fmtQty(a) + '.'); refresh();
@@ -2807,6 +2848,24 @@ async function loadMatRiwayat() {
   try { S.mrMonths.list = (await api('matBulanList', { id: S.mrId })).bulan; } catch (e) { S.mrMonths.list = []; S.mrMonths.error = true; }
   renderLive();
 }
+async function loadMatRekap() {
+  S.mrRekap = { project: null, resort: null, error: false }; renderLive();
+  try { const r = await api('stokRekapPeminjam', { mat: S.mrId }); S.mrRekap = { project: r.project, resort: r.resort, error: false }; }
+  catch (e) { S.mrRekap = { project: [], resort: [], error: true }; }
+  renderLive();
+}
+function renderMatRekap() {
+  const rk = S.mrRekap; if (!rk) return '';
+  if (rk.project === null) return '<p class="empty">Memuat rekap…</p>';
+  if (rk.error) return '<p class="empty">Rekap belum bisa dimuat. Cek sinyal.</p>';
+  const row = x => '<tr><td>' + esc(x.nama) + '</td><td>' + esc(fmtQty(x.jumlah)) + ' sak</td></tr>';
+  return '<div class="card" style="margin-bottom:12px">' +
+    '<p class="stats">Total pemakaian per Project</p>' +
+    (rk.project.length ? '<div class="tblwrap"><table class="tbl small"><thead><tr><th>Project</th><th>Jumlah</th></tr></thead><tbody>' + rk.project.map(row).join('') + '</tbody></table></div>' : '<p class="empty">Belum ada.</p>') +
+    '<p class="stats" style="margin-top:12px">Total pinjaman per Resort (termasuk yang sudah dikembalikan)</p>' +
+    (rk.resort.length ? '<div class="tblwrap"><table class="tbl small"><thead><tr><th>Resort</th><th>Jumlah</th></tr></thead><tbody>' + rk.resort.map(row).join('') + '</tbody></table></div>' : '<p class="empty">Belum ada.</p>') +
+    '</div>';
+}
 async function loadMatRiwayatBulan() {
   S.mrLog = { list: null, error: false }; renderLive();
   try { S.mrLog.list = (await api('stokLogBulan', { id: S.mrId, bulan: S.mrBulan })).log; } catch (e) { S.mrLog.list = []; S.mrLog.error = true; }
@@ -2819,7 +2878,8 @@ function liveMatRiwayat() {
     if (S.mrMonths.error) return '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
     if (!S.mrMonths.list.length) return '<p class="empty">Belum ada riwayat stok untuk ' + esc(m.n) + '.</p>';
     const curBulan = today().slice(0, 7);
-    return '<p class="stats">Pilih bulan untuk lihat dan cetak riwayat ' + esc(m.n) + '.</p><div class="dategrid">' +
+    return (isSemen(m) ? '<button class="btn ghost small" style="margin-bottom:12px" data-action="matriwrekap">' + (S.mrRekap ? 'Tutup Rekap Project/Resort' : 'Lihat Rekap Project/Resort') + '</button>' + (S.mrRekap ? renderMatRekap() : '') : '') +
+      '<p class="stats">Pilih bulan untuk lihat dan cetak riwayat ' + esc(m.n) + '.</p><div class="dategrid">' +
       S.mrMonths.list.map(b => '<button class="daterow2" data-action="matriwopen" data-b="' + esc(b.bulan) + '"><span><b>' + esc(b.label) + '</b><br><small class="muted">' + b.jumlah + ' catatan</small></span>' +
         (b.bulan === curBulan ? '<span class="pill ok">Berjalan</span>' : '') + '</button>').join('') + '</div>';
   }
@@ -2829,7 +2889,7 @@ function liveMatRiwayat() {
   if (S.mrLog.error) return modeToggle + '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
   if (!S.mrLog.list.length) return modeToggle + '<p class="empty">Tidak ada catatan di bulan ini.</p>';
   const curBulan = today().slice(0, 7), bisaSampah = S.mrBulan !== curBulan;
-  const rows = S.mrLog.list.map(r => { const { dept, note } = parseStokCat(r.cat); return '<tr><td>' + esc(fmtShort(r.t)) + '</td><td>' + esc(r.tipe) + '</td><td>' + esc(fmtQty(r.j)) + '</td><td>' + esc(fmtQty(r.q)) + '</td><td>' + esc(r.o + (dept ? ' / ' + dept : '')) + '</td><td>' + esc(note) + '</td></tr>'; }).join('');
+  const rows = S.mrLog.list.map(r => { const who = stokWhoLabel(r), note = r.project || r.resort ? (r.cat || '') : parseStokCat(r.cat).note; return '<tr><td>' + esc(fmtShort(r.t)) + '</td><td>' + esc(r.tipe) + '</td><td>' + esc(fmtQty(r.j)) + '</td><td>' + esc(fmtQty(r.q)) + '</td><td>' + esc(r.o + (who ? ' / ' + who : '')) + '</td><td>' + esc(note) + '</td></tr>'; }).join('');
   return modeToggle + '<p class="stats">' + S.mrLog.list.length + ' catatan</p>' +
     '<div class="two" style="margin-bottom:12px"><button class="btn" data-action="matriwprint">Cetak</button>' +
     (bisaSampah ? '<button class="btn ghost" data-action="matriwsampah">Pindahkan bulan ini ke Sampah</button>' : '<button class="btn ghost" disabled title="Bulan berjalan belum bisa dipindah">Bulan berjalan</button>') + '</div>' +
@@ -2883,10 +2943,9 @@ function simpanKeteranganHarian(tgl, ket) {
 }
 function printMatRiwayat() {
   const m = M[S.mrId]; if (!m || !S.mrLog || !S.mrLog.list) return;
-  const rows = S.mrLog.list.map(r => { const { dept, note } = parseStokCat(r.cat); return '<tr><td>' + esc(fmtShort(r.t)) + '</td><td>' + esc(r.tipe) + '</td><td>' + esc(fmtQty(r.j)) + '</td><td>' + esc(fmtQty(r.q)) + '</td><td>' + esc(r.o + (dept ? ' / ' + dept : '')) + '</td><td>' + esc(note) + '</td></tr>'; }).join('');
-  $('#printArea').innerHTML = '<h1>Riwayat Stok ' + esc(m.n) + '</h1><p>Construction site · ' + esc(labelBulanId(S.mrBulan)) + '</p>' +
-    '<table><thead><tr><th>Waktu</th><th>Jenis</th><th>Jumlah</th><th>Stok Sesudah</th><th>Nama/Departemen</th><th>Catatan</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-    '<div class="foot"><span>Mengetahui: ______________________</span></div>';
+  const rows = S.mrLog.list.map(r => { const who = stokWhoLabel(r), note = r.project || r.resort ? (r.cat || '') : parseStokCat(r.cat).note; return '<tr><td>' + esc(fmtShort(r.t)) + '</td><td>' + esc(r.tipe) + '</td><td>' + esc(fmtQty(r.j)) + '</td><td>' + esc(fmtQty(r.q)) + '</td><td>' + esc(r.o + (who ? ' / ' + who : '')) + '</td><td>' + esc(note) + '</td></tr>'; }).join('');
+  $('#printArea').innerHTML = printHeader('Riwayat Stok ' + m.n, 'Construction site · ' + esc(labelBulanId(S.mrBulan))) +
+    '<table><thead><tr><th>Waktu</th><th>Jenis</th><th>Jumlah</th><th>Stok Sesudah</th><th>Nama/Departemen</th><th>Catatan</th></tr></thead><tbody>' + rows + '</tbody></table>';
   setTimeout(() => window.print(), 50);
 }
 async function matRiwayatKeSampah() {
@@ -3166,7 +3225,8 @@ function irContoh() {
 /* ---------- Saran: aturan sederhana (tanpa AI). Tidak ada yang berubah sebelum Terima ditekan. ---------- */
 const KAT_RULES = [
   [/kipas|blower|fan\b|kompresor/, 'Peralatan Udara'],
-  [/gurinda|grinder|marble|cutter|potong/, 'Gurinda/Mesin Potong'],
+  [/gurinda|gerinda|grinder/, 'Gurinda/Mesin Potong'],
+  [/marble|cutter|potong/, 'Mesin Potong'],
   [/impact|bor\b|breker|breaker|drill/, 'Bor/Breker'],
   [/amplas|sander/, 'Mesin Amplas'],
   [/water ?jet|pembersih|steam/, 'Mesin Pembersihan'],
@@ -3643,7 +3703,23 @@ function fillPicker() {
     '<button class="row" data-action="pickname" data-n="' + esc(clean(pk.q)) + '">+ Pakai nama “' + esc(clean(pk.q)) + '”</button>' :
     '<button class="row" data-action="picknew" data-n="' + esc(clean(pk.q)) + '">+ Tambah “' + esc(clean(pk.q)) + '” sebagai nama baru</button>';
   if (!h) h = '<p class="empty">Tidak ada yang cocok.</p>';
+  if (pk.manualOther !== false) {
+    h += pk.manualOpen ?
+      '<div class="manualrow"><input id="pickmanual" class="field" type="text" placeholder="Tulis nama" autocomplete="off" aria-label="Nama manual" value="' + esc(pk.manualV || '') + '"><button class="btn small" data-action="pickmanualgo">Pakai nama ini</button></div>' :
+      '<button class="row other" data-action="pickother">+ Nama lain (tulis manual)</button>';
+  }
   el.innerHTML = h;
+}
+function pickOther() {
+  const pk = S.picker; if (!pk) return;
+  pk.manualOpen = true; fillPicker();
+  setTimeout(() => { const i = $('#pickmanual'); i && i.focus(); }, 30);
+}
+function pickManualGo() {
+  const pk = S.picker; if (!pk) return;
+  const i = $('#pickmanual'), v = clean(i ? i.value : '');
+  if (!v) { toast('Tulis nama dulu.'); return; }
+  pickName(v);
 }
 function pickName(n) {
   const pk = S.picker; if (!pk) return;
@@ -3862,6 +3938,7 @@ document.addEventListener('click', async e => {
     case 'stokstep': if (S.stokEd) { const j = Math.max(0, Math.round(((stokNum() || 0) + Number(t.dataset.d)) * 1000) / 1000); S.stokEd.jumlah = String(j); $('#stokJ').value = S.stokEd.jumlah; stokPreview(); } break;
     case 'stokq': if (S.stokEd) { S.stokEd.jumlah = t.dataset.n; $('#stokJ').value = t.dataset.n; stokPreview(); } break;
     case 'stoknama': openPicker({ title: 'Siapa?', sub: 'Pilih dari daftar, atau ketik nama lain (tidak harus pekerja terdaftar).', freeName: true, onPick: n => { if (S.stokEd) { S.stokEd.nama = n; renderStok(); } } }); break;
+    case 'stokpr': if (S.stokEd) { S.stokEd.pr = S.stokEd.pr === t.dataset.k ? '' : t.dataset.k; renderStok(); } break;
     case 'stokgo': stokSubmit(); break;
     /* panduan */
     case 'pdedit': go('panduan', { jid: curJid() }); break;
@@ -3934,10 +4011,13 @@ document.addEventListener('click', async e => {
     case 'pickclose': closeTop(); break;
     case 'pickname': pickName(t.dataset.n); break;
     case 'picknew': { const n = clean(t.dataset.n); if (n && await saveWorkers([...S.pekerja, { n, d: '' }])) pickName(n); break; }
+    case 'pickother': pickOther(); break;
+    case 'pickmanualgo': pickManualGo(); break;
     /* riwayat */
     case 'rwopen': S.rwDate = t.dataset.tgl; S.rwArsip = t.dataset.arsip === '1'; render(); if (S.rwArsip) loadArsipHari(); else loadAll(true); break;
     case 'rwback': S.rwDate = null; S.rwArsip = false; render(); loadRingkasan(); break;
     case 'rwbulan': S.rwOpenM[t.dataset.b] = !S.rwOpenM[t.dataset.b]; renderLive(); break;
+    case 'rwprintbulan': printBulan(t.dataset.b); break;
     case 'rwkesampah': {
       const tgl = Object.keys(S.rwSel).filter(k => S.rwSel[k]);
       if (!tgl.length) break;
@@ -3953,7 +4033,6 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'dkchip': { const id = t.dataset.id; S.dkChip = S.dkChip === id ? null : id; render(); break; }
-    case 'print': printDay(); break;
     case 'export': exportXlsx(); break;
     case 'exportmat': exportMaterialXlsx(); break;
     case 'arsip':
@@ -3970,6 +4049,7 @@ document.addEventListener('click', async e => {
     case 'matriwprint': printMatRiwayat(); break;
     case 'matriwsampah': matRiwayatKeSampah(); break;
     case 'matriwtutup': tutupBulanLedger(); break;
+    case 'matriwrekap': if (S.mrRekap) { S.mrRekap = null; renderLive(); } else loadMatRekap(); break;
     /* sampah */
     case 'spulih': sampahPulihkan(t.dataset.id); break;
     case 'shapus': {
@@ -4037,7 +4117,9 @@ document.addEventListener('input', e => {
   else if (id === 'aq') { if (S.form) { S.form.q = e.target.value; renderTambahTempat(); } }
   else if (id === 'stokJ') { if (S.stokEd) { S.stokEd.jumlah = e.target.value; stokPreview(); } }
   else if (id === 'stokC') { if (S.stokEd) S.stokEd.cat = e.target.value; }
-  else if (id === 'stokD') { if (S.stokEd) S.stokEd.dept = e.target.value; }
+  else if (id === 'stokProject') { if (S.stokEd) S.stokEd.project = e.target.value; }
+  else if (id === 'stokResort') { if (S.stokEd) S.stokEd.resort = e.target.value; }
+  else if (id === 'rwProj') { S.rwPrintProj = e.target.value; lsSet('qrg.rwproj', e.target.value); }
   else if (id === 'cropZoom') { if (S.fotoEd) { S.fotoEd.zoom = Number(e.target.value); drawCrop(); } }
   else if (id === 'tq') { S.form.q = e.target.value; const q = norm(e.target.value); $('#tlist').innerHTML = tambahList(S.jenis.filter(j => !q || norm([j.n, j.b, j.m].join(' ')).includes(q)).sort((a, b) => byName(a.n, b.n) || byName(a.b, b.b))); }
   else if (id === 'pickq') { S.picker.q = e.target.value; fillPicker(); }
@@ -4064,6 +4146,7 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'newName') { e.preventDefault(); const b = document.querySelector('[data-action="addname"]'); if (b) b.click(); }
+  if (e.key === 'Enter' && e.target.id === 'pickmanual') { e.preventDefault(); pickManualGo(); }
 });
 
 /* ---------- hash (stiker lama: #BOR-014) dan siklus aplikasi ---------- */
