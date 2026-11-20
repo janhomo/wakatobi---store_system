@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cetak Label QR</title>
+<style>
+:root{--bg:#F1F0EC;--surface:#fff;--ink:#1B2226;--muted:#5C686E;--line:#D8D7D0;--accent:#1F5F8B}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;padding:16px}
+.bar{max-width:760px;margin:0 auto 16px;display:flex;flex-direction:column;gap:10px}
+.bar h1{margin:0;font-size:24px}
+.bar .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+label{font-size:14px;color:var(--muted);display:block;margin-bottom:4px}
+select,input,button{font:inherit;min-height:46px;padding:8px 12px;border:1.5px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);width:100%}
+button.go{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+a{color:var(--accent)}
+.msg{color:var(--muted);font-size:14px;margin:0}
+.sheet{display:flex;flex-wrap:wrap;gap:0;justify-content:flex-start;max-width:21cm;margin:0 auto;background:#fff;padding:.5cm}
+.lab{border:1px dashed #999;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;break-inside:avoid;overflow:hidden;color:#000;background:#fff}
+.lab svg{display:block}
+.lab b{font-family:Arial,Helvetica,sans-serif;letter-spacing:.02em}
+.lab small{display:block;font-family:Arial,Helvetica,sans-serif;line-height:1.15;padding:0 .15cm;overflow:hidden}
+@page{size:A4;margin:0}
+.sheet.roll{display:block;padding:0;max-width:none;background:none}
+.sheet.roll .lab{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;text-align:left;margin:0 0 6px;padding:1.5mm;gap:1.5mm;border:1px dashed #999;page-break-after:always;break-after:page}
+.sheet.roll .lab .tx{min-width:0;display:flex;flex-direction:column;gap:.4mm}
+.sheet.roll .lab small{padding:0}
+@media print{
+  body{background:#fff;padding:0}
+  .bar{display:none}
+  .sheet{padding:.5cm;max-width:none;margin:0}
+  .sheet.roll{padding:0}
+  .sheet.roll .lab{margin:0;border:0}
+}
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Cetak label QR</h1>
+  <p class="msg"><a href="index.html">← Kembali ke aplikasi</a></p>
+  <div class="row">
+    <div><label for="tipe">Jenis label</label><select id="tipe"><option value="mesin">Mesin</option><option value="tempat">Tempat (rak, lemari)</option><option value="material">Material</option></select></div>
+    <div><label for="kertas">Kertas</label><select id="kertas"><option value="a4">Lembar A4</option><option value="roll">Roll stiker (printer label)</option></select></div>
+    <div id="boxSize"><label for="size">Ukuran label</label><select id="size"><option value="3">3 x 3 cm</option><option value="4">4 x 4 cm</option><option value="5" selected>5 x 5 cm</option><option value="6">6 x 6 cm</option></select></div>
+    <div id="boxRoll" hidden><label for="rsize">Ukuran roll (lebar x tinggi)</label><select id="rsize"><option value="50x30" selected>50 x 30 mm</option><option value="40x30">40 x 30 mm</option><option value="60x40">60 x 40 mm</option><option value="70x50">70 x 50 mm</option></select></div>
+    <div><label for="cat">Kategori</label><select id="cat"><option value="">Semua kategori</option></select></div>
+    <div id="boxKondisi"><label for="kondisi">Kondisi mesin</label><select id="kondisi"><option value="kecualirusak" selected>Kecuali rusak</option><option value="">Semua kondisi</option><option value="Normal">Normal saja</option><option value="Servis">Servis saja</option><option value="Rusak">Rusak saja</option></select></div>
+    <div><label for="codes">Kode tertentu (pisahkan dengan koma)</label><input id="codes" type="text" placeholder="Contoh: BOR-001, LOK-001, MAT-003"></div>
+    <div><label for="from">Dari nomor (rentang)</label><input id="from" type="text" placeholder="Contoh: LOK-001 atau 1" autocomplete="off"></div>
+    <div><label for="to">Sampai nomor</label><input id="to" type="text" placeholder="Contoh: LOK-050 atau 50" autocomplete="off"></div>
+    <div><label for="copies">Jumlah salinan tiap label</label><input id="copies" type="number" min="1" max="20" value="1"></div>
+  </div>
+  <div class="row"><button class="go" id="print">Cetak</button><button class="go" id="unduh" type="button">Unduh PNG</button><button class="go" id="unduhpdf" type="button">Unduh PDF</button><button class="go" id="unduhword" type="button">Unduh Word</button></div>
+  <p class="msg" id="rollnote" hidden>Roll stiker: satu label per halaman. Di jendela cetak pilih printer label, ukuran kertas sama dengan ukuran roll, margin tidak ada (None), skala 100%.</p>
+  <p class="msg" id="info">Memuat daftar mesin…</p>
+</div>
+<div class="sheet" id="sheet"></div>
+<script src="config.js"></script>
+<script src="lib/qrcode.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<script>
+const CFG = window.CONFIG || {}, API_URL = CFG.API_URL || '';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ls = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
+let jenis = [], units = [], tempat = [], material = [];
+const c0 = ls('qrg.c3', null); if (c0 && c0.jenis) { jenis = c0.jenis; units = c0.unit || []; tempat = c0.tempat || []; material = c0.material || []; }
+async function load() {
+  const tok = ls('qrg.tok', '');
+  if (API_URL && !API_URL.includes('PASTE') && tok) {
+    try {
+      const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'bootstrap', token: tok }) });
+      const j = await r.json(); if (j.ok) { jenis = j.jenis; units = j.unit; tempat = j.tempat || []; material = j.material || []; }
+    } catch (e) {}
+  }
+  units = units.filter(u => !u.off); tempat = tempat.filter(t => !t.off); material = material.filter(m => !m.off);
+  const qk = new URLSearchParams(location.search).get('kode'); if (qk) { $('#codes').value = qk; $('#tipe').value = /^LOK-/i.test(qk) ? 'tempat' : /^MAT-/i.test(qk) ? 'material' : 'mesin'; }
+  fillCats(); draw();
+}
+function fillCats() {
+  const t = $('#tipe').value, cur = $('#cat').value;
+  const cats = [...new Set((t === 'material' ? material.map(m => m.c) : t === 'mesin' ? jenis.map(j => j.c) : []).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'id'));
+  $('#cat').innerHTML = '<option value="">Semua kategori</option>' + cats.map(c => '<option' + (c === cur ? ' selected' : '') + '>' + esc(c) + '</option>').join('');
+  $('#cat').disabled = t === 'tempat';
+  $('#boxKondisi').hidden = t !== 'mesin';
+}
+/* isi QR hanya kode unit, contoh BOR-014. Kode kecil sehingga kotak QR besar dan mudah dibaca. */
+function svg(text, px) {
+  const qr = qrcode(0, 'H'); qr.addData(text); qr.make();
+  const n = qr.getModuleCount(), m = 2; let d = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) d += 'M' + (c + m) + ' ' + (r + m) + 'h1v1h-1z';
+  const v = n + 2 * m;
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + px + '" height="' + px + '" viewBox="0 0 ' + v + ' ' + v + '" shape-rendering="crispEdges"><rect width="' + v + '" height="' + v + '" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>';
+}
+function labHtml(size, qrPx, code, l1, l2, l3) {
+  return '<div class="lab" data-code="' + esc(code) + '" style="width:' + size + 'cm;height:' + size + 'cm;padding-top:' + (size * 0.05) + 'cm">' + svg(code, qrPx) +
+    '<b style="font-size:' + Math.round(size * 2.6) + 'pt;margin-top:.05cm">' + esc(code) + '</b>' +
+    '<small style="font-size:' + Math.max(6, Math.round(size * 1.5)) + 'pt"><strong>' + esc(l1) + '</strong></small>' +
+    (l2 ? '<small style="font-size:' + Math.max(5, Math.round(size * 1.2)) + 'pt">' + esc(l2) + '</small>' : '') +
+    (l3 ? '<small style="font-size:' + Math.max(5, Math.round(size * 1.2)) + 'pt">' + esc(l3) + '</small>' : '') + '</div>';
+}
+/* label roll: kotak QR di kiri, teks di kanan, satu label per halaman */
+function rollHtml(w, h, code, l1, l2) {
+  const q = h - 3, big = Math.max(8, Math.round(h * 0.34)), mid = Math.max(6, Math.round(h * 0.22)), sm = Math.max(5, Math.round(h * 0.18));
+  return '<div class="lab" data-code="' + esc(code) + '" style="width:' + w + 'mm;height:' + h + 'mm">' + svg(code, q + 'mm').replace('width="' + q + 'mm" height="' + q + 'mm"', 'width="' + q + 'mm" height="' + q + 'mm" style="flex-shrink:0"') +
+    '<div class="tx"><b style="font-size:' + big + 'pt">' + esc(code) + '</b><small style="font-size:' + mid + 'pt"><strong>' + esc(l1) + '</strong></small>' + (l2 ? '<small style="font-size:' + sm + 'pt">' + esc(l2) + '</small>' : '') + '</div></div>';
+}
+const numOf = v => { const m = /(\d+)\s*$/.exec(String(v || '')); return m ? Number(m[1]) : null; };
+let CUR = []; // daftar label unik yang sedang tampil: {code,l1,l2,l3}, dipakai bareng oleh Cetak dan ketiga tombol Unduh
+function draw() {
+  const roll = $('#kertas').value === 'roll', [rw, rh] = $('#rsize').value.split('x').map(Number);
+  $('#boxSize').hidden = roll; $('#boxRoll').hidden = !roll; $('#rollnote').hidden = !roll;
+  $('#sheet').className = 'sheet' + (roll ? ' roll' : '');
+  let ps = $('#pagestyle'); if (!ps) { ps = document.createElement('style'); ps.id = 'pagestyle'; document.head.appendChild(ps); }
+  ps.textContent = roll ? '@page{size:' + rw + 'mm ' + rh + 'mm;margin:0}' : '@page{size:A4;margin:0}';
+  const size = Number($('#size').value), cat = $('#cat').value, tipe = $('#tipe').value;
+  const codes = $('#codes').value.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  const nf = numOf($('#from').value), nt = numOf($('#to').value), copies = Math.max(1, Math.min(20, Number($('#copies').value) || 1));
+  const inRange = c => { const n = numOf(c); return (nf === null || (n !== null && n >= nf)) && (nt === null || (n !== null && n <= nt)); };
+  const cm = 37.795, qrPx = Math.round(size * 0.62 * cm), want = c => (!codes.length || codes.includes(c)) && inRange(c);
+  const mk = (code, l1, l2, l3) => { const one = roll ? rollHtml(rw, rh, code, l1, l2) : labHtml(size, qrPx, code, l1, l2, l3); return one.repeat(copies); };
+  let n = 0, have = 0;
+  if (tipe === 'tempat') {
+    have = tempat.length;
+    const l = tempat.filter(t => want(t.id)).sort((a, b) => a.id.localeCompare(b.id)); n = l.length;
+    CUR = l.map(t => ({ code: t.id, l1: t.n, l2: t.l, l3: '' }));
+  } else if (tipe === 'material') {
+    have = material.length;
+    const l = material.filter(m => (!cat || m.c === cat) && want(m.id)).sort((a, b) => a.id.localeCompare(b.id)); n = l.length;
+    CUR = l.map(m => ({ code: m.id, l1: m.n, l2: [m.b, m.s].filter(Boolean).join(' · '), l3: '' }));
+  } else {
+    have = units.length;
+    const J = Object.fromEntries(jenis.map(j => [j.id, j]));
+    const kondisi = $('#kondisi').value;
+    const kondisiOk = u => kondisi === 'kecualirusak' ? u.sl !== 'Rusak' : (!kondisi || u.sl === kondisi);
+    const l = units.filter(u => J[u.j] && (!cat || J[u.j].c === cat) && kondisiOk(u) && want(u.k)).sort((a, b) => a.k.localeCompare(b.k)); n = l.length;
+    CUR = l.map(u => { const j = J[u.j]; return { code: u.k, l1: j.n + ' · Unit ' + u.u, l2: [j.b, j.m].filter(Boolean).join(' ') + (u.pm ? ' · ' + u.pm : ''), l3: '' }; });
+  }
+  $('#sheet').innerHTML = CUR.map(x => mk(x.code, x.l1, x.l2, x.l3)).join('');
+  $('#print').textContent = n ? 'Cetak ' + (n * copies) + ' label' : 'Cetak';
+  $('#print').disabled = !n;
+  ['#unduh', '#unduhpdf', '#unduhword'].forEach(id => { $(id).disabled = !n; });
+  $('#unduh').textContent = n ? 'Unduh ' + n + ' PNG' : 'Unduh PNG';
+  $('#unduhpdf').textContent = n ? 'Unduh PDF' : 'Unduh PDF';
+  $('#unduhword').textContent = n ? 'Unduh Word' : 'Unduh Word';
+  $('#info').textContent = have ? n * copies + ' label' + (roll ? ' (' + rw + ' x ' + rh + ' mm).' : '. Pilih ukuran kertas A4, skala 100%, tanpa margin saat mencetak.') :
+    'Daftar belum ada. Buka aplikasi dulu dan masukkan PIN, lalu kembali ke halaman ini.';
+}
+/* satu QR jadi data-URL PNG, dipakai bareng oleh ketiga tombol Unduh */
+function qrPng(code, px) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = px; c.height = px;
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, px, px); ctx.drawImage(img, 0, 0, px, px);
+      resolve(c.toDataURL('image/png'));
+    };
+    img.onerror = reject;
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg(code, px))));
+  });
+}
+function withBusyBtn(btn, run) {
+  return async () => {
+    if (!CUR.length || btn.disabled) return;
+    const orig = btn.textContent; btn.disabled = true;
+    try { await run(orig); } finally { btn.textContent = orig; btn.disabled = !CUR.length; }
+  };
+}
+/* unduh tiap QR yang tampil sebagai file PNG terpisah, nama file = kode */
+const unduhSemua = withBusyBtn($('#unduh'), async orig => {
+  const btn = $('#unduh');
+  for (let i = 0; i < CUR.length; i++) {
+    btn.textContent = 'Mengunduh ' + (i + 1) + '/' + CUR.length + '…';
+    try {
+      const url = await qrPng(CUR[i].code, 600);
+      const a = document.createElement('a'); a.href = url; a.download = CUR[i].code + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) { /* lewati kalau satu gagal */ }
+    await new Promise(r => setTimeout(r, 180));
+  }
+});
+/* satu file PDF berisi semua label, tata letak mengikuti pengaturan Kertas saat ini */
+const unduhPDF = withBusyBtn($('#unduhpdf'), async () => {
+  const btn = $('#unduhpdf'), { jsPDF } = window.jspdf;
+  const roll = $('#kertas').value === 'roll';
+  if (roll) {
+    const [rw, rh] = $('#rsize').value.split('x').map(Number);
+    const q = rh - 3, big = Math.max(8, Math.round(rh * 0.34)), mid = Math.max(6, Math.round(rh * 0.22)), sm = Math.max(5, Math.round(rh * 0.18));
+    const doc = new jsPDF({ unit: 'mm', format: [rw, rh] });
+    for (let i = 0; i < CUR.length; i++) {
+      btn.textContent = 'Membuat PDF ' + (i + 1) + '/' + CUR.length + '…';
+      if (i) doc.addPage([rw, rh]);
+      const x = CUR[i], png = await qrPng(x.code, 600);
+      doc.addImage(png, 'PNG', 1.5, 1.5, q, q);
+      let ty = 1.5 + q * 0.22; doc.setFont(undefined, 'bold'); doc.setFontSize(big); doc.text(x.code, q + 3, ty);
+      ty += mid * 0.4; doc.setFont(undefined, 'normal'); doc.setFontSize(mid); doc.text(x.l1 || '', q + 3, ty);
+      if (x.l2) { ty += sm * 0.4; doc.setFontSize(sm); doc.text(x.l2, q + 3, ty); }
+    }
+    doc.save('label.pdf');
+  } else {
+    const sizeMM = Number($('#size').value) * 10, m = 5, usableW = 210 - m * 2, usableH = 297 - m * 2;
+    const cols = Math.max(1, Math.floor(usableW / sizeMM)), rowsPp = Math.max(1, Math.floor(usableH / sizeMM)), perPage = cols * rowsPp;
+    const codePt = Math.round(sizeMM / 10 * 2.6), l1Pt = Math.max(6, Math.round(sizeMM / 10 * 1.5)), l23Pt = Math.max(5, Math.round(sizeMM / 10 * 1.2));
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    for (let i = 0; i < CUR.length; i++) {
+      btn.textContent = 'Membuat PDF ' + (i + 1) + '/' + CUR.length + '…';
+      if (i > 0 && i % perPage === 0) doc.addPage('a4');
+      const pos = i % perPage, col = pos % cols, row = Math.floor(pos / cols), cx = m + col * sizeMM, cy = m + row * sizeMM;
+      const x = CUR[i], png = await qrPng(x.code, 600), qSide = sizeMM * 0.62, qx = cx + (sizeMM - qSide) / 2;
+      doc.addImage(png, 'PNG', qx, cy + sizeMM * 0.05, qSide, qSide);
+      let ty = cy + sizeMM * 0.05 + qSide + codePt * 0.4;
+      doc.setFont(undefined, 'bold'); doc.setFontSize(codePt); doc.text(x.code, cx + sizeMM / 2, ty, { align: 'center' });
+      ty += l1Pt * 0.4; doc.setFont(undefined, 'normal'); doc.setFontSize(l1Pt); doc.text(doc.splitTextToSize(x.l1 || '', sizeMM - 1), cx + sizeMM / 2, ty, { align: 'center' });
+      if (x.l2) { ty += l23Pt * 0.4; doc.setFontSize(l23Pt); doc.text(doc.splitTextToSize(x.l2, sizeMM - 1), cx + sizeMM / 2, ty, { align: 'center' }); }
+    }
+    doc.save('label.pdf');
+  }
+});
+/* satu file Word (format HTML, dibuka Word sebagai dokumen) berisi semua label */
+const unduhWord = withBusyBtn($('#unduhword'), async () => {
+  const btn = $('#unduhword'), cells = [];
+  for (let i = 0; i < CUR.length; i++) {
+    btn.textContent = 'Membuat Word ' + (i + 1) + '/' + CUR.length + '…';
+    const x = CUR[i], png = await qrPng(x.code, 300);
+    cells.push('<td style="text-align:center;padding:8px;border:1px dashed #999;vertical-align:top"><img src="' + png + '" width="120" height="120"><br><b>' + esc(x.code) + '</b><br><span style="font-size:11px">' + esc(x.l1 || '') + '</span>' + (x.l2 ? '<br><span style="font-size:10px">' + esc(x.l2) + '</span>' : '') + '</td>');
+  }
+  const rows = []; for (let i = 0; i < cells.length; i += 3) rows.push('<tr>' + cells.slice(i, i + 3).join('') + '</tr>');
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
+    '<head><meta charset="utf-8"><title>Label QR</title></head><body><table style="border-collapse:collapse;width:100%">' + rows.join('') + '</table></body></html>';
+  const blob = new Blob(['﻿' + html], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = 'label.doc';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+});
+['size', 'cat', 'kertas', 'rsize', 'kondisi'].forEach(i => $('#' + i).addEventListener('change', draw));
+['from', 'to', 'copies'].forEach(i => $('#' + i).addEventListener('input', draw));
+$('#tipe').addEventListener('change', () => { $('#codes').value = ''; $('#from').value = ''; $('#to').value = ''; fillCats(); draw(); });
+$('#codes').addEventListener('input', draw);
+$('#print').addEventListener('click', () => window.print());
+$('#unduh').addEventListener('click', unduhSemua);
+$('#unduhpdf').addEventListener('click', unduhPDF);
+$('#unduhword').addEventListener('click', unduhWord);
+load();
+</script>
+</body>
+</html>
