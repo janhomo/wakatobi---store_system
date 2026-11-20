@@ -296,10 +296,10 @@ document.addEventListener('click', async e => {
       catch (err) { toast(err.message || (err.code === 'network' ? 'Tidak ada sinyal.' : 'Gagal mengarsipkan.')); }
       break;
     /* riwayat material per bulan (Semen dkk) */
-    case 'matriw': S.mrId = t.dataset.id; S.mrBulan = null; S.mrMode = 'edit'; go('matriw'); break;
+    case 'matriw': S.mrId = t.dataset.id; S.mrBulan = null; S.mrMode = isSemen(M[t.dataset.id]) ? 'harian' : 'edit'; go('matriw'); break;
     case 'matriwback': back(); break;
     case 'matriwbulan': S.mrBulan = null; render(); break;
-    case 'matriwopen': S.mrBulan = t.dataset.b; S.mrMode = 'edit'; render(); loadMatRiwayatBulan(); break;
+    case 'matriwopen': S.mrBulan = t.dataset.b; S.mrMode = isSemen(M[S.mrId]) ? 'harian' : 'edit'; render(); if (S.mrMode === 'harian') loadMatLedgerBulan(); else loadMatRiwayatBulan(); break;
     case 'matriwmode': S.mrMode = t.dataset.m; renderLive(); if (S.mrMode === 'harian') loadMatLedgerBulan(); break;
     case 'matriwexport': exportLedgerExcel(); break;
     case 'matriwprint': printMatRiwayat(); break;

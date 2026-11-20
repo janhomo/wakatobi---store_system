@@ -223,10 +223,8 @@ function liveMatRiwayat() {
       S.mrMonths.list.map(b => '<button class="daterow2" data-action="matriwopen" data-b="' + esc(b.bulan) + '"><span><b>' + esc(b.label) + '</b><br><small class="muted">' + b.jumlah + ' catatan</small></span>' +
         (b.bulan === curBulan ? '<span class="pill ok">Berjalan</span>' : '') + '</button>').join('') + '</div>';
   }
-  const modeToggle = isSemen(m) ? '<div class="utabs" role="tablist" style="margin-bottom:12px">' +
-    '<button role="tab" data-action="matriwmode" data-m="edit" aria-selected="' + (S.mrMode !== 'harian') + '">Per transaksi</button>' +
-    '<button role="tab" data-action="matriwmode" data-m="harian" aria-selected="' + (S.mrMode === 'harian') + '">Harian</button></div>' : '';
-  if (isSemen(m) && S.mrMode === 'harian') return modeToggle + liveLedgerHarian();
+  const modeToggle = '';
+  if (isSemen(m)) return modeToggle + liveLedgerHarian();
   if (!S.mrLog || S.mrLog.list === null) return modeToggle + '<p class="empty">Memuat…</p>';
   if (S.mrLog.error) return modeToggle + '<p class="empty">Riwayat belum bisa dimuat. Cek sinyal.</p>';
   if (!S.mrLog.list.length) return modeToggle + '<p class="empty">Tidak ada catatan di bulan ini.</p>';
