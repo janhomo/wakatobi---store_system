@@ -611,7 +611,8 @@ async function printBulan(bulan) {
   const total = list.length, cut = list.slice(0, 24);
   const rows = cut.map(e => {
     const noUnit = unitNoLabel(e.kode);
-    return '<tr><td>' + esc(fmtShort(e.tgl)) + '</td><td>' + esc(e.nama) + (e.dept || deptOf(e.nama) ? '<br><small>' + esc(e.dept || deptOf(e.nama)) + '</small>' : '') + '</td><td>' + esc(e.kode) + (noUnit ? '<br><small>Unit ' + esc(noUnit) + '</small>' : '') + '</td><td>' + esc(e.mesin) + '</td><td>' + esc(fmtHM(e.ts)) + '</td><td>' + (e.kembali ? esc(fmtHM(e.kembali)) : '') + '</td><td>' + esc(e.kondisi || '') + '</td></tr>';
+    const mesinNama = e.mesin.replace(/\s*\(unit\s*\d+\)\s*$/i, ''); // No. Unit sudah ada di kolom Kode, tidak perlu diulang di sini
+    return '<tr><td>' + esc(fmtShort(e.tgl)) + '</td><td>' + esc(e.nama) + (e.dept || deptOf(e.nama) ? '<br><small>' + esc(e.dept || deptOf(e.nama)) + '</small>' : '') + '</td><td>' + esc(e.kode) + (noUnit ? '<br><small>Unit ' + esc(noUnit) + '</small>' : '') + '</td><td>' + esc(mesinNama) + '</td><td>' + esc(fmtHM(e.ts)) + '</td><td>' + (e.kembali ? esc(fmtHM(e.kembali)) : '') + '</td><td>' + esc(e.kondisi || '') + '</td></tr>';
   }).join('');
   const projek = clean(S.rwPrintProj) || 'Project';
   $('#printArea').innerHTML = '<style>@page{size:A4 portrait; margin:12mm}</style>' +
